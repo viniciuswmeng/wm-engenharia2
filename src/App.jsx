@@ -5130,18 +5130,18 @@ h3{font-size:10.5pt;margin:12px 0 5px}
 ;
 
   const imprimir = () => {
-    const html = gerarHTML();
-    const w = window.open("","_blank","width=900,height=700");
-    w.document.write(html);
-    w.document.close();
-    setTimeout(()=>{ w.focus(); w.print(); }, 1000);
+    const htmlStr = gerarHTML();
+    const win = window.open("","_blank","width=900,height=700");
+    win.document.write(htmlStr);
+    win.document.close();
+    setTimeout(()=>{ win.focus(); win.print(); }, 1000);
   };
   const baixar = () => {
-    const html = gerarHTML();
-    const w = window.open("","_blank","width=900,height=700");
-    w.document.write(html);
-    w.document.close();
-    setTimeout(()=>{ w.focus(); w.print(); }, 1000);
+    const htmlStr = gerarHTML();
+    const win2 = window.open("","_blank","width=900,height=700");
+    win2.document.write(htmlStr);
+    win2.document.close();
+    setTimeout(()=>{ win2.focus(); win2.print(); }, 1000);
   };
 
 
