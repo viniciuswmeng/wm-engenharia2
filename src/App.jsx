@@ -565,14 +565,7 @@ function TelaLogin({usuarios,onLogin}){
     <div style={{minHeight:"100vh",background:`linear-gradient(160deg,${C.cinzaEscuro} 0%,${C.azulMedio} 55%,${C.azulClaro} 100%)`,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
       <div style={{background:C.branco,borderRadius:20,padding:40,width:"100%",maxWidth:440,boxShadow:"0 24px 64px rgba(0,0,0,0.25)"}}>
         <div style={{textAlign:"center",marginBottom:32}}>
-          <svg width="120" height="48" viewBox="0 0 220 80" style={{margin:"0 auto"}}>
-            <circle cx="28" cy="14" r="7" fill="none" stroke={C.ciano} strokeWidth="3.5"/>
-            <path d="M21 28 Q21 52 28 52 Q35 52 35 28" fill="none" stroke={C.azulEscuro} strokeWidth="5" strokeLinecap="round"/>
-            <path d="M35 28 Q35 14 55 14 L80 52" fill="none" stroke={C.azulEscuro} strokeWidth="5" strokeLinecap="round"/>
-            <path d="M80 14 L80 52" fill="none" stroke={C.azulEscuro} strokeWidth="5" strokeLinecap="round"/>
-            <text x="95" y="45" fill={C.azulEscuro} fontSize="36" fontWeight="800" fontFamily="'Segoe UI',sans-serif" letterSpacing="2">WM</text>
-          </svg>
-          <p style={{color:C.cinzaClaro,fontSize:11,letterSpacing:3,fontWeight:700,marginTop:4}}>WM ENGENHARIA</p>
+          <img src="/logo-wm.png" alt="WM Engenharia" style={{height:80,objectFit:"contain",margin:"0 auto",display:"block"}}/>
         </div>
 
         {etapa==="sel"?(
@@ -2874,7 +2867,7 @@ function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}){
     <div style={{position:"fixed",inset:0,background:"rgba(15,25,50,0.7)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
       <div style={{background:C.branco,borderRadius:16,width:"100%",maxWidth:700,maxHeight:"90vh",overflow:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}} onClick={e=>e.stopPropagation()}>
         <div style={{background:`linear-gradient(135deg,${C.azulEscuro},${C.azulMedio})`,padding:"20px 24px",borderRadius:"16px 16px 0 0",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div><div style={{color:C.ciano,fontSize:11,fontWeight:700,letterSpacing:1,marginBottom:4}}>INTEC WM ENGENHARIA</div><h2 style={{color:C.branco,margin:0,fontSize:18}}>{modo==="novo"?"Novo Projeto":"Editar Projeto"}</h2></div>
+          <div><div style={{color:C.ciano,fontSize:11,fontWeight:700,letterSpacing:1,marginBottom:4}}>WM ENGENHARIA</div><h2 style={{color:C.branco,margin:0,fontSize:18}}>{modo==="novo"?"Novo Projeto":"Editar Projeto"}</h2></div>
           <button onClick={onClose} style={{background:"rgba(255,255,255,0.15)",border:"none",color:C.branco,borderRadius:8,width:32,height:32,cursor:"pointer",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
         </div>
         {/* Sub-abas do modal */}
@@ -5540,13 +5533,7 @@ export default function App(){
   // Tela de carregamento
   if(carregando) return (
     <div style={{minHeight:"100vh",background:`linear-gradient(135deg,${C.azulEscuro},${C.azulMedio})`,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}>
-      <svg width="120" height="48" viewBox="0 0 220 80">
-        <circle cx="28" cy="14" r="7" fill="none" stroke="#4a90c4" strokeWidth="3.5"/>
-        <path d="M21 28 Q21 52 28 52 Q35 52 35 28" fill="none" stroke="white" strokeWidth="5" strokeLinecap="round"/>
-        <path d="M35 28 Q35 14 55 14 L80 52" fill="none" stroke="white" strokeWidth="5" strokeLinecap="round"/>
-        <path d="M80 14 L80 52" fill="none" stroke="white" strokeWidth="5" strokeLinecap="round"/>
-        <text x="95" y="45" fill="white" fontSize="36" fontWeight="800" fontFamily="'Segoe UI',sans-serif" letterSpacing="2">WM</text>
-      </svg>
+      <img src="/logo-wm.png" alt="WM Engenharia" style={{height:44,objectFit:"contain"}}/>
       <div style={{color:"rgba(255,255,255,0.7)",fontSize:14}}>Carregando dados...</div>
     </div>
   );
@@ -5609,8 +5596,7 @@ export default function App(){
           </button>
 
           <div style={{padding:"12px 16px 12px 4px",borderRight:`1px solid rgba(255,255,255,0.15)`,marginRight:8,flexShrink:0}}>
-            <svg width="80" height="32" viewBox="0 0 220 80"><circle cx="28" cy="14" r="7" fill="none" stroke="#4a90c4" strokeWidth="3.5"/><path d="M21 28 Q21 52 28 52 Q35 52 35 28" fill="none" stroke="white" strokeWidth="5" strokeLinecap="round"/><path d="M35 28 Q35 14 55 14 L80 52" fill="none" stroke="white" strokeWidth="5" strokeLinecap="round"/><path d="M80 14 L80 52" fill="none" stroke="white" strokeWidth="5" strokeLinecap="round"/><text x="95" y="45" fill="white" fontSize="36" fontWeight="800" fontFamily="'Segoe UI',sans-serif" letterSpacing="2">WM</text></svg>
-            <div style={{color:C.ciano,fontSize:8,letterSpacing:3,fontWeight:700,marginTop:-4}}>WM ENGENHARIA</div>
+            <img src="/logo-wm.png" alt="WM Engenharia" style={{height:32,objectFit:"contain"}}/>
           </div>
 
           {/* Abas principais */}
