@@ -2825,12 +2825,7 @@ function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}){
     const diasPausados = calcDiasPausados(pausas || form.pausas || []);
     const prazoTotal   = prazo + diasPausados;
     const d = new Date(dataContrato + "T12:00:00");
-    let diasUteis = 0;
-    while (diasUteis < prazoTotal) {
-      d.setDate(d.getDate() + 1);
-      const dow = d.getDay();
-      if (dow !== 0 && dow !== 6) diasUteis++;
-    }
+    d.setDate(d.getDate() + prazoTotal);
     return d.toISOString().slice(0,10);
   };
 
@@ -2936,7 +2931,7 @@ function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}){
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
               <Inp label="Data do Contrato" value={form.dataContrato} onChange={setContrato} type="date"/>
-              <Inp label="Prazo (Dias Úteis)" value={form.prazo||""} onChange={setPrazo} type="number" placeholder="Ex: 60"/>
+              <Inp label="Prazo (Dias Corridos)" value={form.prazo||""} onChange={setPrazo} type="number" placeholder="Ex: 60"/>
               <div style={{display:"flex",flexDirection:"column",gap:4}}>
                 <label style={{fontSize:12,fontWeight:600,color:C.cinzaEscuro}}>
                   Entrega Prevista
@@ -3162,7 +3157,7 @@ function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}){
           <div>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
               <h3 style={{color:C.azulEscuro,fontSize:13,fontWeight:700,margin:0,textTransform:"uppercase",letterSpacing:1}}>⏸ Pausas do Projeto</h3>
-              {(form.pausas||[]).length>0&&<span style={{fontSize:11,color:C.laranja,fontWeight:700}}>+{calcDiasPausados(form.pausas)} dias úteis adicionados ao prazo</span>}
+              {(form.pausas||[]).length>0&&<span style={{fontSize:11,color:C.laranja,fontWeight:700}}>+{calcDiasPausados(form.pausas)} dias corridos adicionados ao prazo</span>}
             </div>
             {(form.pausas||[]).length>0&&(
               <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:12}}>
