@@ -3168,7 +3168,7 @@ function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}){
                     <div style={{fontSize:18}}>{ativa?"⏸":"▶"}</div>
                     <div style={{flex:1}}>
                       <div style={{fontSize:13,fontWeight:700,color:ativa?"#92400e":"#166534"}}>{ativa?"Em pausa desde":"Pausa encerrada"} — {p.motivo||"sem motivo"}</div>
-                      <div style={{fontSize:11,color:"#6b7280",marginTop:2}}>{fmtData(p.inicio)} {p.fim?`→ ${fmtData(p.fim)}`:"→ hoje"} · {diasP} dia(s) útil(eis)</div>
+                      <div style={{fontSize:11,color:"#6b7280",marginTop:2}}>{fmtData(p.inicio)} {p.fim?`→ ${fmtData(p.fim)}`:"→ hoje"} · {diasP} dia(s) corrido(s)</div>
                     </div>
                     {ativa&&(retornandoIdx===i?(
                       <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
