@@ -565,7 +565,7 @@ function TelaLogin({usuarios,onLogin}){
     <div style={{minHeight:"100vh",background:`linear-gradient(160deg,${C.cinzaEscuro} 0%,${C.azulMedio} 55%,${C.azulClaro} 100%)`,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
       <div style={{background:C.branco,borderRadius:20,padding:40,width:"100%",maxWidth:440,boxShadow:"0 24px 64px rgba(0,0,0,0.25)"}}>
         <div style={{textAlign:"center",marginBottom:32}}>
-          <img src="/Logo_Sem_Fundo.png" alt="WM Engenharia" style={{height:80,objectFit:"contain",margin:"0 auto",display:"block"}}/>
+          <img src="/Logo_Sem_Fundo.png" alt="WM Engenharia" style={{height:120,objectFit:"contain",margin:"0 auto",display:"block"}}/>
         </div>
 
         {etapa==="sel"?(
@@ -5533,7 +5533,7 @@ export default function App(){
   // Tela de carregamento
   if(carregando) return (
     <div style={{minHeight:"100vh",background:`linear-gradient(135deg,${C.azulEscuro},${C.azulMedio})`,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}>
-      <img src="/Logo_Sem_Fundo.png" alt="WM Engenharia" style={{height:44,objectFit:"contain"}}/>
+      <img src="/Logo_Sem_Fundo.png" alt="WM Engenharia" style={{height:44,objectFit:"contain",filter:"brightness(0) invert(1)"}}/>
       <div style={{color:"rgba(255,255,255,0.7)",fontSize:14}}>Carregando dados...</div>
     </div>
   );
@@ -5596,7 +5596,7 @@ export default function App(){
           </button>
 
           <div style={{padding:"12px 16px 12px 4px",borderRight:`1px solid rgba(255,255,255,0.15)`,marginRight:8,flexShrink:0}}>
-            <img src="/Logo_Sem_Fundo.png" alt="WM Engenharia" style={{height:32,objectFit:"contain"}}/>
+            <img src="/Logo_Sem_Fundo.png" alt="WM Engenharia" style={{height:32,objectFit:"contain",filter:"brightness(0) invert(1)"}}/>
           </div>
 
           {/* Abas principais */}
