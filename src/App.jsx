@@ -4860,7 +4860,7 @@ function GeradorContratos({ projetos, usuarios, usuarioAtual }) {
   // Carregar lista de contratos salvos
   const carregarLista = async () => {
     try {
-      const { data } = await supabase.from("contratos").select("id,titulo,criado_por,created_at,updated_at").order("updated_at",{ascending:false});
+      const { data } = await supabase.from("contratos").select("id,titulo,criado_por,created_at,updated_at,dados").order("updated_at",{ascending:false});
       setLista(data||[]);
     } catch(e) { console.error(e); }
   };
