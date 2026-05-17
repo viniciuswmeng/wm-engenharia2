@@ -4851,6 +4851,58 @@ function GeradorContratos({ projetos, usuarios, usuarioAtual }) {
   const C2 = C_CONTRATO;
   const [passo, setPasso] = useState(1);
   const [gerado, setGerado] = useState(false);
+  const [lista, setLista] = useState([]);
+  const [mostrarLista, setMostrarLista] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+  const [contratoId, setContratoId] = useState(null);
+  const [msgSalvo, setMsgSalvo] = useState("");
+
+  // Carregar lista de contratos salvos
+  const carregarLista = async () => {
+    try {
+      const { data } = await db.from("contratos").select("id,titulo,criado_por,created_at,updated_at").order("updated_at",{ascending:false});
+      setLista(data||[]);
+    } catch(e) { console.error(e); }
+  };
+
+  useEffect(()=>{ carregarLista(); },[]);
+
+  // Salvar contrato
+  const salvarContrato = async () => {
+    setSalvando(true);
+    const titulo = `${form.nomeCompleto||"Sem nome"} — ${new Date().toLocaleDateString("pt-BR")}`;
+    try {
+      if (contratoId) {
+        await db.from("contratos").update({ titulo, dados:form, updated_at: new Date().toISOString(), criado_por: usuarioAtual?.id }).eq("id", contratoId);
+        setMsgSalvo("✅ Contrato atualizado!");
+      } else {
+        const { data } = await db.from("contratos").insert({ titulo, dados:form, criado_por: usuarioAtual?.id }).select().single();
+        setContratoId(data?.id);
+        setMsgSalvo("✅ Contrato salvo!");
+      }
+      carregarLista();
+    } catch(e) { setMsgSalvo("❌ Erro ao salvar"); }
+    setSalvando(false);
+    setTimeout(()=>setMsgSalvo(""), 3000);
+  };
+
+  // Carregar contrato salvo
+  const carregarContrato = async (item) => {
+    setForm(item.dados);
+    setContratoId(item.id);
+    setMostrarLista(false);
+    setGerado(false);
+    setPasso(1);
+  };
+
+  // Excluir contrato
+  const excluirContrato = async (id, e) => {
+    e.stopPropagation();
+    if (!window.confirm("Excluir este contrato?")) return;
+    await db.from("contratos").delete().eq("id", id);
+    carregarLista();
+    if (contratoId === id) { setContratoId(null); }
+  };
   const hoje = new Date().toISOString().slice(0,10);
   const [form, setForm] = useState({
     tipoPessoa:"fisica", cpfCnpj:"", nomeCompleto:"", nacionalidade:"brasileiro(a)", estadoCivil:"solteiro(a)",
@@ -5089,17 +5141,58 @@ h3{font-size:10.5pt;margin:12px 0 5px}
 
   return (
     <div style={{maxWidth:960,margin:"0 auto",padding:"0 0 48px"}}>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:24}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:24,flexWrap:"wrap",gap:12}}>
         <div>
           <div style={{fontSize:22,fontWeight:800,color:C2.azul}}>📄 Gerador de Contratos</div>
           <div style={{fontSize:13,color:C2.sub,marginTop:2}}>Crie contratos de prestação de serviços profissionais</div>
         </div>
-        {gerado&&<div style={{display:"flex",gap:8}}>
-          <button onClick={imprimir} style={{background:C2.azulM,color:"#fff",border:"none",borderRadius:8,padding:"10px 20px",fontWeight:700,cursor:"pointer",fontSize:13}}>🖨 Imprimir / PDF</button>
-          <button onClick={baixar}   style={{background:C2.verde,color:"#fff",border:"none",borderRadius:8,padding:"10px 20px",fontWeight:700,cursor:"pointer",fontSize:13}}>⬇ Baixar</button>
-          <button onClick={()=>{setGerado(false);setPasso(1);}} style={{background:"#f1f5f9",color:C2.azul,border:`1px solid ${C2.borda}`,borderRadius:8,padding:"10px 20px",fontWeight:700,cursor:"pointer",fontSize:13}}>✏ Editar</button>
-        </div>}
+        <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+          {msgSalvo&&<span style={{fontSize:13,fontWeight:600,color:msgSalvo.startsWith("✅")?C2.verde:"#dc2626"}}>{msgSalvo}</span>}
+          <button onClick={()=>setMostrarLista(v=>!v)} style={{background:"#f1f5f9",color:C2.azul,border:`1px solid ${C2.borda}`,borderRadius:8,padding:"9px 16px",fontWeight:700,cursor:"pointer",fontSize:13}}>
+            📂 Contratos Salvos {lista.length>0&&<span style={{background:C2.azulM,color:"#fff",borderRadius:10,padding:"1px 7px",fontSize:11,marginLeft:4}}>{lista.length}</span>}
+          </button>
+          <button onClick={salvarContrato} disabled={salvando} style={{background:C2.azulM,color:"#fff",border:"none",borderRadius:8,padding:"9px 16px",fontWeight:700,cursor:"pointer",fontSize:13,opacity:salvando?.6:1}}>
+            {salvando?"⏳ Salvando...":contratoId?"💾 Atualizar":"💾 Salvar"}
+          </button>
+          {gerado&&<>
+            <button onClick={imprimir} style={{background:C2.azul,color:"#fff",border:"none",borderRadius:8,padding:"9px 16px",fontWeight:700,cursor:"pointer",fontSize:13}}>🖨 Imprimir / PDF</button>
+            <button onClick={baixar}   style={{background:C2.verde,color:"#fff",border:"none",borderRadius:8,padding:"9px 16px",fontWeight:700,cursor:"pointer",fontSize:13}}>⬇ Baixar</button>
+            <button onClick={()=>{setGerado(false);setPasso(1);}} style={{background:"#f1f5f9",color:C2.azul,border:`1px solid ${C2.borda}`,borderRadius:8,padding:"9px 16px",fontWeight:700,cursor:"pointer",fontSize:13}}>✏ Editar</button>
+          </>}
+        </div>
       </div>
+
+      {/* Lista de contratos salvos */}
+      {mostrarLista&&<div style={{background:"#fff",borderRadius:12,border:`1px solid ${C2.borda}`,marginBottom:20,overflow:"hidden",boxShadow:"0 2px 12px rgba(0,0,0,0.08)"}}>
+        <div style={{background:C2.azul,padding:"12px 20px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <div style={{color:"#fff",fontWeight:700,fontSize:14}}>📂 Contratos Salvos</div>
+          <button onClick={()=>{setContratoId(null);setForm(f=>({...f,nomeCompleto:"",cpfCnpj:"",endereco:"",email:"",servicos:[],descricaoEdificacao:"",areaTotal:"",numPavimentos:"",cidadeUF:"",enderecoObra:"",valorTotal:"",dataContrato:hoje,dataAssinatura:hoje}));setMostrarLista(false);setPasso(1);setGerado(false);}}
+            style={{background:"rgba(255,255,255,.2)",color:"#fff",border:"none",borderRadius:7,padding:"6px 14px",fontWeight:700,cursor:"pointer",fontSize:12}}>+ Novo Contrato</button>
+        </div>
+        {lista.length===0
+          ? <div style={{padding:"24px",textAlign:"center",color:C2.sub,fontSize:13}}>Nenhum contrato salvo ainda</div>
+          : lista.map(item=>(
+            <div key={item.id} onClick={()=>carregarContrato(item)} style={{
+              display:"flex",alignItems:"center",justifyContent:"space-between",
+              padding:"14px 20px",borderBottom:`1px solid ${C2.borda}`,cursor:"pointer",
+              background:contratoId===item.id?"#f0f7ff":"#fff",
+              transition:"background .15s"
+            }}>
+              <div>
+                <div style={{fontWeight:700,fontSize:14,color:C2.azul}}>{item.titulo}</div>
+                <div style={{fontSize:11,color:C2.sub,marginTop:3}}>
+                  Criado por: {(usuarios||[]).find(u=>u.id===item.criado_por)?.nome||"—"} · 
+                  Atualizado: {new Date(item.updated_at).toLocaleDateString("pt-BR")} às {new Date(item.updated_at).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}
+                </div>
+              </div>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                {contratoId===item.id&&<span style={{fontSize:11,background:"#dbeafe",color:C2.azulM,borderRadius:6,padding:"3px 8px",fontWeight:700}}>Aberto</span>}
+                <button onClick={e=>excluirContrato(item.id,e)} style={{background:"#fee2e2",color:"#dc2626",border:"none",borderRadius:6,padding:"5px 10px",cursor:"pointer",fontSize:12,fontWeight:700}}>🗑</button>
+              </div>
+            </div>
+          ))
+        }
+      </div>}
 
       {!gerado&&<div style={{display:"flex",gap:0,marginBottom:28,background:"#fff",borderRadius:12,border:`1px solid ${C2.borda}`,overflow:"hidden"}}>
         {passos.map((p,i)=>{
