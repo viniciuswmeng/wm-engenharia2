@@ -5144,48 +5144,24 @@ h3{font-size:10.5pt;margin:12px 0 5px}
     win2.document.close();
     setTimeout(()=>{ win2.focus(); win2.print(); }, 1000);
   };
-  const baixarWord = () => {
-    const nomeCliente = (form.nomeCompleto||"Contrato").replace(/\s+/g,"_");
-    const clausulas = [
-      ["IDENTIFICAÇÃO DAS PARTES CONTRATANTES",""],
-      ["CONTRATANTE", `${form.nomeCompleto}, ${form.tipoPessoa==="fisica"?form.nacionalidade+", "+form.estadoCivil+",":""} portador(a) do ${form.tipoPessoa==="fisica"?"CPF":"CNPJ"} nº ${form.cpfCnpj}, domiciliado(a) na ${form.endereco}.`],
-      ["CONTRATADA", `WM Engenharia Integrada (Wilk Martins Engenharia Ltda), CNPJ nº 60.959.603/0001-47, com sede na Av. JK, nº 1571, Bairro São Paulo, CEP 35.030-210, Governador Valadares/MG, representada por Jonathan Charles Lucas Martins Almeida Siqueira (CPF 020.571.056-52, CREA 394707/MG) e Vinicius Wilk Bezerra Rezende (CPF 120.912.666-47, CREA 394892/MG).`],
-      ["DO OBJETO DO CONTRATO",""],
-      ["Cláusula 1ª", `Elaboração de ${form.servicos.join(", ")} de uma edificação ${form.descricaoEdificacao}${form.areaTotal?", área "+form.areaTotal:""}, em ${form.cidadeUF}${form.enderecoObra?", "+form.enderecoObra:""}.`],
-      ["DAS REVISÕES",""],
-      ["Cláusula 2ª", `O valor contratado contempla até ${form.rodadasRevisao} rodada(s) de revisão por disciplina.`],
-      ["DO PRAZO",""],
-      ["Cláusula 13ª", `Prazo de ${form.prazoExecucao} dias corridos a partir da assinatura do contrato, recebimento da entrada e dos documentos.`],
-      ["DO PREÇO",""],
-      ["Cláusula 7ª", `Valor total: ${fmtMoeda(form.valorTotal)}. Entrada (${form.percEntrada}%): ${fmtMoeda(entrada)}. Parcela final (${100-Number(form.percEntrada)}%): ${fmtMoeda(parcFinal)}. Pagamentos via TED/PIX.`],
-      ["DO FORO",""],
-      ["Cláusula 19ª", `Foro da Comarca de Governador Valadares, Estado de Minas Gerais.`],
-    ];
-    const secoes = clausulas.map(([t,v])=>{
-      if(!v) return "{\\b\\qc " + t.toUpperCase() + "\\par}";
-      if(t.startsWith("Cl")) return "{\\b " + t + ".} " + v + "\\par";
-      return "{\\b " + t + ":} " + v + "\\par";
-    }).join("\n");
-    const assinatura = "_________________________________          _________________________________\\par\nCONTRATANTE                                 CONTRATADA - WM Engenharia Integrada\\par\n" + form.nomeCompleto + "\\par";
-    const rtf = [
-      "{\\rtf1\\ansi\\deff0",
-      "{\\fonttbl{\\f0 Times New Roman;}}",
-      "{\\f0\\fs24",
-      "{\\b\\qc CONTRATO DE PRESTACAO DE SERVICOS\\par}",
-      "{\\b\\qc WM Engenharia Integrada\\par}",
-      "\\par",
-      secoes,
-      "\\par",
-      "{\\qc " + form.cidade + ", " + dataFmt(form.dataAssinatura) + "\\par}",
-      "\\par",
-      assinatura,
-      "}}",
-    ].join("\n");
-    const blob = new Blob([rtf], {type:"application/rtf"});
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement("a");
-    a.href=url; a.download="Contrato_WM_" + nomeCliente + ".rtf";
-    a.click(); URL.revokeObjectURL(url);
+  const baixarWord = async () => {
+    try {
+      const resp = await fetch("/api/gerar-contrato", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (!resp.ok) throw new Error("Erro ao gerar DOCX");
+      const blob = await resp.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href = url;
+      a.download = `Contrato_WM_${(form.nomeCompleto||"Contrato").replace(/\s+/g,"_")}.docx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch(e) {
+      alert("Erro ao gerar Word: " + e.message);
+    }
   };
 
 
