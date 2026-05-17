@@ -5144,6 +5144,53 @@ h3{font-size:10.5pt;margin:12px 0 5px}
     win2.document.close();
     setTimeout(()=>{ win2.focus(); win2.print(); }, 1000);
   };
+  const baixarWord = () => {
+    const nomeCliente = (form.nomeCompleto||"Contrato").replace(/\s+/g,"_");
+    const clausulas = [
+      ["IDENTIFICAÇÃO DAS PARTES CONTRATANTES",""],
+      ["CONTRATANTE", `${form.nomeCompleto}, ${form.tipoPessoa==="fisica"?form.nacionalidade+", "+form.estadoCivil+",":""} portador(a) do ${form.tipoPessoa==="fisica"?"CPF":"CNPJ"} nº ${form.cpfCnpj}, domiciliado(a) na ${form.endereco}.`],
+      ["CONTRATADA", `WM Engenharia Integrada (Wilk Martins Engenharia Ltda), CNPJ nº 60.959.603/0001-47, com sede na Av. JK, nº 1571, Bairro São Paulo, CEP 35.030-210, Governador Valadares/MG, representada por Jonathan Charles Lucas Martins Almeida Siqueira (CPF 020.571.056-52, CREA 394707/MG) e Vinicius Wilk Bezerra Rezende (CPF 120.912.666-47, CREA 394892/MG).`],
+      ["DO OBJETO DO CONTRATO",""],
+      ["Cláusula 1ª", `Elaboração de ${form.servicos.join(", ")} de uma edificação ${form.descricaoEdificacao}${form.areaTotal?", área "+form.areaTotal:""}, em ${form.cidadeUF}${form.enderecoObra?", "+form.enderecoObra:""}.`],
+      ["DAS REVISÕES",""],
+      ["Cláusula 2ª", `O valor contratado contempla até ${form.rodadasRevisao} rodada(s) de revisão por disciplina.`],
+      ["DO PRAZO",""],
+      ["Cláusula 13ª", `Prazo de ${form.prazoExecucao} dias corridos a partir da assinatura do contrato, recebimento da entrada e dos documentos.`],
+      ["DO PREÇO",""],
+      ["Cláusula 7ª", `Valor total: ${fmtMoeda(form.valorTotal)}. Entrada (${form.percEntrada}%): ${fmtMoeda(entrada)}. Parcela final (${100-Number(form.percEntrada)}%): ${fmtMoeda(parcFinal)}. Pagamentos via TED/PIX.`],
+      ["DO FORO",""],
+      ["Cláusula 19ª", `Foro da Comarca de Governador Valadares, Estado de Minas Gerais.`],
+    ];
+    const linhas = clausulas.map(([t,v])=>
+      v ? `${t.startsWith("Cláusula")?t+".":t}	${v}` : `
+${t}`
+    ).join("
+");
+    const rtf = `{\rtf1\ansi\deff0
+{\fonttbl{\f0 Times New Roman;}}
+{\f0\fs24
+{\b\qc CONTRATO DE PRESTAÇÃO DE SERVIÇOS\par}
+{\b\qc WM Engenharia Integrada\par}
+\par
+${clausulas.map(([t,v])=>{
+  if(!v) return `{\b\qc ${t.toUpperCase()}\par}`;
+  if(t.startsWith("Cláusula")) return `{\b ${t}.} ${v}\par`;
+  return `{\b ${t}:} ${v}\par`;
+}).join("
+")}
+\par
+{\qc ${form.cidade}, ${dataFmt(form.dataAssinatura)}\par}
+\par
+_________________________________\tab _________________________________\par
+CONTRATANTE\tab\tab\tab CONTRATADA – WM Engenharia Integrada\par
+${form.nomeCompleto}\par
+}}`;
+    const blob = new Blob([rtf], {type:"application/rtf"});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href=url; a.download=`Contrato_WM_${nomeCliente}.rtf`;
+    a.click(); URL.revokeObjectURL(url);
+  };
 
 
 
@@ -5166,7 +5213,7 @@ h3{font-size:10.5pt;margin:12px 0 5px}
           </button>
           {gerado&&<>
             <button onClick={imprimir} style={{background:C2.azul,color:"#fff",border:"none",borderRadius:8,padding:"9px 16px",fontWeight:700,cursor:"pointer",fontSize:13}}>🖨 Imprimir / PDF</button>
-            <button onClick={baixar}   style={{background:C2.verde,color:"#fff",border:"none",borderRadius:8,padding:"9px 16px",fontWeight:700,cursor:"pointer",fontSize:13}}>⬇ Baixar</button>
+            <button onClick={baixarWord} style={{background:"#2b579a",color:"#fff",border:"none",borderRadius:8,padding:"9px 16px",fontWeight:700,cursor:"pointer",fontSize:13}}>📝 Word</button>
             <button onClick={()=>{setGerado(false);setPasso(1);}} style={{background:"#f1f5f9",color:C2.azul,border:`1px solid ${C2.borda}`,borderRadius:8,padding:"9px 16px",fontWeight:700,cursor:"pointer",fontSize:13}}>✏ Editar</button>
           </>}
         </div>
