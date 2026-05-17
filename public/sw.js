@@ -1,7 +1,7 @@
-// sw.js — Service Worker do INTEC
+// sw.js — Service Worker do WM
 // Responsável por: cache offline, notificações push em background
 
-const CACHE_NAME = 'intec-v1';
+const CACHE_NAME = 'WM-v1';
 const ASSETS_CACHE = [
   '/',
   '/index.html',
@@ -53,11 +53,11 @@ self.addEventListener('fetch', event => {
 self.addEventListener('push', event => {
   const data = event.data ? event.data.json() : {};
   event.waitUntil(
-    self.registration.showNotification(data.title || 'INTEC', {
+    self.registration.showNotification(data.title || 'WM', {
       body:    data.body || '',
       icon:    '/icon-192.png',
       badge:   '/icon-192.png',
-      tag:     data.tag || 'intec',
+      tag:     data.tag || 'WM',
       data:    { url: data.url || '/' },
     })
   );

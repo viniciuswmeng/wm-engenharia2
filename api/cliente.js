@@ -98,7 +98,7 @@ export default async function handler(req) {
 
         // Sessões do banco de horas como linha do tempo
         const sessoesTimeline = (sessoes || []).filter(s => s.visivel_cliente !== false).map(s => {
-          const nomeColaborador = s.usuarios?.nome || 'Equipe INTEC';
+          const nomeColaborador = s.usuarios?.nome || 'Equipe WM';
           const hIni  = s.hora_inicio || '';
           const hFim  = s.hora_fim    || '';
           const durMin= s.duracao_min || 0;

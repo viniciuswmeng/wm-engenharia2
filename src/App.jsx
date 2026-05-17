@@ -23,13 +23,13 @@ function pedirPermissaoNotificacao() {
 }
 
 // Disparar notificação nativa do sistema operacional
-function notificarSistema(titulo, corpo, tag="intec-geral", duracaoMs=10000) {
+function notificarSistema(titulo, corpo, tag="WM-geral", duracaoMs=10000) {
   if (!("Notification" in window)) return;
   if (Notification.permission !== "granted") return;
   try {
     const n = new Notification(titulo, {
       body:     corpo,
-      icon:     "https://intec-projetos.vercel.app/icons.svg",
+      icon:     "https://WM-projetos.vercel.app/icons.svg",
       tag:      tag,
       renotify: true,
       silent:   false,
@@ -98,7 +98,7 @@ function notificarUmaVez(chave, titulo, corpo, tag) {
   notificarSistema(titulo, corpo, tag, 12000);
 }
 
-// ─── CORES INTEC ───────────────────────────────────────────────────────────────
+// ─── CORES WM ───────────────────────────────────────────────────────────────
 const C = {
   azulEscuro:"#1a3a6b", azulMedio:"#2563a8", azulClaro:"#3b8fd4",
   ciano:"#56bfe9", cinzaEscuro:"#1e2535", cinzaMedio:"#2d3a50",
@@ -139,31 +139,31 @@ const DISCIPLINAS_CB = [
 ];
 
 const USUARIOS_PADRAO = [
-  { id:"vinicius", nome:"Vinicius", email:"intecestruturas4@gmail.com", senha:"1234",
+  { id:"vinicius", nome:"Vinicius", email:"WMestruturas4@gmail.com", senha:"1234",
     perfil:"colaborador", cor:"#2563a8", iniciais:"VI", ativo:true,
     expediente:{ turno1:{inicio:"09:00",fim:"12:00"}, turno2:{ativo:true,inicio:"14:00",fim:"18:00"}, modo:"E" },
     salario:0, especialidades:["PE","PR","LT","PF"] },
-  { id:"leonardo", nome:"Leonardo", email:"intecestruturas2@gmail.com", senha:"1234",
+  { id:"leonardo", nome:"Leonardo", email:"WMestruturas2@gmail.com", senha:"1234",
     perfil:"colaborador", cor:"#0891b2", iniciais:"LE", ativo:true,
     expediente:{ turno1:{inicio:"09:00",fim:"12:00"}, turno2:{ativo:true,inicio:"14:00",fim:"18:00"}, modo:"E" },
     especialidades:["PE","PR","LT","PF"] },
-  { id:"claudio", nome:"Claudio", email:"intecestruturas3@gmail.com", senha:"1234",
+  { id:"claudio", nome:"Claudio", email:"WMestruturas3@gmail.com", senha:"1234",
     perfil:"colaborador", cor:"#059669", iniciais:"CL", ativo:true,
     expediente:{ turno1:{inicio:"09:00",fim:"12:00"}, turno2:{ativo:true,inicio:"14:00",fim:"18:00"}, modo:"E" },
     especialidades:["PE","PR","LT","PF"] },
-  { id:"heriston", nome:"Heriston", email:"direcao@engenhariaintec.com.br", senha:"1234",
+  { id:"heriston", nome:"Heriston", email:"direcao@engenhariaWM.com.br", senha:"1234",
     perfil:"gestor", cor:"#7c3aed", iniciais:"HE", ativo:true,
     expediente:{ turno1:{inicio:"09:00",fim:"12:00"}, turno2:{ativo:true,inicio:"14:00",fim:"18:00"}, modo:"E" },
     especialidades:["PE","PR","LT","PF","CT"] },
-  { id:"gustavo", nome:"Gustavo", email:"intecestruturas5@gmail.com", senha:"1234",
+  { id:"gustavo", nome:"Gustavo", email:"WMestruturas5@gmail.com", senha:"1234",
     perfil:"colaborador", cor:"#f59e0b", iniciais:"GU", ativo:true,
     expediente:{ turno1:{inicio:"09:00",fim:"12:00"}, turno2:{ativo:true,inicio:"14:00",fim:"18:00"}, modo:"E" },
     especialidades:["PE","PR","LT","PF"] },
-  { id:"jonathan", nome:"Jonathan", email:"intecobras2@gmail.com", senha:"1234",
+  { id:"jonathan", nome:"Jonathan", email:"WMobras2@gmail.com", senha:"1234",
     perfil:"colaborador", cor:"#dc2626", iniciais:"JO", ativo:true,
     expediente:{ turno1:{inicio:"09:00",fim:"12:00"}, turno2:{ativo:true,inicio:"14:00",fim:"18:00"}, modo:"E" },
     especialidades:["EL","PH"] },
-  { id:"pablo", nome:"Pablo", email:"inteccompplementares1@gmail.com", senha:"1234",
+  { id:"pablo", nome:"Pablo", email:"WMcompplementares1@gmail.com", senha:"1234",
     perfil:"colaborador", cor:"#db2777", iniciais:"PA", ativo:true,
     expediente:{ turno1:{inicio:"09:00",fim:"12:00"}, turno2:{ativo:true,inicio:"14:00",fim:"18:00"}, modo:"E" },
     especialidades:["EL","PH"] },
@@ -879,7 +879,7 @@ async function gerarRelatorioPDF({ usuario, registrosFiltrados, projetos, mes, s
   doc.setTextColor(86, 191, 233);
   doc.setFontSize(22);
   doc.setFont('helvetica', 'bold');
-  doc.text('iNTEC', M, 20);
+  doc.text('WM', M, 20);
   doc.setFontSize(7);
   doc.setFont('helvetica', 'normal');
   doc.text('ENGENHARIA INTEGRADA', M, 26);
@@ -1064,7 +1064,7 @@ async function gerarRelatorioPDF({ usuario, registrosFiltrados, projetos, mes, s
     doc.setTextColor(86,191,233);
     doc.setFontSize(7);
     doc.setFont('helvetica','normal');
-    doc.text('INTEC Engenharia Integrada — Sistema de Controle de Projetos', M, 293);
+    doc.text('WM Engenharia — Sistema de Controle de Projetos', M, 293);
     doc.text(`Pagina ${i} de ${pageCount}`, W - M, 293, { align:'right' });
   }
 
@@ -1473,16 +1473,16 @@ function ModuloCalendario({ calendario, usuarioAtual, registros, usuarios }) {
   const [mes,  setMes]  = useState(new Date().getMonth() + 1);
   const [aba,  setAba]  = useState("calendario"); // calendario | feriados | recessos
   const [novoRecesso, setNR]   = useState({ data:"", motivo:"" });
-  const [recessos, setRecessos] = useState(() => carregar("intec_recessos", []));
+  const [recessos, setRecessos] = useState(() => carregar("WM_recessos", []));
   // Edições manuais de feriados: { [iso]: nome } para adicionar/editar, { [iso]: null } para excluir
-  const [edicoesFeriados, setEF] = useState(() => carregar("intec_feriados_edicoes", {}));
+  const [edicoesFeriados, setEF] = useState(() => carregar("WM_feriados_edicoes", {}));
   const [novoFeriado, setNF]    = useState({ data:"", nome:"" });
   const [editando, setEditando] = useState(null); // iso sendo editado
   const [editNome, setEditNome] = useState("");
   const isGestor = ["admin","gestor"].includes(usuarioAtual.perfil);
 
-  useEffect(() => { salvar("intec_recessos", recessos); }, [recessos]);
-  useEffect(() => { salvar("intec_feriados_edicoes", edicoesFeriados); }, [edicoesFeriados]);
+  useEffect(() => { salvar("WM_recessos", recessos); }, [recessos]);
+  useEffect(() => { salvar("WM_feriados_edicoes", edicoesFeriados); }, [edicoesFeriados]);
 
   useEffect(() => {
     if (Object.keys(calendario.feriados).length === 0 || calendario.anoAtual !== ano) {
@@ -2141,8 +2141,8 @@ function BancoHoras({registros,setRegistros,usuarios,projetos,usuarioAtual,onAbr
 // ─── ESCALAS ───────────────────────────────────────────────────────────────────
 function Escalas({ usuarioAtual, usuarios }) {
   const isGestor = ["admin","gestor"].includes(usuarioAtual.perfil);
-  const chave_revisao = "intec_escala_revisao";
-  const chave_lixo    = "intec_escala_lixo";
+  const chave_revisao = "WM_escala_revisao";
+  const chave_lixo    = "WM_escala_lixo";
 
   // Próxima sexta-feira a partir de uma data
   // Retorna a sexta-feira da semana atual (seg-sex → sexta desta semana, sab-dom → sexta da próxima)
@@ -2465,7 +2465,7 @@ function Configuracoes({usuarios,onSalvarUsuarios,usuarioAtual}){
               {label:"Verificação de atividade", valor:"A cada 30 minutos",    sub:"Aviso automático de inatividade"},
               {label:"Expediente",               valor:labelExpediente(eu.expediente), sub:`${calcHorasDia(eu.expediente)}h por dia útil`},
               {label:"Encerramento automático",  valor:"5 min após expediente", sub:"Se sessão ainda estiver aberta"},
-              {label:"Versão",                   valor:"INTEC v2.0",            sub:"Com Supabase + Realtime"},
+              {label:"Versão",                   valor:"WM v2.0",            sub:"Com Supabase + Realtime"},
             ].map(i=>(
               <div key={i.label} style={{padding:"12px 16px",background:C.cinzaFundo,borderRadius:10}}>
                 <div style={{fontSize:11,fontWeight:700,color:C.cinzaEscuro,marginBottom:2}}>{i.label}</div>
@@ -2757,7 +2757,7 @@ function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}){
       // Converter sessões para formato de atualização
       const sessaoItems = sessoesProjeto.map(s => {
         const u = usuarios?.find(x=>x.id===s.usuarioId);
-        const nome = u?.nome || 'Equipe INTEC';
+        const nome = u?.nome || 'Equipe WM';
         const durMin = s.duracaoMin||0;
         const h=Math.floor(durMin/60), m=durMin%60;
         const durStr = durMin>0 ? (h>0?`${h}h ${m}min`:`${m}min`) : '';
@@ -2801,7 +2801,7 @@ function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}){
   const adicionarAtu = async () => {
     if (!novaAtu.titulo || !form.id) return;
     const atu = await portal.adicionarAtualizacao(form.id, {
-      ...novaAtu, autorId: null, autorNome: "Equipe INTEC"
+      ...novaAtu, autorId: null, autorNome: "Equipe WM"
     });
     setAtualizacoes(a=>[atu,...a]);
     setNovaAtu({ titulo:"", descricao:"", icone:"📝", tipo:"manual", visivelCliente:true });
@@ -2902,7 +2902,7 @@ function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}){
     <div style={{position:"fixed",inset:0,background:"rgba(15,25,50,0.7)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
       <div style={{background:C.branco,borderRadius:16,width:"100%",maxWidth:700,maxHeight:"90vh",overflow:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}} onClick={e=>e.stopPropagation()}>
         <div style={{background:`linear-gradient(135deg,${C.azulEscuro},${C.azulMedio})`,padding:"20px 24px",borderRadius:"16px 16px 0 0",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div><div style={{color:C.ciano,fontSize:11,fontWeight:700,letterSpacing:1,marginBottom:4}}>INTEC ENGENHARIA INTEGRADA</div><h2 style={{color:C.branco,margin:0,fontSize:18}}>{modo==="novo"?"Novo Projeto":"Editar Projeto"}</h2></div>
+          <div><div style={{color:C.ciano,fontSize:11,fontWeight:700,letterSpacing:1,marginBottom:4}}>WM Engenharia</div><h2 style={{color:C.branco,margin:0,fontSize:18}}>{modo==="novo"?"Novo Projeto":"Editar Projeto"}</h2></div>
           <button onClick={onClose} style={{background:"rgba(255,255,255,0.15)",border:"none",color:C.branco,borderRadius:8,width:32,height:32,cursor:"pointer",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
         </div>
         {/* Sub-abas do modal */}
@@ -3282,7 +3282,7 @@ function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}){
               <div style={{display:"flex",alignItems:"center",gap:10}}>
                 {(()=>{
                   try {
-                    const dadosR = JSON.parse(localStorage.getItem("intec_escala_revisao")||"{}");
+                    const dadosR = JSON.parse(localStorage.getItem("WM_escala_revisao")||"{}");
                     if(dadosR.membros && dadosR.dataInicio){
                       const ini = new Date(dadosR.dataInicio+"T12:00:00");
                       const diffSem = Math.round((new Date()-ini)/(7*24*60*60*1000));
@@ -3611,7 +3611,7 @@ function TabelaProjetos({projetos,onAbrirProjeto}){
 }
 
 function ListaProjetos({projetos,onAbrirProjeto,onNovoProjeto,usuarios=[],usuarioAtual}){
-  const chave = `intec_filtros_projetos_${usuarioAtual?.id||"global"}`;
+  const chave = `WM_filtros_projetos_${usuarioAtual?.id||"global"}`;
 
   // Restaurar estado salvo
   const estadoSalvo = useMemo(()=>{
@@ -4250,10 +4250,10 @@ function Financeiro({projetos}){
 // ─── APP ───────────────────────────────────────────────────────────────────────
 
 // ══════════════════════════════════════════════════════════════════════════════
-// CHAT INTEC
+// CHAT WM
 // ══════════════════════════════════════════════════════════════════════════════
 // ══════════════════════════════════════════════════════════════════════════════
-// CHAT INTEC — reescrito com realtime correto
+// CHAT WM — reescrito com realtime correto
 // ══════════════════════════════════════════════════════════════════════════════
 // ─── CHAT UI (estado vive no App) ────────────────────────────────────────────
 function Chat({
@@ -4432,7 +4432,7 @@ function Chat({
       <div style={{width:220,background:C.azulEscuro,display:"flex",flexDirection:"column",flexShrink:0}}>
         <div style={{padding:"14px 12px 10px",borderBottom:"1px solid rgba(255,255,255,0.1)"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-            <span style={{color:C.branco,fontWeight:800,fontSize:14}}>💬 Chat INTEC</span>
+            <span style={{color:C.branco,fontWeight:800,fontSize:14}}>💬 Chat WM</span>
             <button onClick={onFechar} style={{background:"none",border:"none",color:"rgba(255,255,255,0.5)",cursor:"pointer",fontSize:16,padding:0}}>✕</button>
           </div>
           <div style={{color:C.ciano,fontSize:10,marginTop:3}}>● {usuario?.nome}</div>
@@ -4874,7 +4874,7 @@ export default function App(){
   };
   const [user, setUser] = useState(()=>{
     try {
-      const s = localStorage.getItem("intec_user_logado");
+      const s = localStorage.getItem("WM_user_logado");
       return s ? JSON.parse(s) : null;
     } catch { return null; }
   });
@@ -4956,7 +4956,7 @@ export default function App(){
       const cNome = c.tipo==="direto"?(c.nome||"").split("↔").find(n=>n.trim()!==userRef.current?.nome)?.trim()||"Mensagem":"# "+c.nome;
       notificarSistema(
         eMencao?`🔔 ${msg.autor_nome} mencionou você em ${cNome}!`:`💬 ${msg.autor_nome} — ${cNome}`,
-        msg.conteudo.slice(0,80), "intec-chat-"+c.id, eMencao?12000:8000
+        msg.conteudo.slice(0,80), "WM-chat-"+c.id, eMencao?12000:8000
       );
       if(!chatAbertoRef.current){
         setChatPulsando(true);
@@ -5063,7 +5063,7 @@ export default function App(){
       setChatNaoLidos(prev=>({...prev,[novoCanal.id]:1}));
       setChatPulsando(true); setTimeout(()=>setChatPulsando(false),800);
       const quem = (novoCanal.nome||"").split("↔").find(n=>n.trim()!==user.nome)?.trim()||"alguém";
-      notificarSistema(`💬 ${quem} iniciou uma conversa com você`,"Clique no Chat para responder","intec-dm-novo",10000);
+      notificarSistema(`💬 ${quem} iniciou uma conversa com você`,"Clique no Chat para responder","WM-dm-novo",10000);
     });
     chatMembrosSub.current = subMembros;
 
@@ -5134,7 +5134,7 @@ export default function App(){
           if(atualizado) {
             // Garantir formato correto de expediente
             const u = {...atualizado, expediente: expedienteParaDiaSemana(atualizado.expediente)};
-            localStorage.setItem("intec_user_logado", JSON.stringify(u));
+            localStorage.setItem("WM_user_logado", JSON.stringify(u));
             return u;
           }
           return current;
@@ -5143,9 +5143,9 @@ export default function App(){
       } catch(e) {
         console.error("Erro ao carregar Supabase:", e);
         // Fallback para localStorage se Supabase falhar
-        const lp = localStorage.getItem("intec_projetos");
-        const lu = localStorage.getItem("intec_usuarios");
-        const ls = localStorage.getItem("intec_horas");
+        const lp = localStorage.getItem("WM_projetos");
+        const lu = localStorage.getItem("WM_usuarios");
+        const ls = localStorage.getItem("WM_horas");
         if(lp) { try { setProjetos(JSON.parse(lp)); } catch{} }
         if(lu) { try {
           const us = JSON.parse(lu);
@@ -5206,7 +5206,7 @@ export default function App(){
       if (sessaoAberta) {
         // Verificar se o usuário já respondeu este aviso na última hora
         // Persiste no localStorage para sobreviver a recarregamentos de página
-        const chaveAviso = `intec_aviso_respondido_${u.id}`;
+        const chaveAviso = `WM_aviso_respondido_${u.id}`;
         const ultimoResposto = parseInt(localStorage.getItem(chaveAviso)||"0");
         const umHoraAtras = Date.now() - CHECK_INTERVAL;
         if (ultimoResposto > umHoraAtras) return; // já respondeu, aguardar 1h
@@ -5214,9 +5214,9 @@ export default function App(){
         setModalH(prev => {
           if (prev) return prev; // já tem modal aberto, mantém
           notificarSistema(
-            "⏰ INTEC — Verificação de Atividade",
+            "⏰ WM — Verificação de Atividade",
             `Olá, ${u.nome}! Você ainda está trabalhando no projeto?`,
-            "intec-atividade", 15000
+            "WM-atividade", 15000
           );
           return "aviso";
         });
@@ -5239,9 +5239,9 @@ export default function App(){
         })();
         if (dentroDoExpediente && dow >= 1 && dow <= 5) {
           notificarSistema(
-            "📋 INTEC — Sessão não iniciada",
+            "📋 WM — Sessão não iniciada",
             `${u.nome}, você está no horário de trabalho mas sem sessão ativa. Não esqueça de registrar!`,
-            "intec-sem-sessao", 12000
+            "WM-sem-sessao", 12000
           );
         }
       }
@@ -5249,7 +5249,7 @@ export default function App(){
       // ── 3. LEMBRETE DO LIXO — toda sexta ────────────────────────────────
       if (dow === 5) {
         try {
-          const dadosLixo = JSON.parse(localStorage.getItem("intec_escala_lixo")||"{}");
+          const dadosLixo = JSON.parse(localStorage.getItem("WM_escala_lixo")||"{}");
           if (dadosLixo.membros && dadosLixo.dataInicio) {
             const ini = new Date(dadosLixo.dataInicio+"T12:00:00");
             const diffSem = Math.round((agora - ini) / (7*24*60*60*1000));
@@ -5258,9 +5258,9 @@ export default function App(){
             const chave = `lixo-${hojeISO}`;
             notificarUmaVez(
               chave,
-              "🗑 INTEC — Coleta de Lixo",
+              "🗑 WM — Coleta de Lixo",
               `Esta semana é a vez de ${responsavel} tirar o lixo!`,
-              "intec-lixo"
+              "WM-lixo"
             );
           }
         } catch(e) {}
@@ -5283,9 +5283,9 @@ export default function App(){
           const nomes = criticos.map(p=>p.codigo).join(", ");
           notificarUmaVez(
             chave,
-            `⚠️ INTEC — ${criticos.length} projeto(s) vencendo esta semana`,
+            `⚠️ WM — ${criticos.length} projeto(s) vencendo esta semana`,
             `Prazo próximo: ${nomes}. Acesse o sistema para verificar.`,
-            "intec-prazo"
+            "WM-prazo"
           );
         }
       }
@@ -5293,7 +5293,7 @@ export default function App(){
       // ── 5. REVISÃO DE PROJETOS — toda sexta ─────────────────────────────
       if (dow === 5) {
         try {
-          const dadosRevisao = JSON.parse(localStorage.getItem("intec_escala_revisao")||"{}");
+          const dadosRevisao = JSON.parse(localStorage.getItem("WM_escala_revisao")||"{}");
           if (dadosRevisao.membros && dadosRevisao.dataInicio) {
             const ini = new Date(dadosRevisao.dataInicio+"T12:00:00");
             const diffSem = Math.round((agora - ini) / (7*24*60*60*1000));
@@ -5302,17 +5302,17 @@ export default function App(){
             const chave = `revisao-${hojeISO}`;
             notificarUmaVez(
               chave,
-              "🔍 INTEC — Revisão de Projetos",
+              "🔍 WM — Revisão de Projetos",
               `Esta semana a revisão de projetos é responsabilidade de ${responsavel}.`,
-              "intec-revisao"
+              "WM-revisao"
             );
             // Notificar o próprio responsável especialmente
             if (responsavel === u.nome) {
               notificarUmaVez(
                 `revisao-voce-${hojeISO}`,
-                "🔍 INTEC — É a sua vez de revisar!",
+                "🔍 WM — É a sua vez de revisar!",
                 `${u.nome}, hoje é sexta e esta semana a revisão de projetos é sua. Não esqueça!`,
-                "intec-revisao-voce"
+                "WM-revisao-voce"
               );
             }
           }
@@ -5357,7 +5357,7 @@ export default function App(){
           const uAtual = registrosRef.current.find(r => r.usuarioId === user.id && !r.horaFim);
           encerrarRef.current(fim, "Encerrado automaticamente pelo sistema");
           notificarSistema(
-            "⏹ INTEC — Sessão Encerrada",
+            "⏹ WM — Sessão Encerrada",
             `Sua sessão foi encerrada automaticamente às ${fim}. Expediente finalizado!`,
           );
           if(uAtual) {
@@ -5584,12 +5584,12 @@ export default function App(){
     // Garantir que o expediente está no formato por dia da semana
     const uAtualizado = {...uBase, expediente: expedienteParaDiaSemana(uBase.expediente)};
     setUser(uAtualizado);
-    localStorage.setItem("intec_user_logado", JSON.stringify(uAtualizado));
+    localStorage.setItem("WM_user_logado", JSON.stringify(uAtualizado));
     pedirPermissaoNotificacao();
     setTimeout(()=>setModalH("checkin"),600);
   };
   const fazerLogout = () => {
-    localStorage.removeItem("intec_user_logado");
+    localStorage.removeItem("WM_user_logado");
     setUser(null);
   };
 
@@ -5661,7 +5661,7 @@ export default function App(){
           {/* Botões direita */}
           <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
             {pwaPrompt&&!pwaInstalado&&(
-              <button onClick={instalarPWA} title="Instalar INTEC como aplicativo"
+              <button onClick={instalarPWA} title="Instalar WM como aplicativo"
                 style={{background:"rgba(86,191,233,0.15)",color:C.ciano,border:"1px solid rgba(86,191,233,0.3)",borderRadius:8,padding:"5px 10px",cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"inherit"}}>
                 📲
               </button>
@@ -5763,7 +5763,7 @@ export default function App(){
     }
     setModalH(null);
   } else {
-    localStorage.setItem(`intec_aviso_respondido_${user.id}`, Date.now().toString());
+    localStorage.setItem(`WM_aviso_respondido_${user.id}`, Date.now().toString());
     setModalH(null);
   }
 }}/>}

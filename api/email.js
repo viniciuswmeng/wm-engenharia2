@@ -5,10 +5,10 @@
 export const config = { runtime: 'edge' };
 
 const RESEND_API = 'https://api.resend.com/emails';
-const FROM       = 'INTEC Engenharia <noreply@engenhariaintec.com.br>';
-const GESTOR     = 'direcao@engenhariaintec.com.br';
+const FROM       = 'WM Engenharia <noreply@engenhariaWM.com.br>';
+const GESTOR     = 'direcao@engenhariaWM.com.br';
 
-// Paleta INTEC
+// Paleta WM
 const AZUL    = '#1a3a6b';
 const AZUL2   = '#2563a8';
 const CIANO   = '#56bfe9';
@@ -42,7 +42,7 @@ function baseLayout(conteudo, titulo) {
 <body>
 <div class="wrap">
   <div style="text-align:center;padding:16px 0">
-    <span style="font-size:22px;font-weight:900;color:${AZUL}">iNTEC</span>
+    <span style="font-size:22px;font-weight:900;color:${AZUL}">WM</span>
     <span style="font-size:10px;color:${CINZA};display:block;letter-spacing:3px">ENGENHARIA INTEGRADA</span>
   </div>
   <div class="card">
@@ -52,7 +52,7 @@ function baseLayout(conteudo, titulo) {
     </div>
     <div class="body">${conteudo}</div>
   </div>
-  <div class="footer">Este é um email automático do sistema INTEC. Não responda este email.</div>
+  <div class="footer">Este é um email automático do sistema WM. Não responda este email.</div>
 </div>
 </body></html>`;
 }
@@ -68,7 +68,7 @@ function tmplEncerramentoAuto({ colaborador, projetoOuAtividade, horaInicio, hor
       <div class="row"><span style="color:#6b7280;font-size:13px">Entrada</span><strong>${horaInicio}</strong></div>
       <div class="row"><span style="color:#6b7280;font-size:13px">Saída (automática)</span><strong style="color:${AMARELO}">${horaFim}</strong></div>
     </div>
-    <p style="color:#6b7280;font-size:12px">Caso o horário esteja incorreto, acesse o <a href="https://intec-projetos.vercel.app" style="color:${AZUL2}">sistema INTEC</a> para corrigir no Banco de Horas.</p>`;
+    <p style="color:#6b7280;font-size:12px">Caso o horário esteja incorreto, acesse o <a href="https://WM-projetos.vercel.app" style="color:${AZUL2}">sistema WM</a> para corrigir no Banco de Horas.</p>`;
   return baseLayout(corpo, '⏹ Sessão Encerrada Automaticamente');
 }
 
@@ -92,7 +92,7 @@ function tmplProjetosVencendo({ destinatario, projetos }) {
       <tbody>${rows}</tbody>
     </table>
     <p style="text-align:center;margin-top:20px">
-      <a href="https://intec-projetos.vercel.app" style="background:${AZUL2};color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:13px">Abrir Sistema INTEC</a>
+      <a href="https://WM-projetos.vercel.app" style="background:${AZUL2};color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:13px">Abrir Sistema WM</a>
     </p>`;
   return baseLayout(corpo, `⚠️ ${projetos.length} Projeto(s) com Prazo Crítico`);
 }
@@ -144,9 +144,9 @@ function tmplResumoDiario({ projetos, sessoesDia, usuarios }) {
     <tbody>${atrasados.slice(0,10).map(p=>`<tr><td><strong style="color:${AZUL2}">${p.codigo}</strong></td><td>${(p.cliente||'').substring(0,35)}</td><td>${p.responsavel||'—'}</td></tr>`).join('')}</tbody></table>
     ` : '<p style="color:'+VERDE+';font-weight:700;text-align:center">✅ Nenhum projeto atrasado!</p>'}
     <p style="text-align:center;margin-top:20px">
-      <a href="https://intec-projetos.vercel.app" style="background:${AZUL2};color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:13px">Abrir Sistema INTEC</a>
+      <a href="https://WM-projetos.vercel.app" style="background:${AZUL2};color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:13px">Abrir Sistema WM</a>
     </p>`;
-  return baseLayout(corpo, '📊 Resumo Diário — INTEC');
+  return baseLayout(corpo, '📊 Resumo Diário — WM');
 }
 
 function tmplResumoSemanal({ projetos, sessoes, usuarios }) {
@@ -195,9 +195,9 @@ function tmplResumoSemanal({ projetos, sessoes, usuarios }) {
     <table><thead><tr><th>Colaborador</th><th>Sessões</th><th>Projetos</th><th>Total</th></tr></thead>
     <tbody>${userRows}</tbody></table>
     <p style="text-align:center;margin-top:20px">
-      <a href="https://intec-projetos.vercel.app" style="background:${AZUL2};color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:13px">Abrir Sistema INTEC</a>
+      <a href="https://WM-projetos.vercel.app" style="background:${AZUL2};color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:13px">Abrir Sistema WM</a>
     </p>`;
-  return baseLayout(corpo, '📅 Resumo Semanal — INTEC');
+  return baseLayout(corpo, '📅 Resumo Semanal — WM');
 }
 
 // ─── Handler principal ────────────────────────────────────────────────────────
@@ -230,19 +230,19 @@ export default async function handler(req) {
 
       case 'projetos_vencendo':
         para    = [GESTOR, dados.emailResponsavel].filter((e,i,a) => e && a.indexOf(e)===i);
-        assunto = `⚠️ ${dados.projetos.length} projeto(s) com prazo crítico — INTEC`;
+        assunto = `⚠️ ${dados.projetos.length} projeto(s) com prazo crítico — WM`;
         html    = tmplProjetosVencendo(dados);
         break;
 
       case 'resumo_diario':
         para    = [GESTOR];
-        assunto = `📊 Resumo Diário INTEC — ${new Date().toLocaleDateString('pt-BR')}`;
+        assunto = `📊 Resumo Diário WM — ${new Date().toLocaleDateString('pt-BR')}`;
         html    = tmplResumoDiario(dados);
         break;
 
       case 'resumo_semanal':
         para    = [GESTOR];
-        assunto = `📅 Resumo Semanal INTEC — semana de ${new Date().toLocaleDateString('pt-BR')}`;
+        assunto = `📅 Resumo Semanal WM — semana de ${new Date().toLocaleDateString('pt-BR')}`;
         html    = tmplResumoSemanal(dados);
         break;
 

@@ -366,7 +366,7 @@ function toSessaoBack(s) {
 // Escuta mudanças em tempo real nas tabelas e chama os callbacks
 export function iniciarRealtime({ onProjetosChange, onSessoesChange }) {
   const canal = supabase
-    .channel('intec-realtime')
+    .channel('WM-realtime')
     .on('postgres_changes',
       { event: '*', schema: 'public', table: 'projetos' },
       (payload) => { if(onProjetosChange) onProjetosChange(payload); }
