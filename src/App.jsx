@@ -5030,7 +5030,7 @@ ${form.naoInclusos.map(n=>`<p>☐ ${n}</p>`).join("")}
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html{background:#888}
-body{font-family:'Times New Roman',serif;font-size:11pt;color:#111;width:210mm;margin:0 auto;background:#fff}
+body{font-family:Arial,sans-serif;font-size:11pt;color:#111;width:210mm;margin:0 auto;background:#fff}
 @page{size:210mm 297mm;margin:0}
 @media print{
   html{background:#fff}
@@ -5055,17 +5055,17 @@ body{font-family:'Times New Roman',serif;font-size:11pt;color:#111;width:210mm;m
   z-index:1;
   overflow:hidden;
 }
-h1{text-align:center;font-size:12.5pt;font-weight:700;text-transform:uppercase;margin:0 0 5px;letter-spacing:1px}
-.sec{text-align:center;font-size:10.5pt;font-weight:700;text-transform:uppercase;margin:16px 0 8px;letter-spacing:.5px;border-bottom:1px solid #ccc;padding-bottom:3px}
-p{margin-bottom:8px;line-height:1.65;text-align:justify;font-size:10.5pt}
-table{width:100%;border-collapse:collapse;margin:10px 0;font-size:9.5pt}
+h1{text-align:center;font-size:12pt;font-weight:700;text-transform:uppercase;margin:0 0 4px;letter-spacing:.5px;font-family:Arial,sans-serif}
+.sec{text-align:center;font-size:11pt;font-weight:700;text-transform:uppercase;margin:10px 0 5px;letter-spacing:.3px;border-bottom:1px solid #ccc;padding-bottom:2px;font-family:Arial,sans-serif}
+p{margin-bottom:5px;line-height:1.5;text-align:justify;font-size:11pt;font-family:Arial,sans-serif}
+table{width:100%;border-collapse:collapse;margin:6px 0;font-size:10pt;font-family:Arial,sans-serif}
 th{background:#0d1e35;color:#fff;padding:6px;text-align:left}
 td{padding:5px 7px;border:1px solid #ccc}
 tr:nth-child(even)td{background:#f7f9fc}
 .ass-wrap{margin-top:32px}
-.ass-line{border-top:1px solid #333;margin-top:36px;padding-top:4px;text-align:center;font-size:9.5pt;line-height:1.5}
-.ass-grid{display:grid;grid-template-columns:1fr 1fr;gap:36px}
-h3{font-size:10.5pt;margin:12px 0 5px}
+.ass-line{border-top:1px solid #333;margin-top:24px;padding-top:4px;text-align:center;font-size:10pt;line-height:1.4}
+.ass-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+h3{font-size:11pt;font-family:Arial,sans-serif;margin:8px 0 4px}
 </style>
 </head><body id="corpo">
 <div id="conteudo-fonte" style="display:none">${linhasContrato}</div>
@@ -5084,6 +5084,11 @@ h3{font-size:10.5pt;margin:12px 0 5px}
   const UTIL_H   = PAG_H - TOPO - ROD;
   const UTIL_W   = 210 * MM - 2 * LAT;
 
+  // Aplicar fonte Arial ao conteúdo fonte antes de medir
+  fonte.style.fontFamily = "Arial, sans-serif";
+  fonte.style.fontSize   = "11pt";
+  fonte.style.lineHeight = "1.5";
+
   function criarPagina() {
     const pg = document.createElement("div");
     pg.style.cssText = "position:relative;width:210mm;height:297mm;overflow:hidden;page-break-after:always;display:block;background:#fff;";
@@ -5092,35 +5097,49 @@ h3{font-size:10.5pt;margin:12px 0 5px}
     fundo.style.cssText = "position:absolute;top:0;left:0;width:210mm;height:297mm;z-index:0;display:block;";
     pg.appendChild(fundo);
     const area = document.createElement("div");
-    area.style.cssText = "position:absolute;top:" + TOPO + "px;left:" + LAT + "px;width:" + UTIL_W + "px;height:" + UTIL_H + "px;overflow:hidden;z-index:1;";
+    area.style.cssText = [
+      "position:absolute",
+      "top:" + TOPO + "px",
+      "left:" + LAT + "px",
+      "width:" + UTIL_W + "px",
+      "height:" + UTIL_H + "px",
+      "overflow:hidden",
+      "z-index:1",
+      "font-family:Arial,sans-serif",
+      "font-size:11pt",
+      "line-height:1.5",
+    ].join(";");
     pg.appendChild(area);
     corpo.appendChild(pg);
     return area;
   }
 
-  // Pegar todos os filhos diretos do conteúdo
-  const nos = Array.from(fonte.childNodes).filter(n => n.nodeType === 1 || (n.nodeType === 3 && n.textContent.trim()));
+  const nos = Array.from(fonte.children);
 
   let area    = criarPagina();
   let usadoPx = 0;
 
   nos.forEach(function(no) {
-    // Clonar e medir
     const clone = no.cloneNode(true);
-    clone.style.cssText = (clone.style.cssText || "") + ";visibility:hidden;position:absolute;top:0;left:0;width:" + UTIL_W + "px;";
+    clone.style.position   = "absolute";
+    clone.style.visibility = "hidden";
+    clone.style.width      = UTIL_W + "px";
+    clone.style.fontFamily = "Arial, sans-serif";
+    clone.style.fontSize   = "11pt";
+    clone.style.lineHeight = "1.5";
     document.body.appendChild(clone);
-    const h = clone.offsetHeight + (parseInt(window.getComputedStyle(clone).marginBottom) || 0) + 8;
+    const h = clone.offsetHeight + 6; // 6px margem entre elementos
     document.body.removeChild(clone);
 
-    // Se não cabe, nova página
     if (usadoPx + h > UTIL_H && usadoPx > 0) {
       area    = criarPagina();
       usadoPx = 0;
     }
 
-    // Adicionar à página atual com offset correto
     const wrapper = no.cloneNode(true);
-    wrapper.style.position = "relative";
+    wrapper.style.fontFamily = "Arial, sans-serif";
+    wrapper.style.fontSize   = "11pt";
+    wrapper.style.lineHeight = "1.5";
     area.appendChild(wrapper);
     usadoPx += h;
   });
