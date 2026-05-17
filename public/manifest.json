@@ -4,16 +4,16 @@
   "description": "Sistema de controle de projetos",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#1a3a6b",
-  "theme_color": "#1a3a6b",
+  "background_color": "#0d1e35",
+  "theme_color": "#0d1e35",
   "orientation": "any",
   "scope": "/",
   "lang": "pt-BR",
   "icons": [
     {
-      "src": "/icon.svg",
+      "src": "/Logo_Quadrada.png",
       "sizes": "any",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ],
