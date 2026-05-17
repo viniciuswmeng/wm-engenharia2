@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { db, iniciarRealtime, enviarEmail, portal, chat } from "./supabase.js";
+import { db, supabase, iniciarRealtime, enviarEmail, portal, chat } from "./supabase.js";
 
 // ─── CONFIG ────────────────────────────────────────────────────────────────────
 const GOOGLE_CLIENT_ID = "785068362914-9ivc6k8riad6d29dgij91f93dklgoia6.apps.googleusercontent.com";
@@ -4860,7 +4860,7 @@ function GeradorContratos({ projetos, usuarios, usuarioAtual }) {
   // Carregar lista de contratos salvos
   const carregarLista = async () => {
     try {
-      const { data } = await db.from("contratos").select("id,titulo,criado_por,created_at,updated_at").order("updated_at",{ascending:false});
+      const { data } = await supabase.from("contratos").select("id,titulo,criado_por,created_at,updated_at").order("updated_at",{ascending:false});
       setLista(data||[]);
     } catch(e) { console.error(e); }
   };
@@ -4873,10 +4873,10 @@ function GeradorContratos({ projetos, usuarios, usuarioAtual }) {
     const titulo = `${form.nomeCompleto||"Sem nome"} — ${new Date().toLocaleDateString("pt-BR")}`;
     try {
       if (contratoId) {
-        await db.from("contratos").update({ titulo, dados:form, updated_at: new Date().toISOString(), criado_por: usuarioAtual?.id }).eq("id", contratoId);
+        await supabase.from("contratos").update({ titulo, dados:form, updated_at: new Date().toISOString(), criado_por: usuarioAtual?.id }).eq("id", contratoId);
         setMsgSalvo("✅ Contrato atualizado!");
       } else {
-        const { data } = await db.from("contratos").insert({ titulo, dados:form, criado_por: usuarioAtual?.id }).select().single();
+        const { data } = await supabase.from("contratos").insert({ titulo, dados:form, criado_por: usuarioAtual?.id }).select().single();
         setContratoId(data?.id);
         setMsgSalvo("✅ Contrato salvo!");
       }
@@ -4899,7 +4899,7 @@ function GeradorContratos({ projetos, usuarios, usuarioAtual }) {
   const excluirContrato = async (id, e) => {
     e.stopPropagation();
     if (!window.confirm("Excluir este contrato?")) return;
-    await db.from("contratos").delete().eq("id", id);
+    await supabase.from("contratos").delete().eq("id", id);
     carregarLista();
     if (contratoId === id) { setContratoId(null); }
   };
