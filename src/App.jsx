@@ -4887,8 +4887,17 @@ function GeradorContratos({ projetos, usuarios, usuarioAtual }) {
   };
 
   // Carregar contrato salvo
+  const FORM_DEFAULT = {
+    tipoPessoa:"fisica", cpfCnpj:"", nomeCompleto:"", nacionalidade:"brasileiro(a)", estadoCivil:"solteiro(a)",
+    endereco:"", email:"", servicos:[], descricaoEdificacao:"", areaTotal:"", numPavimentos:"",
+    cidadeUF:"", enderecoObra:"", rodadasRevisao:"2", formatoEntrega:"PDF e DWG", adicionaisInclusos:"",
+    naoInclusos:["Projeto arquitetônico","Paisagismo / ar-condicionado / incêndio","Aprovação em órgãos públicos","Acompanhamento de obra"],
+    valorTotal:"", percEntrada:"50", dataContrato:hoje, prazoExecucao:"65", prazoDocumentos:"5",
+    cronograma:[], cidade:"Governador Valadares", dataAssinatura:hoje,
+    testemunha1Nome:"", testemunha1CPF:"", testemunha2Nome:"", testemunha2CPF:"",
+  };
   const carregarContrato = async (item) => {
-    setForm(item.dados);
+    setForm({...FORM_DEFAULT, ...(item.dados||{})});
     setContratoId(item.id);
     setMostrarLista(false);
     setGerado(false);
