@@ -159,7 +159,9 @@ const statusN    = s => { if(!s) return "Novo/Definir"; if(s==="Concluído"||s==
 const calcStatusAuto = (p) => {
   if (!p) return 'Novo/Definir';
   const atual = statusN(p.status);
-  if (atual==="CONCLUÍDO" || atual==="CANCELADO") return atual;
+  if (atual==="CANCELADO") return atual;
+  if (p.dataEntregaReal) return "CONCLUÍDO";
+  if (atual==="CONCLUÍDO") return atual;
   if (atual==="PAUSADO") return "PAUSADO";
   if ((p.progresso||0) >= 100) return "CONCLUÍDO";
   // CB: verificar pausas parciais nas disciplinas dos membros
