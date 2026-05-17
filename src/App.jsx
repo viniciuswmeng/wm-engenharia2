@@ -5079,7 +5079,7 @@ h3{font-size:11pt;font-family:Arial,sans-serif;margin:8px 0 4px}
   const MM       = 96 / 25.4;
   const TOPO     = 42 * MM;
   const ROD      = 46 * MM;
-  const LAT      = 18 * MM;
+  const LAT      = 30 * MM;
   const PAG_H    = 297 * MM;
   const UTIL_H   = PAG_H - TOPO - ROD;
   const UTIL_W   = 210 * MM - 2 * LAT;
