@@ -4814,6 +4814,354 @@ function ChatFlutuante({ usuario, usuarios, aberto, onToggle, pulsando, temMenca
   );
 }
 
+// ─── GERADOR DE CONTRATOS ──────────────────────────────────────────────────────
+function GeradorContratos({ projetos, usuarios, usuarioAtual }) {
+  const C2 = { azul:"#0d1e35", azulM:"#1a4a7a", azulC:"#2e6da8", cinza:"#f0f4f8", borda:"#dde3ec", verde:"#16a34a", texto:"#1e293b", sub:"#64748b" };
+  const [passo, setPasso] = useState(1);
+  const [gerado, setGerado] = useState(false);
+  const hoje = new Date().toISOString().slice(0,10);
+  const [form, setForm] = useState({
+    tipoPessoa:"fisica", cpfCnpj:"", nomeCompleto:"", nacionalidade:"brasileiro(a)", estadoCivil:"solteiro(a)",
+    endereco:"", email:"",
+    servicos:[], descricaoEdificacao:"", areaTotal:"", numPavimentos:"", cidadeUF:"", enderecoObra:"",
+    rodadasRevisao:"2", formatoEntrega:"PDF e DWG", adicionaisInclusos:"",
+    naoInclusos:["Projeto arquitetônico","Paisagismo / ar-condicionado / incêndio","Aprovação em órgãos públicos","Acompanhamento de obra"],
+    valorTotal:"", percEntrada:"50", dataContrato:hoje, prazoExecucao:"65", prazoDocumentos:"5",
+    cronograma:[
+      { etapa:"ETAPA 01 – INÍCIO (5 dias)", tarefas:[
+        {nome:"Alinhamento inicial da equipe", duracao:"2 dias", pred:"—"},
+        {nome:"Reunião de kick-off ⚠", duracao:"1 dia", pred:"1"},
+        {nome:"Elaboração de ata e coleta de assinatura ⚠", duracao:"1 dia", pred:"2"},
+        {nome:"Análise das informações obtidas", duracao:"2 dias", pred:"3"},
+      ]},
+    ],
+    cidade:"Governador Valadares", dataAssinatura:hoje,
+    testemunha1Nome:"", testemunha1CPF:"", testemunha2Nome:"", testemunha2CPF:"",
+  });
+  const set = (k,v) => setForm(f=>({...f,[k]:v}));
+  const fmtMoeda = v => isNaN(Number(v))||v==="" ? "R$ 0,00" : Number(v).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+  const entrada  = Number(form.valorTotal||0) * Number(form.percEntrada||0) / 100;
+  const parcFinal= Number(form.valorTotal||0) - entrada;
+  const dataFmt  = d => { if(!d) return "___/___/______"; const [y,m,dd]=d.split("-"); return `${dd}/${m}/${y}`; };
+  const dataExtenso = d => { if(!d) return ""; const dt=new Date(d+"T12:00:00"); return dt.toLocaleDateString("pt-BR",{day:"numeric",month:"long",year:"numeric"}); };
+  const extensoNum = n => {const m={"1":"uma","2":"duas","3":"três","4":"quatro","5":"cinco"};return m[n]||n;};
+  const extensoPrazo = n => {const m={"30":"trinta","45":"quarenta e cinco","60":"sessenta","65":"sessenta e cinco","90":"noventa","120":"cento e vinte"};return m[String(n)]||String(n);};
+  const SERVICOS = ["Projeto Estrutural","Projeto Hidrossanitário","Projeto Elétrico","Projeto Arquitetônico","Projeto de Fundações","Compatibilização BIM"];
+  const NAO_INCLUSO = ["Projeto arquitetônico","Paisagismo / ar-condicionado / incêndio","Aprovação em órgãos públicos","Acompanhamento de obra","Sondagem de solo","Memorial descritivo arquitetônico"];
+  const toggleServico = s => set("servicos", form.servicos.includes(s)?form.servicos.filter(x=>x!==s):[...form.servicos,s]);
+  const toggleNaoIncluso = s => set("naoInclusos", form.naoInclusos.includes(s)?form.naoInclusos.filter(x=>x!==s):[...form.naoInclusos,s]);
+  const addEtapa  = () => set("cronograma",[...form.cronograma,{etapa:`ETAPA ${form.cronograma.length+1} – NOVA ETAPA`,tarefas:[{nome:"",duracao:"",pred:""}]}]);
+  const rmEtapa   = i => set("cronograma",form.cronograma.filter((_,idx)=>idx!==i));
+  const updEtapa  = (i,v) => set("cronograma",form.cronograma.map((e,idx)=>idx===i?{...e,etapa:v}:e));
+  const addTarefa = i => set("cronograma",form.cronograma.map((e,idx)=>idx===i?{...e,tarefas:[...e.tarefas,{nome:"",duracao:"",pred:""}]}:e));
+  const rmTarefa  = (i,j) => set("cronograma",form.cronograma.map((e,idx)=>idx===i?{...e,tarefas:e.tarefas.filter((_,jdx)=>jdx!==j)}:e));
+  const updTarefa = (i,j,k,v) => set("cronograma",form.cronograma.map((e,idx)=>idx===i?{...e,tarefas:e.tarefas.map((t,jdx)=>jdx===j?{...t,[k]:v}:t)}:e));
+  const resp1 = (usuarios||[]).find(u=>u.perfil==="gestor") || usuarioAtual;
+  const resp2 = (usuarios||[]).filter(u=>u.perfil==="gestor")[1];
+
+  const gerarHTML = () => `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Contrato – ${form.nomeCompleto}</title><style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Times New Roman',serif;font-size:12pt;color:#111;background:#fff;padding:40px 60px;max-width:900px;margin:0 auto}
+.header{display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #0d1e35;padding-bottom:16px;margin-bottom:24px}
+.h-left{display:flex;align-items:center;gap:14px}
+.h-left img{height:56px}
+.h-emp h2{font-size:13pt;color:#0d1e35;font-weight:800;text-transform:uppercase}
+.h-emp p{font-size:9pt;color:#555;margin-top:1px}
+.h-info{text-align:right;font-size:9pt;color:#444;line-height:1.7}
+h1{text-align:center;font-size:14pt;font-weight:700;text-transform:uppercase;margin:24px 0 8px;letter-spacing:1px}
+.sec{text-align:center;font-size:11pt;font-weight:700;text-transform:uppercase;margin:24px 0 12px;letter-spacing:.5px;border-bottom:1px solid #ddd;padding-bottom:6px}
+p{margin-bottom:10px;line-height:1.75;text-align:justify}
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:10pt}
+th{background:#0d1e35;color:#fff;padding:8px;text-align:left}
+td{padding:7px 8px;border:1px solid #ccc}
+tr:nth-child(even)td{background:#f7f9fc}
+.ass-wrap{margin-top:48px}
+.ass-line{border-top:1px solid #333;margin-top:44px;padding-top:6px;text-align:center;font-size:10pt;line-height:1.6}
+.ass-grid{display:grid;grid-template-columns:1fr 1fr;gap:48px;margin-top:8px}
+.footer{display:flex;align-items:center;gap:12px;margin-top:36px;padding-top:14px;border-top:1px solid #ccc}
+.footer img{height:48px}
+.footer-txt strong{font-size:11pt;color:#0d1e35}
+.footer-txt span{font-size:9pt;color:#666}
+@media print{body{padding:20px 30px}}
+</style></head><body>
+<div class="header">
+  <div class="h-left"><img src="/Logo_Quadrada.png" alt="WM"/><div class="h-emp"><h2>WM Engenharia Integrada</h2><p>Wilk Martins Engenharia Ltda</p><p>Serviços de Engenharia · CNAE 71.12-0-00 · ME</p></div></div>
+  <div class="h-info"><p>CNPJ: 60.959.603/0001-47</p><p>Av. JK, 1571 · Bairro São Paulo</p><p>Governador Valadares/MG · CEP 35.030-210</p><p>Tel: (33) 9931-7042</p><p>wmengenhariaintegrada@hotmail.com</p></div>
+</div>
+<h1>Contrato de Prestação de Serviços</h1>
+<h2 class="sec">Identificação das Partes Contratantes</h2>
+<p><strong>CONTRATANTE:</strong> ${form.nomeCompleto}, ${form.tipoPessoa==="fisica"?form.nacionalidade+", "+form.estadoCivil+",":" "} portador(a) do ${form.tipoPessoa==="fisica"?"CPF":"CNPJ"} nº ${form.cpfCnpj}, domiciliado(a) na ${form.endereco}, doravante denominado(a) simplesmente <strong>CONTRATANTE</strong>.</p>
+<p><strong>CONTRATADA:</strong> WM Engenharia Integrada (Wilk Martins Engenharia Ltda), pessoa jurídica, CNPJ nº <strong>60.959.603/0001-47</strong>, com sede na Av. JK, nº 1571, Bairro São Paulo, CEP 35.030-210, Governador Valadares/MG, representada pelos responsáveis técnicos: <strong>${resp1?.nome||""}</strong>${resp2?" e <strong>"+resp2.nome+"</strong>":""}, doravante denominada simplesmente <strong>CONTRATADA</strong>.</p>
+<p>As partes têm, entre si, justo e acertado o presente Contrato de Prestação de Serviços, que se regerá pelas cláusulas seguintes.</p>
+<h2 class="sec">Do Objeto do Contrato</h2>
+<p><strong>Cláusula 1ª.</strong> É objeto deste contrato a elaboração de <strong>${form.servicos.join(", ")}</strong> de uma edificação ${form.descricaoEdificacao}${form.areaTotal?", com área total de "+form.areaTotal:""}, localizada em ${form.cidadeUF}${form.enderecoObra?", no endereço "+form.enderecoObra:""}.</p>
+<p><strong>Parágrafo único.</strong> Os projetos seguirão as normas ABNT NBR 6118, NBR 6122, NBR 5626 e NBR 5410, com base no Projeto Arquitetônico do CONTRATANTE, conforme Anexo I, parte integrante deste instrumento.</p>
+<h2 class="sec">Das Revisões e Alterações</h2>
+<p><strong>Cláusula 2ª.</strong> O valor contratado contempla até <strong>${form.rodadasRevisao} (${extensoNum(form.rodadasRevisao)}) rodada(s)</strong> de revisão por disciplina. Revisões adicionais ou alterações no Projeto Arquitetônico após o início dos serviços serão orçadas separadamente e executadas mediante novo acordo escrito.</p>
+<h2 class="sec">Das Obrigações das Partes</h2>
+<p><strong>Cláusula 3ª.</strong> O CONTRATANTE obriga-se a: (I) fornecer à CONTRATADA, em até <strong>${form.prazoDocumentos} dias</strong> após a assinatura, todos os documentos do Anexo I; (II) manter disponibilidade para reuniões de alinhamento; (III) efetuar os pagamentos conforme Cláusula 7ª.</p>
+<p><strong>Cláusula 4ª.</strong> A CONTRATADA obriga-se a: (I) elaborar os projetos com qualidade técnica conforme normas vigentes; (II) fornecer cópia deste instrumento; (III) emitir recibos de todos os pagamentos; (IV) comunicar imediatamente qualquer fato que possa comprometer o prazo.</p>
+<h2 class="sec">Da Entrega dos Projetos</h2>
+<p><strong>Cláusula 5ª.</strong> A entrega será em formato digital (${form.formatoEntrega}), enviados ao e-mail ${form.email||"a ser informado posteriormente"}, com confirmação de recebimento. Considera-se concluída a entrega no envio dos arquivos finais, independentemente de manifestação de aceite.</p>
+<h2 class="sec">Da Propriedade Intelectual</h2>
+<p><strong>Cláusula 6ª.</strong> Os projetos são protegidos pela Lei nº 9.610/1998 e permanecem de titularidade da CONTRATADA até a quitação integral. Após a quitação, os direitos de uso são cedidos ao CONTRATANTE exclusivamente para esta obra, sendo vedada a reprodução para outras edificações sem autorização escrita da CONTRATADA.</p>
+<h2 class="sec">Do Preço e das Condições de Pagamento</h2>
+<p><strong>Cláusula 7ª.</strong> O serviço será remunerado pela quantia total de <strong>${fmtMoeda(form.valorTotal)}</strong>, pagos em: (I) <strong>Entrada (${form.percEntrada}%):</strong> ${fmtMoeda(entrada)}, devida na assinatura; (II) <strong>Parcela final (${100-Number(form.percEntrada)}%):</strong> ${fmtMoeda(parcFinal)}, devida na entrega conforme Cláusula 5ª. Pagamentos via TED/PIX. Atraso do CONTRATANTE: IPCA + multa 2% + juros 1% a.m. Atraso imputável à CONTRATADA: correção da parcela final pelo IPCA.</p>
+<h2 class="sec">Do Inadimplemento e das Penalidades</h2>
+<p><strong>Cláusula 8ª.</strong> Inadimplemento do CONTRATANTE: multa de 2%, juros de 1% ao mês e correção pelo IPCA. Em cobrança judicial: custas e honorários advocatícios de 20%.</p>
+<p><strong>Cláusula 9ª.</strong> O descumprimento de qualquer cláusula, exceto a 7ª, sujeitará a parte infratora à multa compensatória de 5% do valor total, sem prejuízo de perdas e danos.</p>
+<h2 class="sec">Da Rescisão Imotivada</h2>
+<p><strong>Cláusula 10ª.</strong> Qualquer parte poderá rescindir este contrato a qualquer tempo, com notificação escrita prévia de 10 (dez) dias corridos.</p>
+<p><strong>Cláusula 11ª.</strong> Rescisão pelo CONTRATANTE após pagamento: devolução deduzindo o proporcional executado (conforme Anexo II) e taxa administrativa de 2%.</p>
+<p><strong>Cláusula 12ª.</strong> Rescisão pela CONTRATADA: devolução das etapas não executadas, acrescidos de taxa administrativa de 2% como indenização.</p>
+<h2 class="sec">Do Prazo de Execução</h2>
+<p><strong>Cláusula 13ª.</strong> Prazo de <strong>${form.prazoExecucao} (${extensoPrazo(form.prazoExecucao)}) dias corridos</strong>, contados a partir do atendimento simultâneo de: (I) assinatura do contrato; (II) recebimento da entrada; (III) recebimento do Projeto Arquitetônico e documentos do Anexo I. O prazo fica suspenso durante indisponibilidade do CONTRATANTE.</p>
+<p><strong>Cláusula 14ª.</strong> Atividades marcadas com ⚠ no Anexo II dependem da disponibilidade do CONTRATANTE e não serão imputadas à CONTRATADA em caso de atraso por sua parte.</p>
+${form.cronograma.length>0?`<h2 class="sec">Cronograma de Execução — Anexo II</h2>
+<table><tr><th>Tarefa</th><th>Duração</th><th>Pred.</th></tr>
+${form.cronograma.map(et=>`<tr><td colspan="3" style="background:#1a4a7a;color:#fff;font-weight:700;padding:8px">${et.etapa}</td></tr>${et.tarefas.map(t=>`<tr><td>${t.nome}</td><td>${t.duracao}</td><td>${t.pred}</td></tr>`).join("")}`).join("")}
+</table><p style="font-size:10pt">⚠ Condicionado à disponibilidade do CONTRATANTE — prazo suspenso em caso de atraso por sua parte.</p>`:""}
+<h2 class="sec">Da Confidencialidade</h2>
+<p><strong>Cláusula 15ª.</strong> As partes manterão sigilo sobre todas as informações técnicas, financeiras e pessoais por 5 (cinco) anos após o encerramento. A CONTRATADA poderá usar imagens não identificáveis da obra em portfólio mediante autorização do CONTRATANTE.</p>
+<h2 class="sec">Das Condições Gerais</h2>
+<p><strong>Cláusula 16ª.</strong> Inexistência de vínculo empregatício entre as partes.</p>
+<p><strong>Cláusula 17ª.</strong> Vedada a subcontratação sem autorização escrita do CONTRATANTE, sob pena de rescisão imediata e multa da Cláusula 9ª.</p>
+<p><strong>Cláusula 18ª.</strong> Este instrumento constitui o acordo integral. Alterações somente por escrito e assinadas por ambas as partes.</p>
+<h2 class="sec">Do Foro</h2>
+<p><strong>Cláusula 19ª.</strong> As partes elegem, com expressa renúncia a qualquer outro foro, o foro da Comarca de Governador Valadares, Estado de Minas Gerais.</p>
+<p>Por estarem assim justos e contratados, firmam o presente instrumento em 2 (duas) vias de igual teor, na presença das testemunhas abaixo.</p>
+<p style="text-align:center;margin-top:16px">${form.cidade}, ${dataExtenso(form.dataAssinatura)}.</p>
+<div class="ass-wrap">
+  <div class="ass-line"><strong>CONTRATANTE: ${form.nomeCompleto}</strong><br/>${form.tipoPessoa==="fisica"?"CPF":"CNPJ"}: ${form.cpfCnpj}</div>
+  <div class="ass-grid">
+    <div class="ass-line"><strong>${resp1?.nome||""}</strong><br/>CPF: ___________________<br/>CREA: ___________________<br/>WM Engenharia Integrada</div>
+    ${resp2?`<div class="ass-line"><strong>${resp2.nome}</strong><br/>CPF: ___________________<br/>CREA: ___________________<br/>WM Engenharia Integrada</div>`:"<div></div>"}
+  </div>
+  <div class="ass-grid" style="margin-top:32px">
+    <div class="ass-line">Testemunha 1: ${form.testemunha1Nome||"[não informado]"}<br/>CPF: ${form.testemunha1CPF||"[não informado]"}</div>
+    <div class="ass-line">Testemunha 2: ${form.testemunha2Nome||"[não informado]"}<br/>CPF: ${form.testemunha2CPF||"[não informado]"}</div>
+  </div>
+</div>
+<div class="footer"><img src="/Logo_Quadrada.png" alt="WM"/><div class="footer-txt"><strong>WM ENGENHARIA INTEGRADA</strong><br/><span>Wilk Martins Engenharia Ltda · Serviços de Engenharia · CNAE 71.12-0-00 · ME</span></div></div>
+<h2 class="sec" style="margin-top:40px">Anexo I – Escopo Detalhado dos Serviços</h2>
+<p><strong>Contratante:</strong> ${form.nomeCompleto} &nbsp;&nbsp; <strong>Data:</strong> ${dataFmt(form.dataAssinatura)}</p>
+<p><strong>Obra:</strong> ${form.descricaoEdificacao}${form.areaTotal?", área "+form.areaTotal:""}, localizada em ${form.cidadeUF}.</p>
+<h3 style="margin:16px 0 8px;font-size:11pt">1. Documentos a Fornecer pelo Contratante</h3>
+<p>☐ Projeto arquitetônico completo (plantas, cortes, fachadas) em DWG ou PDF;<br/>☐ Sondagem de solo (SPT) ou laudo geotécnico;<br/>☐ Número do processo de aprovação na Prefeitura (se houver);<br/>☐ Dados do fornecimento de energia da concessionária (se disponível).</p>
+<h3 style="margin:16px 0 8px;font-size:11pt">2. Entregas da Contratada</h3>
+${form.servicos.map(s=>`<p><strong>${s}:</strong> Plantas, detalhes construtivos, memória de cálculo e ART conforme normas técnicas vigentes. Arquivos em ${form.formatoEntrega}.</p>`).join("")}
+${form.adicionaisInclusos?`<p><strong>Adicionais:</strong> ${form.adicionaisInclusos}</p>`:""}
+<h3 style="margin:16px 0 8px;font-size:11pt">3. O Que Não Está Incluso</h3>
+${form.naoInclusos.map(n=>`<p>☐ ${n}</p>`).join("")}
+<div class="ass-grid" style="margin-top:40px">
+  <div class="ass-line">CONTRATANTE</div>
+  <div class="ass-line">CONTRATADA – WM Engenharia Integrada</div>
+</div>
+</body></html>`;
+
+  const imprimir = () => { const w=window.open("","_blank"); w.document.write(gerarHTML()); w.document.close(); setTimeout(()=>w.print(),800); };
+  const baixar   = () => { const b=new Blob([gerarHTML()],{type:"text/html;charset=utf-8"}); const u=URL.createObjectURL(b); const a=document.createElement("a"); a.href=u; a.download=`Contrato_WM_${form.nomeCompleto.replace(/\s+/g,"_")}.html`; a.click(); URL.revokeObjectURL(u); };
+
+  const Inp = ({label,val,onChange,type="text",placeholder="",full=false}) => (
+    <div style={{display:"flex",flexDirection:"column",gap:4,flex:full?"1 1 100%":"1 1 200px"}}>
+      <label style={{fontSize:10,fontWeight:700,color:C2.sub,textTransform:"uppercase",letterSpacing:.5}}>{label}</label>
+      <input type={type} value={val} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
+        style={{border:`1px solid ${C2.borda}`,borderRadius:8,padding:"9px 12px",fontSize:13,fontFamily:"inherit",outline:"none",color:C2.texto,background:"#fff"}}/>
+    </div>
+  );
+  const Sel = ({label,val,onChange,opts,full=false}) => (
+    <div style={{display:"flex",flexDirection:"column",gap:4,flex:full?"1 1 100%":"1 1 200px"}}>
+      <label style={{fontSize:10,fontWeight:700,color:C2.sub,textTransform:"uppercase",letterSpacing:.5}}>{label}</label>
+      <select value={val} onChange={e=>onChange(e.target.value)}
+        style={{border:`1px solid ${C2.borda}`,borderRadius:8,padding:"9px 12px",fontSize:13,fontFamily:"inherit",outline:"none",color:C2.texto,background:"#fff"}}>
+        {opts.map(o=><option key={o.v||o} value={o.v||o}>{o.l||o}</option>)}
+      </select>
+    </div>
+  );
+  const Sec = ({titulo}) => (
+    <div style={{fontSize:10,fontWeight:800,color:C2.azulC,textTransform:"uppercase",letterSpacing:1.5,
+      borderLeft:`3px solid ${C2.azulC}`,paddingLeft:10,marginBottom:16,marginTop:20}}>{titulo}</div>
+  );
+
+  const passos = [{n:1,label:"Cliente",icone:"👤"},{n:2,label:"Projeto",icone:"🏗"},{n:3,label:"Valores",icone:"💰"},{n:4,label:"Finalizar",icone:"✅"}];
+
+  return (
+    <div style={{maxWidth:960,margin:"0 auto",padding:"0 0 48px"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:24}}>
+        <div>
+          <div style={{fontSize:22,fontWeight:800,color:C2.azul}}>📄 Gerador de Contratos</div>
+          <div style={{fontSize:13,color:C2.sub,marginTop:2}}>Crie contratos de prestação de serviços profissionais</div>
+        </div>
+        {gerado&&<div style={{display:"flex",gap:8}}>
+          <button onClick={imprimir} style={{background:C2.azulM,color:"#fff",border:"none",borderRadius:8,padding:"10px 20px",fontWeight:700,cursor:"pointer",fontSize:13}}>🖨 Imprimir / PDF</button>
+          <button onClick={baixar}   style={{background:C2.verde,color:"#fff",border:"none",borderRadius:8,padding:"10px 20px",fontWeight:700,cursor:"pointer",fontSize:13}}>⬇ Baixar</button>
+          <button onClick={()=>{setGerado(false);setPasso(1);}} style={{background:"#f1f5f9",color:C2.azul,border:`1px solid ${C2.borda}`,borderRadius:8,padding:"10px 20px",fontWeight:700,cursor:"pointer",fontSize:13}}>✏ Editar</button>
+        </div>}
+      </div>
+
+      {!gerado&&<div style={{display:"flex",gap:0,marginBottom:28,background:"#fff",borderRadius:12,border:`1px solid ${C2.borda}`,overflow:"hidden"}}>
+        {passos.map((p,i)=>{
+          const ativo=passo===p.n, feito=passo>p.n;
+          return <div key={p.n} onClick={()=>p.n<passo&&setPasso(p.n)} style={{flex:1,padding:"14px 0",textAlign:"center",cursor:p.n<passo?"pointer":"default",
+            background:ativo?C2.azul:feito?"#f0f7ff":"#fff",borderRight:i<3?`1px solid ${C2.borda}`:"none"}}>
+            <div style={{fontSize:18}}>{feito?"✅":p.icone}</div>
+            <div style={{fontSize:11,fontWeight:700,marginTop:4,color:ativo?"#fff":feito?C2.azulC:C2.sub}}>{p.label}</div>
+          </div>;
+        })}
+      </div>}
+
+      {!gerado&&<div style={{background:"#fff",borderRadius:14,border:`1px solid ${C2.borda}`,padding:28,boxShadow:"0 2px 12px rgba(0,0,0,0.06)"}}>
+        {passo===1&&<>
+          <Sec titulo="Dados do Contratante"/>
+          <div style={{display:"flex",flexWrap:"wrap",gap:16}}>
+            <Sel label="Tipo de Pessoa" val={form.tipoPessoa} onChange={v=>set("tipoPessoa",v)} opts={[{v:"fisica",l:"Pessoa Física (CPF)"},{v:"juridica",l:"Pessoa Jurídica (CNPJ)"}]}/>
+            <Inp label={form.tipoPessoa==="fisica"?"CPF":"CNPJ"} val={form.cpfCnpj} onChange={v=>set("cpfCnpj",v)} placeholder={form.tipoPessoa==="fisica"?"XXX.XXX.XXX-XX":"XX.XXX.XXX/XXXX-XX"}/>
+          </div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:16,marginTop:16}}>
+            <Inp label="Nome Completo / Razão Social" val={form.nomeCompleto} onChange={v=>set("nomeCompleto",v)} placeholder="Nome do cliente ou empresa" full/>
+          </div>
+          {form.tipoPessoa==="fisica"&&<div style={{display:"flex",flexWrap:"wrap",gap:16,marginTop:16}}>
+            <Inp label="Nacionalidade" val={form.nacionalidade} onChange={v=>set("nacionalidade",v)} placeholder="brasileiro(a)"/>
+            <Sel label="Estado Civil" val={form.estadoCivil} onChange={v=>set("estadoCivil",v)} opts={["solteiro(a)","casado(a)","divorciado(a)","viúvo(a)","separado(a)"]}/>
+          </div>}
+          <div style={{display:"flex",flexWrap:"wrap",gap:16,marginTop:16}}>
+            <Inp label="Endereço Completo do Contratante" val={form.endereco} onChange={v=>set("endereco",v)} placeholder="Rua/Av., nº, Bairro, CEP, Cidade/UF" full/>
+          </div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:16,marginTop:16}}>
+            <Inp label="E-mail do Contratante" val={form.email} onChange={v=>set("email",v)} placeholder="email@exemplo.com" full/>
+          </div>
+        </>}
+
+        {passo===2&&<>
+          <Sec titulo="Tipo de Serviço"/>
+          <div style={{display:"flex",flexWrap:"wrap",gap:10,marginBottom:4}}>
+            {SERVICOS.map(s=><button key={s} onClick={()=>toggleServico(s)} style={{padding:"8px 16px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",
+              border:`2px solid ${form.servicos.includes(s)?C2.azulM:C2.borda}`,background:form.servicos.includes(s)?`${C2.azulM}18`:"#fff",color:form.servicos.includes(s)?C2.azulM:C2.sub}}>
+              {form.servicos.includes(s)?"☑":"☐"} {s}</button>)}
+          </div>
+          <Sec titulo="Dados da Edificação"/>
+          <div style={{display:"flex",flexWrap:"wrap",gap:16}}>
+            <Inp label="Descrição da Edificação" val={form.descricaoEdificacao} onChange={v=>set("descricaoEdificacao",v)} placeholder="Ex: residência unifamiliar de dois pavimentos" full/>
+          </div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:16,marginTop:16}}>
+            <Inp label="Área Total" val={form.areaTotal} onChange={v=>set("areaTotal",v)} placeholder="Ex: 185,76 m²"/>
+            <Inp label="Nº de Pavimentos" val={form.numPavimentos} onChange={v=>set("numPavimentos",v)} placeholder="Ex: 2 pavimentos"/>
+            <Inp label="Cidade/UF da Obra" val={form.cidadeUF} onChange={v=>set("cidadeUF",v)} placeholder="Ex: Duque de Caxias/RJ"/>
+            <Inp label="Endereço Completo da Obra" val={form.enderecoObra} onChange={v=>set("enderecoObra",v)} placeholder="Rua, nº, Bairro, Cidade"/>
+          </div>
+          <Sec titulo="Escopo"/>
+          <div style={{display:"flex",flexWrap:"wrap",gap:16}}>
+            <Sel label="Rodadas de Revisão" val={form.rodadasRevisao} onChange={v=>set("rodadasRevisao",v)}
+              opts={[{v:"1",l:"1 rodada"},{v:"2",l:"2 rodadas"},{v:"3",l:"3 rodadas"},{v:"4",l:"4 rodadas"}]}/>
+            <Sel label="Formato de Entrega" val={form.formatoEntrega} onChange={v=>set("formatoEntrega",v)}
+              opts={["PDF","PDF e DWG","PDF, DWG e RVT","Apenas PDF","A definir"]}/>
+            <Inp label="Adicionais Inclusos (ex: ART, memorial)" val={form.adicionaisInclusos} onChange={v=>set("adicionaisInclusos",v)} placeholder="Deixe em branco se não houver" full/>
+          </div>
+          <Sec titulo="O Que Não Está Incluso"/>
+          <div style={{display:"flex",flexWrap:"wrap",gap:10}}>
+            {NAO_INCLUSO.map(s=><button key={s} onClick={()=>toggleNaoIncluso(s)} style={{padding:"8px 14px",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",
+              border:`2px solid ${form.naoInclusos.includes(s)?"#dc2626":C2.borda}`,background:form.naoInclusos.includes(s)?"#fee2e2":"#fff",color:form.naoInclusos.includes(s)?"#dc2626":C2.sub}}>
+              {form.naoInclusos.includes(s)?"✖":"○"} {s}</button>)}
+          </div>
+          <Sec titulo="Cronograma de Execução (Anexo II)"/>
+          {form.cronograma.map((etapa,i)=>(
+            <div key={i} style={{border:`1px solid ${C2.borda}`,borderRadius:10,marginBottom:12,overflow:"hidden"}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,background:C2.azul,padding:"10px 14px"}}>
+                <input value={etapa.etapa} onChange={e=>updEtapa(i,e.target.value)} style={{flex:1,background:"transparent",border:"none",color:"#fff",fontWeight:700,fontSize:13,outline:"none"}}/>
+                <button onClick={()=>rmEtapa(i)} style={{background:"rgba(255,255,255,.2)",border:"none",color:"#fff",borderRadius:6,padding:"4px 10px",cursor:"pointer",fontSize:12}}>✕</button>
+              </div>
+              <div style={{padding:12}}>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 120px 80px 36px",gap:6,marginBottom:6}}>
+                  {["Tarefa","Duração","Pred.",""].map(h=><div key={h} style={{fontSize:10,fontWeight:700,color:C2.sub,textTransform:"uppercase"}}>{h}</div>)}
+                </div>
+                {etapa.tarefas.map((t,j)=>(
+                  <div key={j} style={{display:"grid",gridTemplateColumns:"1fr 120px 80px 36px",gap:6,marginBottom:6}}>
+                    <input value={t.nome} onChange={e=>updTarefa(i,j,"nome",e.target.value)} placeholder="Nome da tarefa" style={{border:`1px solid ${C2.borda}`,borderRadius:6,padding:"6px 10px",fontSize:12,outline:"none"}}/>
+                    <input value={t.duracao} onChange={e=>updTarefa(i,j,"duracao",e.target.value)} placeholder="2 dias" style={{border:`1px solid ${C2.borda}`,borderRadius:6,padding:"6px 10px",fontSize:12,outline:"none"}}/>
+                    <input value={t.pred} onChange={e=>updTarefa(i,j,"pred",e.target.value)} placeholder="—" style={{border:`1px solid ${C2.borda}`,borderRadius:6,padding:"6px 10px",fontSize:12,outline:"none"}}/>
+                    <button onClick={()=>rmTarefa(i,j)} style={{background:"#fee2e2",border:"none",color:"#dc2626",borderRadius:6,cursor:"pointer",fontSize:14}}>✕</button>
+                  </div>
+                ))}
+                <button onClick={()=>addTarefa(i)} style={{marginTop:4,background:C2.cinza,border:`1px dashed ${C2.borda}`,borderRadius:6,padding:"6px 14px",fontSize:12,cursor:"pointer",color:C2.sub,fontWeight:600}}>+ Tarefa</button>
+              </div>
+            </div>
+          ))}
+          <button onClick={addEtapa} style={{background:"#fff",border:`2px dashed ${C2.azulC}`,borderRadius:10,padding:"10px 20px",fontSize:13,cursor:"pointer",color:C2.azulC,fontWeight:700,width:"100%"}}>+ Adicionar Etapa</button>
+        </>}
+
+        {passo===3&&<>
+          <Sec titulo="Honorários e Pagamento"/>
+          <div style={{display:"flex",flexWrap:"wrap",gap:16}}>
+            <Inp label="Valor Total do Contrato (R$)" val={form.valorTotal} onChange={v=>set("valorTotal",v)} type="number" placeholder="0,00"/>
+            <Sel label="Percentual de Entrada" val={form.percEntrada} onChange={v=>set("percEntrada",v)} opts={["10","20","30","40","50","60","70"].map(v=>({v,l:v+"%"}))}/>
+          </div>
+          <div style={{display:"flex",gap:16,marginTop:20,background:C2.cinza,borderRadius:12,padding:20}}>
+            {[["ENTRADA",fmtMoeda(entrada)],["PARCELA FINAL",fmtMoeda(parcFinal)],["TOTAL",fmtMoeda(form.valorTotal)]].map(([l,v])=>(
+              <div key={l} style={{flex:1,textAlign:"center"}}>
+                <div style={{fontSize:10,fontWeight:700,color:C2.sub,textTransform:"uppercase",letterSpacing:1}}>{l}</div>
+                <div style={{fontSize:18,fontWeight:800,color:C2.azul,marginTop:4}}>{v}</div>
+              </div>
+            ))}
+          </div>
+          <Sec titulo="Prazos"/>
+          <div style={{display:"flex",flexWrap:"wrap",gap:16}}>
+            <Inp label="Prazo de Execução (Dias Corridos)" val={form.prazoExecucao} onChange={v=>set("prazoExecucao",v)} type="number" placeholder="65"/>
+            <Inp label="Prazo para Entrega de Documentos (dias)" val={form.prazoDocumentos} onChange={v=>set("prazoDocumentos",v)} type="number" placeholder="5"/>
+            <Inp label="Data do Contrato" val={form.dataContrato} onChange={v=>set("dataContrato",v)} type="date"/>
+          </div>
+        </>}
+
+        {passo===4&&<>
+          <Sec titulo="Dados para Assinatura"/>
+          <div style={{display:"flex",flexWrap:"wrap",gap:16}}>
+            <Inp label="Cidade de Assinatura" val={form.cidade} onChange={v=>set("cidade",v)} placeholder="Governador Valadares"/>
+            <Inp label="Data de Assinatura" val={form.dataAssinatura} onChange={v=>set("dataAssinatura",v)} type="date"/>
+          </div>
+          <Sec titulo="Testemunhas"/>
+          <div style={{display:"flex",flexWrap:"wrap",gap:16}}>
+            <Inp label="Testemunha 1 — Nome" val={form.testemunha1Nome} onChange={v=>set("testemunha1Nome",v)} placeholder="Nome completo"/>
+            <Inp label="Testemunha 1 — CPF"  val={form.testemunha1CPF}  onChange={v=>set("testemunha1CPF",v)}  placeholder="XXX.XXX.XXX-XX"/>
+            <Inp label="Testemunha 2 — Nome" val={form.testemunha2Nome} onChange={v=>set("testemunha2Nome",v)} placeholder="Nome completo"/>
+            <Inp label="Testemunha 2 — CPF"  val={form.testemunha2CPF}  onChange={v=>set("testemunha2CPF",v)}  placeholder="XXX.XXX.XXX-XX"/>
+          </div>
+          <Sec titulo="Resumo do Contrato"/>
+          <div style={{background:C2.cinza,borderRadius:12,padding:20,fontSize:13,color:C2.texto,lineHeight:1.9}}>
+            <div><strong>Cliente:</strong> {form.nomeCompleto||"—"} · {form.tipoPessoa==="fisica"?"CPF":"CNPJ"}: {form.cpfCnpj||"—"}</div>
+            <div><strong>Serviços:</strong> {form.servicos.join(", ")||"—"}</div>
+            <div><strong>Obra:</strong> {form.descricaoEdificacao||"—"} · {form.areaTotal||"—"} · {form.cidadeUF||"—"}</div>
+            <div><strong>Valor Total:</strong> {fmtMoeda(form.valorTotal)} · Entrada ({form.percEntrada}%): {fmtMoeda(entrada)}</div>
+            <div><strong>Prazo:</strong> {form.prazoExecucao} dias corridos</div>
+            <div><strong>Assinatura:</strong> {form.cidade}, {dataFmt(form.dataAssinatura)}</div>
+          </div>
+        </>}
+
+        <div style={{display:"flex",justifyContent:"space-between",marginTop:28,paddingTop:20,borderTop:`1px solid ${C2.borda}`}}>
+          <button onClick={()=>setPasso(p=>Math.max(1,p-1))} disabled={passo===1}
+            style={{background:passo===1?"#f1f5f9":"#fff",border:`1px solid ${C2.borda}`,borderRadius:8,padding:"10px 24px",fontWeight:700,cursor:passo===1?"not-allowed":"pointer",fontSize:13,color:C2.sub}}>
+            ← Anterior
+          </button>
+          {passo<4
+            ?<button onClick={()=>setPasso(p=>Math.min(4,p+1))} style={{background:C2.azul,color:"#fff",border:"none",borderRadius:8,padding:"10px 28px",fontWeight:700,cursor:"pointer",fontSize:13}}>Próximo →</button>
+            :<button onClick={()=>setGerado(true)} style={{background:C2.verde,color:"#fff",border:"none",borderRadius:8,padding:"10px 28px",fontWeight:800,cursor:"pointer",fontSize:14}}>✅ Gerar Contrato</button>
+          }
+        </div>
+      </div>}
+
+      {gerado&&<div style={{background:"#fff",borderRadius:14,border:`1px solid ${C2.borda}`,overflow:"hidden",boxShadow:"0 4px 24px rgba(0,0,0,0.10)"}}>
+        <div style={{background:C2.azul,padding:"16px 24px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <div style={{color:"#fff",fontWeight:700,fontSize:15}}>📄 Contrato — {form.nomeCompleto}</div>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={imprimir} style={{background:"rgba(255,255,255,.2)",color:"#fff",border:"none",borderRadius:7,padding:"7px 16px",fontWeight:700,cursor:"pointer",fontSize:12}}>🖨 Imprimir / Salvar PDF</button>
+            <button onClick={baixar}   style={{background:"rgba(255,255,255,.2)",color:"#fff",border:"none",borderRadius:7,padding:"7px 16px",fontWeight:700,cursor:"pointer",fontSize:12}}>⬇ Baixar</button>
+          </div>
+        </div>
+        <iframe srcDoc={gerarHTML()} style={{width:"100%",height:"80vh",border:"none"}} title="Contrato"/>
+      </div>}
+    </div>
+  );
+}
+
+
 export default function App(){
   const calendario = useCalendario();
   const [projetos,  setProjetos]  = useState([]);
@@ -5565,6 +5913,7 @@ export default function App(){
     ...(!isColab ? [{id:"financeiro", label:"Financeiro", icone:"💰"}] : []),
     {id:"horas",        label:"Horas",       icone:"⏱"},
     {id:"agenda",       label:"Agenda",      icone:"📅"},
+    ...(!isColab ? [{id:"contratos", label:"Contratos", icone:"📄"}] : []),
   ];
 
   // Abas no menu lateral
@@ -5574,6 +5923,7 @@ export default function App(){
     ...(!isColab ? [{id:"financeiro", label:"Financeiro", icone:"💰", grupo:"principal"}] : []),
     {id:"horas",        label:"Horas & Produtividade", icone:"⏱", grupo:"horas"},
     {id:"agenda",       label:"Agenda & Escalas",  icone:"📅", grupo:"agenda"},
+    ...(!isColab ? [{id:"contratos", label:"Contratos", icone:"📄", grupo:"principal"}] : []),
     {id:"config",       label:"Configurações",     icone:"⚙",  grupo:"config"},
   ];
 
@@ -5705,6 +6055,7 @@ export default function App(){
         {aba==="horas"     &&<AbaHoras registros={registros} setRegistros={setRegistros} usuarios={usuarios} projetos={projetos} usuarioAtual={user} calendario={calendario} onAbrirEncerramento={()=>setModalH("encerramento")}/>}
         {aba==="agenda"    &&<AbaAgenda calendario={calendario} usuarioAtual={user} registros={registros} usuarios={usuarios}/>}
         {aba==="config"    &&<Configuracoes usuarios={usuarios} onSalvarUsuarios={salvarUsuarios} usuarioAtual={user}/>}
+        {aba==="contratos"  &&<GeradorContratos projetos={projetos} usuarios={usuarios} usuarioAtual={user}/>}
       </main>
 
       {modal&&<ModalProjeto projeto={modal.projeto} modo={modal.modo} onClose={()=>setModal(null)} onSave={salvarP} onExcluir={excluirP} usuarios={usuarios}/>}
