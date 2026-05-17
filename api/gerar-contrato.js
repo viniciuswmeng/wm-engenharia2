@@ -1,7 +1,7 @@
 import {
   Document, Packer, Paragraph, TextRun, AlignmentType,
-  BorderStyle, PageSize, Table, TableRow, TableCell,
-  WidthType, ShadingType, HeadingLevel, TabStopType, TabStopPosition
+  BorderStyle, Table, TableRow, TableCell,
+  WidthType, ShadingType
 } from "docx";
 
 export default async function handler(req, res) {
