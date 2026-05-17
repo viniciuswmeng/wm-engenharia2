@@ -531,9 +531,9 @@ function useGoogleDrive() {
     setCarregando(true);setErro(null);
     try {
       const out=[];
-      const rAnos=await window.gapi.client.drive.files.list({corpora:"drive",driveId:DRIVE_ROOT_ID,includeItemsFromAllDrives:true,supportsAllDrives:true,q:`'${DRIVE_ROOT_ID}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,fields:"files(id,name)",pageSize:20});
+      const rAnos=await window.gapi.client.drive.files.list({q:`'${DRIVE_ROOT_ID}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,fields:"files(id,name)",pageSize:20});
       for(const a of (rAnos.result.files||[])){
-        const rP=await window.gapi.client.drive.files.list({corpora:"drive",driveId:DRIVE_ROOT_ID,includeItemsFromAllDrives:true,supportsAllDrives:true,q:`'${a.id}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,fields:"files(id,name,webViewLink)",pageSize:200});
+        const rP=await window.gapi.client.drive.files.list({q:`'${a.id}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,fields:"files(id,name,webViewLink)",pageSize:200});
         for(const p of (rP.result.files||[])){ const x=parsePastaDrive(p.name,p.webViewLink||""); if(x) out.push(x); }
       }
       return out;
