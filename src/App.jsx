@@ -5161,34 +5161,30 @@ h3{font-size:10.5pt;margin:12px 0 5px}
       ["DO FORO",""],
       ["Cláusula 19ª", `Foro da Comarca de Governador Valadares, Estado de Minas Gerais.`],
     ];
-    const linhas = clausulas.map(([t,v])=>
-      v ? `${t.startsWith("Cláusula")?t+".":t}	${v}` : `
-${t}`
-    ).join("
-");
-    const rtf = `{\rtf1\ansi\deff0
-{\fonttbl{\f0 Times New Roman;}}
-{\f0\fs24
-{\b\qc CONTRATO DE PRESTAÇÃO DE SERVIÇOS\par}
-{\b\qc WM Engenharia Integrada\par}
-\par
-${clausulas.map(([t,v])=>{
-  if(!v) return `{\b\qc ${t.toUpperCase()}\par}`;
-  if(t.startsWith("Cláusula")) return `{\b ${t}.} ${v}\par`;
-  return `{\b ${t}:} ${v}\par`;
-}).join("
-")}
-\par
-{\qc ${form.cidade}, ${dataFmt(form.dataAssinatura)}\par}
-\par
-_________________________________\tab _________________________________\par
-CONTRATANTE\tab\tab\tab CONTRATADA – WM Engenharia Integrada\par
-${form.nomeCompleto}\par
-}}`;
+    const secoes = clausulas.map(([t,v])=>{
+      if(!v) return "{\\b\\qc " + t.toUpperCase() + "\\par}";
+      if(t.startsWith("Cl")) return "{\\b " + t + ".} " + v + "\\par";
+      return "{\\b " + t + ":} " + v + "\\par";
+    }).join("\n");
+    const assinatura = "_________________________________          _________________________________\\par\nCONTRATANTE                                 CONTRATADA - WM Engenharia Integrada\\par\n" + form.nomeCompleto + "\\par";
+    const rtf = [
+      "{\\rtf1\\ansi\\deff0",
+      "{\\fonttbl{\\f0 Times New Roman;}}",
+      "{\\f0\\fs24",
+      "{\\b\\qc CONTRATO DE PRESTACAO DE SERVICOS\\par}",
+      "{\\b\\qc WM Engenharia Integrada\\par}",
+      "\\par",
+      secoes,
+      "\\par",
+      "{\\qc " + form.cidade + ", " + dataFmt(form.dataAssinatura) + "\\par}",
+      "\\par",
+      assinatura,
+      "}}",
+    ].join("\n");
     const blob = new Blob([rtf], {type:"application/rtf"});
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");
-    a.href=url; a.download=`Contrato_WM_${nomeCliente}.rtf`;
+    a.href=url; a.download="Contrato_WM_" + nomeCliente + ".rtf";
     a.click(); URL.revokeObjectURL(url);
   };
 
