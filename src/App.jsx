@@ -4893,8 +4893,10 @@ function GeradorContratos({ projetos, usuarios, usuarioAtual }) {
 
   const gerarHTML = () => `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Contrato – ${form.nomeCompleto}</title><style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Times New Roman',serif;font-size:12pt;color:#111;background:#fff;padding:40px 60px;max-width:900px;margin:0 auto}
-.header{display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #0d1e35;padding-bottom:16px;margin-bottom:24px}
+body{font-family:'Times New Roman',serif;font-size:12pt;color:#111;background:#fff;margin:0 auto;max-width:900px;
+  background-image:url('/Papel_Timbrado.png');background-size:100% 100%;background-repeat:no-repeat;background-position:top left;}
+.page{padding:130px 70px 120px 70px;}
+.header{display:none}
 .h-left{display:flex;align-items:center;gap:14px}
 .h-left img{height:56px}
 .h-emp h2{font-size:13pt;color:#0d1e35;font-weight:800;text-transform:uppercase}
@@ -4915,7 +4917,7 @@ tr:nth-child(even)td{background:#f7f9fc}
 .footer-txt strong{font-size:11pt;color:#0d1e35}
 .footer-txt span{font-size:9pt;color:#666}
 @media print{body{padding:20px 30px}}
-</style></head><body>
+</style></head><body><div class="page">
 <div class="header">
   <div class="h-left"><img src="/Logo_Quadrada.png" alt="WM"/><div class="h-emp"><h2>WM Engenharia Integrada</h2><p>Wilk Martins Engenharia Ltda</p><p>Serviços de Engenharia · CNAE 71.12-0-00 · ME</p></div></div>
   <div class="h-info"><p>CNPJ: 60.959.603/0001-47</p><p>Av. JK, 1571 · Bairro São Paulo</p><p>Governador Valadares/MG · CEP 35.030-210</p><p>Tel: (33) 9931-7042</p><p>wmengenhariaintegrada@hotmail.com</p></div>
@@ -4923,7 +4925,7 @@ tr:nth-child(even)td{background:#f7f9fc}
 <h1>Contrato de Prestação de Serviços</h1>
 <h2 class="sec">Identificação das Partes Contratantes</h2>
 <p><strong>CONTRATANTE:</strong> ${form.nomeCompleto}, ${form.tipoPessoa==="fisica"?form.nacionalidade+", "+form.estadoCivil+",":" "} portador(a) do ${form.tipoPessoa==="fisica"?"CPF":"CNPJ"} nº ${form.cpfCnpj}, domiciliado(a) na ${form.endereco}, doravante denominado(a) simplesmente <strong>CONTRATANTE</strong>.</p>
-<p><strong>CONTRATADA:</strong> WM Engenharia Integrada (Wilk Martins Engenharia Ltda), pessoa jurídica, CNPJ nº <strong>60.959.603/0001-47</strong>, com sede na Av. JK, nº 1571, Bairro São Paulo, CEP 35.030-210, Governador Valadares/MG, representada pelos responsáveis técnicos: <strong>${resp1?.nome||""}</strong>${resp2?" e <strong>"+resp2.nome+"</strong>":""}, doravante denominada simplesmente <strong>CONTRATADA</strong>.</p>
+<p><strong>CONTRATADA:</strong> WM Engenharia Integrada (Wilk Martins Engenharia Ltda), pessoa jurídica, CNPJ nº <strong>60.959.603/0001-47</strong>, com sede na Av. JK, nº 1571, Bairro São Paulo, CEP 35.030-210, Governador Valadares/MG, representada pelos responsáveis técnicos: <strong>Jonathan Charles Lucas Martins Almeida Siqueira</strong>, brasileiro, casado, Engenheiro Civil, CREA 394707/MG, RG nº MG-20.111.074, CPF nº 020.571.056-52; e <strong>Vinicius Wilk Bezerra Rezende</strong>, brasileiro, casado, Engenheiro Civil, CREA 394892/MG, RG nº MG-20.597.543, CPF nº 120.912.666-47; doravante denominada simplesmente <strong>CONTRATADA</strong>.</p>
 <p>As partes têm, entre si, justo e acertado o presente Contrato de Prestação de Serviços, que se regerá pelas cláusulas seguintes.</p>
 <h2 class="sec">Do Objeto do Contrato</h2>
 <p><strong>Cláusula 1ª.</strong> É objeto deste contrato a elaboração de <strong>${form.servicos.join(", ")}</strong> de uma edificação ${form.descricaoEdificacao}${form.areaTotal?", com área total de "+form.areaTotal:""}, localizada em ${form.cidadeUF}${form.enderecoObra?", no endereço "+form.enderecoObra:""}.</p>
@@ -4966,8 +4968,8 @@ ${form.cronograma.map(et=>`<tr><td colspan="3" style="background:#1a4a7a;color:#
 <div class="ass-wrap">
   <div class="ass-line"><strong>CONTRATANTE: ${form.nomeCompleto}</strong><br/>${form.tipoPessoa==="fisica"?"CPF":"CNPJ"}: ${form.cpfCnpj}</div>
   <div class="ass-grid">
-    <div class="ass-line"><strong>${resp1?.nome||""}</strong><br/>CPF: ___________________<br/>CREA: ___________________<br/>WM Engenharia Integrada</div>
-    ${resp2?`<div class="ass-line"><strong>${resp2.nome}</strong><br/>CPF: ___________________<br/>CREA: ___________________<br/>WM Engenharia Integrada</div>`:"<div></div>"}
+    <div class="ass-line"><strong>Jonathan Charles L. M. A. Siqueira</strong><br/>CPF: 020.571.056-52<br/>CREA: 394707/MG<br/>WM Engenharia Integrada</div>
+    <div class="ass-line"><strong>Vinicius Wilk Bezerra Rezende</strong><br/>CPF: 120.912.666-47<br/>CREA: 394892/MG<br/>WM Engenharia Integrada</div>
   </div>
   <div class="ass-grid" style="margin-top:32px">
     <div class="ass-line">Testemunha 1: ${form.testemunha1Nome||"[não informado]"}<br/>CPF: ${form.testemunha1CPF||"[não informado]"}</div>
@@ -4989,7 +4991,7 @@ ${form.naoInclusos.map(n=>`<p>☐ ${n}</p>`).join("")}
   <div class="ass-line">CONTRATANTE</div>
   <div class="ass-line">CONTRATADA – WM Engenharia Integrada</div>
 </div>
-</body></html>`;
+</div></body></html>`;
 
   const imprimir = () => { const w=window.open("","_blank"); w.document.write(gerarHTML()); w.document.close(); setTimeout(()=>w.print(),800); };
   const baixar   = () => { const b=new Blob([gerarHTML()],{type:"text/html;charset=utf-8"}); const u=URL.createObjectURL(b); const a=document.createElement("a"); a.href=u; a.download=`Contrato_WM_${form.nomeCompleto.replace(/\s+/g,"_")}.html`; a.click(); URL.revokeObjectURL(u); };
