@@ -2810,14 +2810,9 @@ function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}){
     let total = 0;
     pausas.forEach(p => {
       if (!p.inicio) return;
-      const fim   = p.fim ? new Date(p.fim + "T12:00:00") : new Date();
-      const ini   = new Date(p.inicio + "T12:00:00");
-      let d = new Date(ini);
-      while (d <= fim) {
-        const dow = d.getDay();
-        if (dow !== 0 && dow !== 6) total++;
-        d.setDate(d.getDate() + 1);
-      }
+      const fim = p.fim ? new Date(p.fim + "T12:00:00") : new Date();
+      const ini = new Date(p.inicio + "T12:00:00");
+      total += Math.round((fim - ini) / 86400000) + 1;
     });
     return total;
   };
