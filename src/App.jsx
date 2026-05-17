@@ -697,7 +697,7 @@ function ModalHoras({tipo,projetos,usuarioAtual,sessaoAtiva,onIniciar,onEncerrar
           ))}
         </div>
       </div>
-      <Sel label={`Projeto * (${ativosFiltrados.length} disponíveis)`} value={projSel} onChange={setProjSel} options={opts}/>
+      <SelC label={`Projeto * (${ativosFiltrados.length} disponíveis)`} value={projSel} onChange={setProjSel} options={opts}/>
     </>) : (<>
       <div>
         <label style={{fontSize:12,fontWeight:600,color:C.cinzaEscuro,display:"block",marginBottom:8}}>Categoria *</label>
@@ -713,7 +713,7 @@ function ModalHoras({tipo,projetos,usuarioAtual,sessaoAtiva,onIniciar,onEncerrar
       </div>
     </>)}
 
-    <Inp label="Hora de início" type="time" value={hi} onChange={setHi}/>
+    <InpC label="Hora de início" type="time" value={hi} onChange={setHi}/>
     {/* Aviso se estiver fora do expediente */}
     {(()=>{
       const fora = verificarForaExpediente(hi, usuarioAtual?.expediente);
@@ -730,7 +730,7 @@ function ModalHoras({tipo,projetos,usuarioAtual,sessaoAtiva,onIniciar,onEncerrar
         </div>
       );
     })()}
-    <Inp label="O que você vai fazer? *" value={obs} onChange={setObs}
+    <InpC label="O que você vai fazer? *" value={obs} onChange={setObs}
       placeholder={tipoSessao==="projeto"?"Ex: Modelagem estrutural no Eberick...":"Ex: Orçamento para cliente X..."} required/>
     {!obs.trim()&&<span style={{fontSize:11,color:C.vermelho,fontSize:11}}>⚠ Descrição obrigatória</span>}
     <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
@@ -765,7 +765,7 @@ function ModalHoras({tipo,projetos,usuarioAtual,sessaoAtiva,onIniciar,onEncerrar
         </button>
       ))}
     </div>
-    <Sel label="" value={projSel} onChange={setProjSel} options={opts}/>
+    <SelC label="" value={projSel} onChange={setProjSel} options={opts}/>
     {projSel&&projSel!==sessaoAtiva?.projetoId&&<Btn variant="secondary" onClick={()=>onMudar(projSel)} style={{justifyContent:"center"}}>🔄 Mudar para este projeto</Btn>}
     <Btn variant="danger" onClick={()=>onFechar("encerrar")} style={{justifyContent:"center"}}>⏹ Parei de trabalhar</Btn>
   </>, "⏰ Verificação de Atividade", "Já faz 30 minutos — você ainda está trabalhando?", C.amarelo, C.laranja);
@@ -788,7 +788,7 @@ function ModalHoras({tipo,projetos,usuarioAtual,sessaoAtiva,onIniciar,onEncerrar
         <div style={{fontSize:13,color:C.cinzaEscuro}}>{sessaoAtiva.obsInicio}</div>
       </div>
     )}
-    <Inp label="Feedback / Como foi? (opcional)" value={obs} onChange={setObs}
+    <InpC label="Feedback / Como foi? (opcional)" value={obs} onChange={setObs}
       placeholder="Ex: Modelagem concluída, falta lançar fundações..."/>
       <div style={{display:"flex",gap:8,justifyContent:"space-between",flexWrap:"wrap"}}>
         <Btn variant="secondary" small onClick={()=>onFechar("continuar_extra")}
@@ -2352,7 +2352,7 @@ function Escalas({ usuarioAtual, usuarios }) {
           {editando&&isGestor&&(
             <Card>
               <h3 style={{color:C.azulEscuro,margin:"0 0 12px",fontSize:13,fontWeight:700}}>📅 Data de início da escala</h3>
-              <Inp label="Primeira sexta-feira da escala" type="date" value={escala.dataInicio}
+              <InpC label="Primeira sexta-feira da escala" type="date" value={escala.dataInicio}
                 onChange={v=>setEscala(e=>({...e,dataInicio:v}))}/>
               <p style={{fontSize:11,color:C.cinzaClaro,marginTop:6}}>
                 A escala rotaciona a cada 7 dias a partir desta data.
@@ -2471,11 +2471,11 @@ function Configuracoes({usuarios,onSalvarUsuarios,usuarioAtual}){
           <div style={{background:C.cinzaFundo,borderRadius:12,padding:20,marginBottom:20,border:`2px solid ${C.azulClaro}`}}>
             <h3 style={{color:C.azulEscuro,margin:"0 0 16px",fontSize:14}}>{editId?"✏ Editar":"➕ Novo"} Colaborador</h3>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-              <Inp label="Nome completo *" value={form.nome} onChange={v=>sf("nome",v)}/>
-              <Inp label="Email" value={form.email} onChange={v=>sf("email",v)} type="email"/>
-              <Inp label="Senha *" value={form.senha} onChange={v=>sf("senha",v)} type="password"/>
-              <Inp label="Salario Mensal (R$)" value={form.salario||""} onChange={v=>sf("salario",parseFloat(v)||0)} type="number" placeholder="Ex: 3500"/>
-              <Sel label="Perfil" value={form.perfil} onChange={v=>sf("perfil",v)} options={[{value:"colaborador",label:"👤 Colaborador"},{value:"gestor",label:"🔑 Gestor"},{value:"admin",label:"👑 Admin"}]}/>
+              <InpC label="Nome completo *" value={form.nome} onChange={v=>sf("nome",v)}/>
+              <InpC label="Email" value={form.email} onChange={v=>sf("email",v)} type="email"/>
+              <InpC label="Senha *" value={form.senha} onChange={v=>sf("senha",v)} type="password"/>
+              <InpC label="Salario Mensal (R$)" value={form.salario||""} onChange={v=>sf("salario",parseFloat(v)||0)} type="number" placeholder="Ex: 3500"/>
+              <SelC label="Perfil" value={form.perfil} onChange={v=>sf("perfil",v)} options={[{value:"colaborador",label:"👤 Colaborador"},{value:"gestor",label:"🔑 Gestor"},{value:"admin",label:"👑 Admin"}]}/>
               {/* Expediente por dia da semana */}
               <div style={{gridColumn:"1/-1"}}>
                 <label style={{fontSize:12,fontWeight:600,color:C.cinzaEscuro,display:"block",marginBottom:4}}>
@@ -2514,8 +2514,8 @@ function Configuracoes({usuarios,onSalvarUsuarios,usuarioAtual}){
                           <div style={{display:"flex",flexDirection:"column",gap:8}}>
                             {/* Turno 1 — manhã */}
                             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                              <Inp label="Manhã — entrada" value={exp.turno1?.inicio||""} onChange={v=>setT1("inicio",v)} type="time"/>
-                              <Inp label="Manhã — saída"   value={exp.turno1?.fim||""}   onChange={v=>setT1("fim",v)}   type="time"/>
+                              <InpC label="Manhã — entrada" value={exp.turno1?.inicio||""} onChange={v=>setT1("inicio",v)} type="time"/>
+                              <InpC label="Manhã — saída"   value={exp.turno1?.fim||""}   onChange={v=>setT1("fim",v)}   type="time"/>
                             </div>
 
                             {/* Turno 2 — tarde */}
@@ -2530,8 +2530,8 @@ function Configuracoes({usuarios,onSalvarUsuarios,usuarioAtual}){
 
                               {exp.turno2?.ativo&&(<>
                                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
-                                  <Inp label="Tarde — entrada" value={exp.turno2?.inicio||""} onChange={v=>setT2("inicio",v)} type="time"/>
-                                  <Inp label="Tarde — saída"   value={exp.turno2?.fim||""}   onChange={v=>setT2("fim",v)}   type="time"/>
+                                  <InpC label="Tarde — entrada" value={exp.turno2?.inicio||""} onChange={v=>setT2("inicio",v)} type="time"/>
+                                  <InpC label="Tarde — saída"   value={exp.turno2?.fim||""}   onChange={v=>setT2("fim",v)}   type="time"/>
                                 </div>
 
                                 {/* Seletor E / OU */}
@@ -2885,10 +2885,10 @@ function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}){
           <div>
             <h3 style={{color:C.azulEscuro,fontSize:13,fontWeight:700,margin:"0 0 12px",textTransform:"uppercase",letterSpacing:1}}>📁 Identificação</h3>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-              <Inp label={`Código *${form._doDrive?" (não editável)":""}`} value={form.codigo} onChange={v=>s("codigo",v)} required readOnly={!!form._doDrive}/>
-              <Sel label="Tipo" value={form.tipo} onChange={v=>s("tipo",v)} options={Object.entries(TIPOS).map(([k,v])=>({value:k,label:`${k} – ${v}`}))}/>
-              <div style={{gridColumn:"1/-1"}}><Inp label={`Cliente / Projeto *${form._doDrive?" (importado do Drive — não editável)":""}`} value={form.cliente} onChange={v=>s("cliente",v)} required readOnly={!!form._doDrive}/></div>
-              {form._doDrive ? <div style={{display:"flex",flexDirection:"column",gap:4}}><label style={{fontSize:12,fontWeight:600,color:C.cinzaEscuro}}>Ano</label><input value={form.ano} readOnly style={{border:`1.5px solid ${C.cinzaCard}`,borderRadius:8,padding:"8px 12px",fontSize:14,background:"#f8fafc",cursor:"not-allowed",color:C.cinzaClaro}}/></div> : <Sel label="Ano" value={form.ano} onChange={v=>s("ano",parseInt(v))} options={[2024,2025,2026,2027].map(y=>({value:y,label:y}))}/>}
+              <InpC label={`Código *${form._doDrive?" (não editável)":""}`} value={form.codigo} onChange={v=>s("codigo",v)} required readOnly={!!form._doDrive}/>
+              <SelC label="Tipo" value={form.tipo} onChange={v=>s("tipo",v)} options={Object.entries(TIPOS).map(([k,v])=>({value:k,label:`${k} – ${v}`}))}/>
+              <div style={{gridColumn:"1/-1"}}><InpC label={`Cliente / Projeto *${form._doDrive?" (importado do Drive — não editável)":""}`} value={form.cliente} onChange={v=>s("cliente",v)} required readOnly={!!form._doDrive}/></div>
+              {form._doDrive ? <div style={{display:"flex",flexDirection:"column",gap:4}}><label style={{fontSize:12,fontWeight:600,color:C.cinzaEscuro}}>Ano</label><input value={form.ano} readOnly style={{border:`1.5px solid ${C.cinzaCard}`,borderRadius:8,padding:"8px 12px",fontSize:14,background:"#f8fafc",cursor:"not-allowed",color:C.cinzaClaro}}/></div> : <SelC label="Ano" value={form.ano} onChange={v=>s("ano",parseInt(v))} options={[2024,2025,2026,2027].map(y=>({value:y,label:y}))}/>}
               <div style={{display:"flex",flexDirection:"column",gap:4}}>
                 <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
                   <label style={{fontSize:12,fontWeight:600,color:C.cinzaEscuro}}>Status</label>
@@ -2920,8 +2920,8 @@ function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}){
               <label htmlFor="tc" style={{fontSize:13,fontWeight:600,color:form.temContrato?"#166534":"#92400e",cursor:"pointer"}}>{form.temContrato?"✓ Contrato assinado":"⚠ Sem contrato formalizado"}</label>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
-              <Inp label="Data do Contrato" value={form.dataContrato} onChange={setContrato} type="date"/>
-              <Inp label="Prazo (Dias Corridos)" value={form.prazo||""} onChange={setPrazo} type="number" placeholder="Ex: 60"/>
+              <InpC label="Data do Contrato" value={form.dataContrato} onChange={setContrato} type="date"/>
+              <InpC label="Prazo (Dias Corridos)" value={form.prazo||""} onChange={setPrazo} type="number" placeholder="Ex: 60"/>
               <div style={{display:"flex",flexDirection:"column",gap:4}}>
                 <label style={{fontSize:12,fontWeight:600,color:C.cinzaEscuro}}>
                   Entrega Prevista
@@ -3193,7 +3193,7 @@ function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}){
           <div>
             <h3 style={{color:C.azulEscuro,fontSize:13,fontWeight:700,margin:"0 0 12px",textTransform:"uppercase",letterSpacing:1}}>🔗 Drive & Observações</h3>
             <div style={{display:"flex",flexDirection:"column",gap:12}}>
-              {form._doDrive ? <div style={{display:"flex",flexDirection:"column",gap:4}}><label style={{fontSize:12,fontWeight:600,color:C.cinzaEscuro}}>Link do Drive <span style={{fontSize:10,color:C.cinzaClaro}}>(gerenciado automaticamente)</span></label><div style={{display:"flex",gap:8,alignItems:"center"}}><input value={form.driveUrl} readOnly style={{flex:1,border:`1.5px solid ${C.cinzaCard}`,borderRadius:8,padding:"8px 12px",fontSize:12,background:"#f8fafc",cursor:"not-allowed",color:C.cinzaClaro}}/>{form.driveUrl&&<a href={form.driveUrl} target="_blank" rel="noreferrer" style={{color:C.azulClaro,fontSize:12,whiteSpace:"nowrap"}}>📂 Abrir</a>}</div></div> : <Inp label="Link da pasta no Google Drive" value={form.driveUrl} onChange={v=>s("driveUrl",v)} placeholder="https://drive.google.com/..."/>}
+              {form._doDrive ? <div style={{display:"flex",flexDirection:"column",gap:4}}><label style={{fontSize:12,fontWeight:600,color:C.cinzaEscuro}}>Link do Drive <span style={{fontSize:10,color:C.cinzaClaro}}>(gerenciado automaticamente)</span></label><div style={{display:"flex",gap:8,alignItems:"center"}}><input value={form.driveUrl} readOnly style={{flex:1,border:`1.5px solid ${C.cinzaCard}`,borderRadius:8,padding:"8px 12px",fontSize:12,background:"#f8fafc",cursor:"not-allowed",color:C.cinzaClaro}}/>{form.driveUrl&&<a href={form.driveUrl} target="_blank" rel="noreferrer" style={{color:C.azulClaro,fontSize:12,whiteSpace:"nowrap"}}>📂 Abrir</a>}</div></div> : <InpC label="Link da pasta no Google Drive" value={form.driveUrl} onChange={v=>s("driveUrl",v)} placeholder="https://drive.google.com/..."/>}
               <div style={{display:"flex",gap:8,alignItems:"center"}}>
                 <input value={form.driveEntregaveis||""} onChange={e=>s("driveEntregaveis",e.target.value)}
                   placeholder="📦 Link Entregáveis (cliente vê ao 100%)..."
@@ -3309,8 +3309,8 @@ function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}){
               </div>
             )}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr auto auto",gap:8,alignItems:"end"}}>
-              <Inp label="Descrição" value={np.desc} onChange={v=>setNp(n=>({...n,desc:v}))} placeholder="Entrada..."/>
-              <Inp label="Valor (R$)" value={np.valor} onChange={v=>setNp(n=>({...n,valor:v}))} type="number" placeholder="0,00"/>
+              <InpC label="Descrição" value={np.desc} onChange={v=>setNp(n=>({...n,desc:v}))} placeholder="Entrada..."/>
+              <InpC label="Valor (R$)" value={np.valor} onChange={v=>setNp(n=>({...n,valor:v}))} type="number" placeholder="0,00"/>
               <div style={{display:"flex",alignItems:"center",gap:6,paddingBottom:2}}>
                 <input type="checkbox" checked={np.pago} onChange={e=>setNp(n=>({...n,pago:e.target.checked}))} id="pg" style={{cursor:"pointer"}}/>
                 <label htmlFor="pg" style={{fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}}>Já pago</label>
@@ -3398,7 +3398,7 @@ function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}){
                     style={{border:`1.5px solid ${C.cinzaCard}`,borderRadius:8,padding:"6px 8px",fontSize:18,cursor:"pointer",background:"white"}}>
                     {ICONES_ATU.map(ic=><option key={ic} value={ic}>{ic}</option>)}
                   </select>
-                  <Inp label="" value={novaAtu.titulo} onChange={v=>setNovaAtu(n=>({...n,titulo:v}))} placeholder="Título da atualização (ex: Modelagem estrutural iniciada)"/>
+                  <InpC label="" value={novaAtu.titulo} onChange={v=>setNovaAtu(n=>({...n,titulo:v}))} placeholder="Título da atualização (ex: Modelagem estrutural iniciada)"/>
                 </div>
                 <textarea value={novaAtu.descricao} onChange={e=>setNovaAtu(n=>({...n,descricao:e.target.value}))} rows={2}
                   placeholder="Descrição detalhada (opcional)..."
@@ -4814,9 +4814,41 @@ function ChatFlutuante({ usuario, usuarios, aberto, onToggle, pulsando, temMenca
   );
 }
 
+// ─── COMPONENTES DO GERADOR DE CONTRATOS (fora do componente para evitar remount) ─
+const C_CONTRATO = { azul:"#0d1e35", azulM:"#1a4a7a", azulC:"#2e6da8", cinza:"#f0f4f8", borda:"#dde3ec", verde:"#16a34a", texto:"#1e293b", sub:"#64748b" };
+
+function InpC({label,val,onChange,type="text",placeholder="",full=false}) {
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:4,flex:full?"1 1 100%":"1 1 200px"}}>
+      <label style={{fontSize:10,fontWeight:700,color:C_CONTRATO.sub,textTransform:"uppercase",letterSpacing:.5}}>{label}</label>
+      <input type={type} value={val} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
+        style={{border:`1px solid ${C_CONTRATO.borda}`,borderRadius:8,padding:"9px 12px",fontSize:13,fontFamily:"inherit",outline:"none",color:C_CONTRATO.texto,background:"#fff"}}/>
+    </div>
+  );
+}
+
+function SelC({label,val,onChange,opts,full=false}) {
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:4,flex:full?"1 1 100%":"1 1 200px"}}>
+      <label style={{fontSize:10,fontWeight:700,color:C_CONTRATO.sub,textTransform:"uppercase",letterSpacing:.5}}>{label}</label>
+      <select value={val} onChange={e=>onChange(e.target.value)}
+        style={{border:`1px solid ${C_CONTRATO.borda}`,borderRadius:8,padding:"9px 12px",fontSize:13,fontFamily:"inherit",outline:"none",color:C_CONTRATO.texto,background:"#fff"}}>
+        {opts.map(o=><option key={o.v||o} value={o.v||o}>{o.l||o}</option>)}
+      </select>
+    </div>
+  );
+}
+
+function SecC({titulo}) {
+  return (
+    <div style={{fontSize:10,fontWeight:800,color:C_CONTRATO.azulC,textTransform:"uppercase",letterSpacing:1.5,
+      borderLeft:`3px solid ${C_CONTRATO.azulC}`,paddingLeft:10,marginBottom:16,marginTop:20}}>{titulo}</div>
+  );
+}
+
 // ─── GERADOR DE CONTRATOS ──────────────────────────────────────────────────────
 function GeradorContratos({ projetos, usuarios, usuarioAtual }) {
-  const C2 = { azul:"#0d1e35", azulM:"#1a4a7a", azulC:"#2e6da8", cinza:"#f0f4f8", borda:"#dde3ec", verde:"#16a34a", texto:"#1e293b", sub:"#64748b" };
+  const C2 = C_CONTRATO;
   const [passo, setPasso] = useState(1);
   const [gerado, setGerado] = useState(false);
   const hoje = new Date().toISOString().slice(0,10);
@@ -4962,26 +4994,7 @@ ${form.naoInclusos.map(n=>`<p>☐ ${n}</p>`).join("")}
   const imprimir = () => { const w=window.open("","_blank"); w.document.write(gerarHTML()); w.document.close(); setTimeout(()=>w.print(),800); };
   const baixar   = () => { const b=new Blob([gerarHTML()],{type:"text/html;charset=utf-8"}); const u=URL.createObjectURL(b); const a=document.createElement("a"); a.href=u; a.download=`Contrato_WM_${form.nomeCompleto.replace(/\s+/g,"_")}.html`; a.click(); URL.revokeObjectURL(u); };
 
-  const Inp = ({label,val,onChange,type="text",placeholder="",full=false}) => (
-    <div style={{display:"flex",flexDirection:"column",gap:4,flex:full?"1 1 100%":"1 1 200px"}}>
-      <label style={{fontSize:10,fontWeight:700,color:C2.sub,textTransform:"uppercase",letterSpacing:.5}}>{label}</label>
-      <input type={type} value={val} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
-        style={{border:`1px solid ${C2.borda}`,borderRadius:8,padding:"9px 12px",fontSize:13,fontFamily:"inherit",outline:"none",color:C2.texto,background:"#fff"}}/>
-    </div>
-  );
-  const Sel = ({label,val,onChange,opts,full=false}) => (
-    <div style={{display:"flex",flexDirection:"column",gap:4,flex:full?"1 1 100%":"1 1 200px"}}>
-      <label style={{fontSize:10,fontWeight:700,color:C2.sub,textTransform:"uppercase",letterSpacing:.5}}>{label}</label>
-      <select value={val} onChange={e=>onChange(e.target.value)}
-        style={{border:`1px solid ${C2.borda}`,borderRadius:8,padding:"9px 12px",fontSize:13,fontFamily:"inherit",outline:"none",color:C2.texto,background:"#fff"}}>
-        {opts.map(o=><option key={o.v||o} value={o.v||o}>{o.l||o}</option>)}
-      </select>
-    </div>
-  );
-  const Sec = ({titulo}) => (
-    <div style={{fontSize:10,fontWeight:800,color:C2.azulC,textTransform:"uppercase",letterSpacing:1.5,
-      borderLeft:`3px solid ${C2.azulC}`,paddingLeft:10,marginBottom:16,marginTop:20}}>{titulo}</div>
-  );
+
 
   const passos = [{n:1,label:"Cliente",icone:"👤"},{n:2,label:"Projeto",icone:"🏗"},{n:3,label:"Valores",icone:"💰"},{n:4,label:"Finalizar",icone:"✅"}];
 
@@ -5012,58 +5025,58 @@ ${form.naoInclusos.map(n=>`<p>☐ ${n}</p>`).join("")}
 
       {!gerado&&<div style={{background:"#fff",borderRadius:14,border:`1px solid ${C2.borda}`,padding:28,boxShadow:"0 2px 12px rgba(0,0,0,0.06)"}}>
         {passo===1&&<>
-          <Sec titulo="Dados do Contratante"/>
+          <SecC titulo="Dados do Contratante"/>
           <div style={{display:"flex",flexWrap:"wrap",gap:16}}>
-            <Sel label="Tipo de Pessoa" val={form.tipoPessoa} onChange={v=>set("tipoPessoa",v)} opts={[{v:"fisica",l:"Pessoa Física (CPF)"},{v:"juridica",l:"Pessoa Jurídica (CNPJ)"}]}/>
-            <Inp label={form.tipoPessoa==="fisica"?"CPF":"CNPJ"} val={form.cpfCnpj} onChange={v=>set("cpfCnpj",v)} placeholder={form.tipoPessoa==="fisica"?"XXX.XXX.XXX-XX":"XX.XXX.XXX/XXXX-XX"}/>
+            <SelC label="Tipo de Pessoa" val={form.tipoPessoa} onChange={v=>set("tipoPessoa",v)} opts={[{v:"fisica",l:"Pessoa Física (CPF)"},{v:"juridica",l:"Pessoa Jurídica (CNPJ)"}]}/>
+            <InpC label={form.tipoPessoa==="fisica"?"CPF":"CNPJ"} val={form.cpfCnpj} onChange={v=>set("cpfCnpj",v)} placeholder={form.tipoPessoa==="fisica"?"XXX.XXX.XXX-XX":"XX.XXX.XXX/XXXX-XX"}/>
           </div>
           <div style={{display:"flex",flexWrap:"wrap",gap:16,marginTop:16}}>
-            <Inp label="Nome Completo / Razão Social" val={form.nomeCompleto} onChange={v=>set("nomeCompleto",v)} placeholder="Nome do cliente ou empresa" full/>
+            <InpC label="Nome Completo / Razão Social" val={form.nomeCompleto} onChange={v=>set("nomeCompleto",v)} placeholder="Nome do cliente ou empresa" full/>
           </div>
           {form.tipoPessoa==="fisica"&&<div style={{display:"flex",flexWrap:"wrap",gap:16,marginTop:16}}>
-            <Inp label="Nacionalidade" val={form.nacionalidade} onChange={v=>set("nacionalidade",v)} placeholder="brasileiro(a)"/>
-            <Sel label="Estado Civil" val={form.estadoCivil} onChange={v=>set("estadoCivil",v)} opts={["solteiro(a)","casado(a)","divorciado(a)","viúvo(a)","separado(a)"]}/>
+            <InpC label="Nacionalidade" val={form.nacionalidade} onChange={v=>set("nacionalidade",v)} placeholder="brasileiro(a)"/>
+            <SelC label="Estado Civil" val={form.estadoCivil} onChange={v=>set("estadoCivil",v)} opts={["solteiro(a)","casado(a)","divorciado(a)","viúvo(a)","separado(a)"]}/>
           </div>}
           <div style={{display:"flex",flexWrap:"wrap",gap:16,marginTop:16}}>
-            <Inp label="Endereço Completo do Contratante" val={form.endereco} onChange={v=>set("endereco",v)} placeholder="Rua/Av., nº, Bairro, CEP, Cidade/UF" full/>
+            <InpC label="Endereço Completo do Contratante" val={form.endereco} onChange={v=>set("endereco",v)} placeholder="Rua/Av., nº, Bairro, CEP, Cidade/UF" full/>
           </div>
           <div style={{display:"flex",flexWrap:"wrap",gap:16,marginTop:16}}>
-            <Inp label="E-mail do Contratante" val={form.email} onChange={v=>set("email",v)} placeholder="email@exemplo.com" full/>
+            <InpC label="E-mail do Contratante" val={form.email} onChange={v=>set("email",v)} placeholder="email@exemplo.com" full/>
           </div>
         </>}
 
         {passo===2&&<>
-          <Sec titulo="Tipo de Serviço"/>
+          <SecC titulo="Tipo de Serviço"/>
           <div style={{display:"flex",flexWrap:"wrap",gap:10,marginBottom:4}}>
             {SERVICOS.map(s=><button key={s} onClick={()=>toggleServico(s)} style={{padding:"8px 16px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",
               border:`2px solid ${form.servicos.includes(s)?C2.azulM:C2.borda}`,background:form.servicos.includes(s)?`${C2.azulM}18`:"#fff",color:form.servicos.includes(s)?C2.azulM:C2.sub}}>
               {form.servicos.includes(s)?"☑":"☐"} {s}</button>)}
           </div>
-          <Sec titulo="Dados da Edificação"/>
+          <SecC titulo="Dados da Edificação"/>
           <div style={{display:"flex",flexWrap:"wrap",gap:16}}>
-            <Inp label="Descrição da Edificação" val={form.descricaoEdificacao} onChange={v=>set("descricaoEdificacao",v)} placeholder="Ex: residência unifamiliar de dois pavimentos" full/>
+            <InpC label="Descrição da Edificação" val={form.descricaoEdificacao} onChange={v=>set("descricaoEdificacao",v)} placeholder="Ex: residência unifamiliar de dois pavimentos" full/>
           </div>
           <div style={{display:"flex",flexWrap:"wrap",gap:16,marginTop:16}}>
-            <Inp label="Área Total" val={form.areaTotal} onChange={v=>set("areaTotal",v)} placeholder="Ex: 185,76 m²"/>
-            <Inp label="Nº de Pavimentos" val={form.numPavimentos} onChange={v=>set("numPavimentos",v)} placeholder="Ex: 2 pavimentos"/>
-            <Inp label="Cidade/UF da Obra" val={form.cidadeUF} onChange={v=>set("cidadeUF",v)} placeholder="Ex: Duque de Caxias/RJ"/>
-            <Inp label="Endereço Completo da Obra" val={form.enderecoObra} onChange={v=>set("enderecoObra",v)} placeholder="Rua, nº, Bairro, Cidade"/>
+            <InpC label="Área Total" val={form.areaTotal} onChange={v=>set("areaTotal",v)} placeholder="Ex: 185,76 m²"/>
+            <InpC label="Nº de Pavimentos" val={form.numPavimentos} onChange={v=>set("numPavimentos",v)} placeholder="Ex: 2 pavimentos"/>
+            <InpC label="Cidade/UF da Obra" val={form.cidadeUF} onChange={v=>set("cidadeUF",v)} placeholder="Ex: Duque de Caxias/RJ"/>
+            <InpC label="Endereço Completo da Obra" val={form.enderecoObra} onChange={v=>set("enderecoObra",v)} placeholder="Rua, nº, Bairro, Cidade"/>
           </div>
-          <Sec titulo="Escopo"/>
+          <SecC titulo="Escopo"/>
           <div style={{display:"flex",flexWrap:"wrap",gap:16}}>
-            <Sel label="Rodadas de Revisão" val={form.rodadasRevisao} onChange={v=>set("rodadasRevisao",v)}
+            <SelC label="Rodadas de Revisão" val={form.rodadasRevisao} onChange={v=>set("rodadasRevisao",v)}
               opts={[{v:"1",l:"1 rodada"},{v:"2",l:"2 rodadas"},{v:"3",l:"3 rodadas"},{v:"4",l:"4 rodadas"}]}/>
-            <Sel label="Formato de Entrega" val={form.formatoEntrega} onChange={v=>set("formatoEntrega",v)}
+            <SelC label="Formato de Entrega" val={form.formatoEntrega} onChange={v=>set("formatoEntrega",v)}
               opts={["PDF","PDF e DWG","PDF, DWG e RVT","Apenas PDF","A definir"]}/>
-            <Inp label="Adicionais Inclusos (ex: ART, memorial)" val={form.adicionaisInclusos} onChange={v=>set("adicionaisInclusos",v)} placeholder="Deixe em branco se não houver" full/>
+            <InpC label="Adicionais Inclusos (ex: ART, memorial)" val={form.adicionaisInclusos} onChange={v=>set("adicionaisInclusos",v)} placeholder="Deixe em branco se não houver" full/>
           </div>
-          <Sec titulo="O Que Não Está Incluso"/>
+          <SecC titulo="O Que Não Está Incluso"/>
           <div style={{display:"flex",flexWrap:"wrap",gap:10}}>
             {NAO_INCLUSO.map(s=><button key={s} onClick={()=>toggleNaoIncluso(s)} style={{padding:"8px 14px",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",
               border:`2px solid ${form.naoInclusos.includes(s)?"#dc2626":C2.borda}`,background:form.naoInclusos.includes(s)?"#fee2e2":"#fff",color:form.naoInclusos.includes(s)?"#dc2626":C2.sub}}>
               {form.naoInclusos.includes(s)?"✖":"○"} {s}</button>)}
           </div>
-          <Sec titulo="Cronograma de Execução (Anexo II)"/>
+          <SecC titulo="Cronograma de Execução (Anexo II)"/>
           {form.cronograma.map((etapa,i)=>(
             <div key={i} style={{border:`1px solid ${C2.borda}`,borderRadius:10,marginBottom:12,overflow:"hidden"}}>
               <div style={{display:"flex",alignItems:"center",gap:8,background:C2.azul,padding:"10px 14px"}}>
@@ -5090,10 +5103,10 @@ ${form.naoInclusos.map(n=>`<p>☐ ${n}</p>`).join("")}
         </>}
 
         {passo===3&&<>
-          <Sec titulo="Honorários e Pagamento"/>
+          <SecC titulo="Honorários e Pagamento"/>
           <div style={{display:"flex",flexWrap:"wrap",gap:16}}>
-            <Inp label="Valor Total do Contrato (R$)" val={form.valorTotal} onChange={v=>set("valorTotal",v)} type="number" placeholder="0,00"/>
-            <Sel label="Percentual de Entrada" val={form.percEntrada} onChange={v=>set("percEntrada",v)} opts={["10","20","30","40","50","60","70"].map(v=>({v,l:v+"%"}))}/>
+            <InpC label="Valor Total do Contrato (R$)" val={form.valorTotal} onChange={v=>set("valorTotal",v)} type="number" placeholder="0,00"/>
+            <SelC label="Percentual de Entrada" val={form.percEntrada} onChange={v=>set("percEntrada",v)} opts={["10","20","30","40","50","60","70"].map(v=>({v,l:v+"%"}))}/>
           </div>
           <div style={{display:"flex",gap:16,marginTop:20,background:C2.cinza,borderRadius:12,padding:20}}>
             {[["ENTRADA",fmtMoeda(entrada)],["PARCELA FINAL",fmtMoeda(parcFinal)],["TOTAL",fmtMoeda(form.valorTotal)]].map(([l,v])=>(
@@ -5103,28 +5116,28 @@ ${form.naoInclusos.map(n=>`<p>☐ ${n}</p>`).join("")}
               </div>
             ))}
           </div>
-          <Sec titulo="Prazos"/>
+          <SecC titulo="Prazos"/>
           <div style={{display:"flex",flexWrap:"wrap",gap:16}}>
-            <Inp label="Prazo de Execução (Dias Corridos)" val={form.prazoExecucao} onChange={v=>set("prazoExecucao",v)} type="number" placeholder="65"/>
-            <Inp label="Prazo para Entrega de Documentos (dias)" val={form.prazoDocumentos} onChange={v=>set("prazoDocumentos",v)} type="number" placeholder="5"/>
-            <Inp label="Data do Contrato" val={form.dataContrato} onChange={v=>set("dataContrato",v)} type="date"/>
+            <InpC label="Prazo de Execução (Dias Corridos)" val={form.prazoExecucao} onChange={v=>set("prazoExecucao",v)} type="number" placeholder="65"/>
+            <InpC label="Prazo para Entrega de Documentos (dias)" val={form.prazoDocumentos} onChange={v=>set("prazoDocumentos",v)} type="number" placeholder="5"/>
+            <InpC label="Data do Contrato" val={form.dataContrato} onChange={v=>set("dataContrato",v)} type="date"/>
           </div>
         </>}
 
         {passo===4&&<>
-          <Sec titulo="Dados para Assinatura"/>
+          <SecC titulo="Dados para Assinatura"/>
           <div style={{display:"flex",flexWrap:"wrap",gap:16}}>
-            <Inp label="Cidade de Assinatura" val={form.cidade} onChange={v=>set("cidade",v)} placeholder="Governador Valadares"/>
-            <Inp label="Data de Assinatura" val={form.dataAssinatura} onChange={v=>set("dataAssinatura",v)} type="date"/>
+            <InpC label="Cidade de Assinatura" val={form.cidade} onChange={v=>set("cidade",v)} placeholder="Governador Valadares"/>
+            <InpC label="Data de Assinatura" val={form.dataAssinatura} onChange={v=>set("dataAssinatura",v)} type="date"/>
           </div>
-          <Sec titulo="Testemunhas"/>
+          <SecC titulo="Testemunhas"/>
           <div style={{display:"flex",flexWrap:"wrap",gap:16}}>
-            <Inp label="Testemunha 1 — Nome" val={form.testemunha1Nome} onChange={v=>set("testemunha1Nome",v)} placeholder="Nome completo"/>
-            <Inp label="Testemunha 1 — CPF"  val={form.testemunha1CPF}  onChange={v=>set("testemunha1CPF",v)}  placeholder="XXX.XXX.XXX-XX"/>
-            <Inp label="Testemunha 2 — Nome" val={form.testemunha2Nome} onChange={v=>set("testemunha2Nome",v)} placeholder="Nome completo"/>
-            <Inp label="Testemunha 2 — CPF"  val={form.testemunha2CPF}  onChange={v=>set("testemunha2CPF",v)}  placeholder="XXX.XXX.XXX-XX"/>
+            <InpC label="Testemunha 1 — Nome" val={form.testemunha1Nome} onChange={v=>set("testemunha1Nome",v)} placeholder="Nome completo"/>
+            <InpC label="Testemunha 1 — CPF"  val={form.testemunha1CPF}  onChange={v=>set("testemunha1CPF",v)}  placeholder="XXX.XXX.XXX-XX"/>
+            <InpC label="Testemunha 2 — Nome" val={form.testemunha2Nome} onChange={v=>set("testemunha2Nome",v)} placeholder="Nome completo"/>
+            <InpC label="Testemunha 2 — CPF"  val={form.testemunha2CPF}  onChange={v=>set("testemunha2CPF",v)}  placeholder="XXX.XXX.XXX-XX"/>
           </div>
-          <Sec titulo="Resumo do Contrato"/>
+          <SecC titulo="Resumo do Contrato"/>
           <div style={{background:C2.cinza,borderRadius:12,padding:20,fontSize:13,color:C2.texto,lineHeight:1.9}}>
             <div><strong>Cliente:</strong> {form.nomeCompleto||"—"} · {form.tipoPessoa==="fisica"?"CPF":"CNPJ"}: {form.cpfCnpj||"—"}</div>
             <div><strong>Serviços:</strong> {form.servicos.join(", ")||"—"}</div>
