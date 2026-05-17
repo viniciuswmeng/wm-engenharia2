@@ -100,9 +100,9 @@ function notificarUmaVez(chave, titulo, corpo, tag) {
 
 // ─── CORES INTEC ───────────────────────────────────────────────────────────────
 const C = {
-  azulEscuro:"#1a3a6b", azulMedio:"#2563a8", azulClaro:"#3b8fd4",
-  ciano:"#56bfe9", cinzaEscuro:"#1e2535", cinzaMedio:"#2d3a50",
-  cinzaClaro:"#8492a6", cinzaFundo:"#f0f4f8", cinzaCard:"#e8eef5",
+  azulEscuro:"#0d1e35", azulMedio:"#1a4a7a", azulClaro:"#2e6da8",
+  ciano:"#4a90c4", cinzaEscuro:"#0d1e35", cinzaMedio:"#1e3550",
+  cinzaClaro:"#8a9ab0", cinzaFundo:"#f0f4f8", cinzaCard:"#e2eaf3",
   branco:"#ffffff", verde:"#22c55e", amarelo:"#f59e0b",
   vermelho:"#ef4444", laranja:"#f97316",
 };
@@ -127,7 +127,7 @@ const TIPOS = {
 
 // Disciplinas do sistema — mesmos tipos de TIPOS
 const DISCIPLINAS_CB = [
-  { id:"PE", label:"Proj. Estrutural",      icone:"🏗",  cor:"#2563a8" },
+  { id:"PE", label:"Proj. Estrutural",      icone:"🏗",  cor:"#1a4a7a" },
   { id:"PR", label:"Proj. Reforço",         icone:"🔩",  cor:"#0891b2" },
   { id:"LT", label:"Laudo Técnico",         icone:"📋",  cor:"#059669" },
   { id:"EL", label:"Proj. Elétrico",        icone:"⚡",  cor:"#f59e0b" },
@@ -140,7 +140,7 @@ const DISCIPLINAS_CB = [
 
 const USUARIOS_PADRAO = [
   { id:"vinicius", nome:"Vinicius", email:"wmengenhariaintegrada@gmail.com", senha:"1234",
-    perfil:"gestor", cor:"#2563a8", iniciais:"VI", ativo:true,
+    perfil:"gestor", cor:"#1a4a7a", iniciais:"VI", ativo:true,
     expediente:{ turno1:{inicio:"09:00",fim:"12:00"}, turno2:{ativo:true,inicio:"14:00",fim:"18:00"}, modo:"E" },
     salario:0, especialidades:["PE","PR","LT","PF","CT"] },
   { id:"jonathan", nome:"Jonathan", email:"wmengenhariaintegrada@gmail.com", senha:"1234",
@@ -528,8 +528,8 @@ function useGoogleDrive() {
 
 // ─── COMPONENTES BASE ──────────────────────────────────────────────────────────
 const Badge=({status})=>{const s=statusN(status);const cfg=STATUS_CONFIG[s]||STATUS_CONFIG["Novo/Definir"];return <span style={{background:cfg.bg,color:cfg.cor,border:`1px solid ${cfg.cor}30`,padding:"2px 10px",borderRadius:20,fontSize:11,fontWeight:700,whiteSpace:"nowrap",display:"inline-flex",alignItems:"center",gap:4}}>{cfg.icone} {s}</span>;};
-const TipoBadge=({tipo})=><span style={{background:C.azulEscuro,color:C.ciano,padding:"2px 8px",borderRadius:4,fontSize:10,fontWeight:800,letterSpacing:1}}>{tipo}</span>;
-const Card=({children,style={}})=><div style={{background:C.branco,borderRadius:12,padding:20,boxShadow:"0 2px 12px rgba(26,58,107,0.08)",border:`1px solid ${C.cinzaCard}`,...style}}>{children}</div>;
+const TipoBadge=({tipo})=><span style={{background:C.cinzaEscuro,color:C.ciano,padding:"2px 8px",borderRadius:4,fontSize:10,fontWeight:800,letterSpacing:1}}>{tipo}</span>;
+const Card=({children,style={}})=><div style={{background:C.branco,borderRadius:12,padding:20,boxShadow:"0 2px 12px rgba(13,30,53,0.10)",border:`1px solid ${C.cinzaCard}`,...style}}>{children}</div>;
 const Btn=({children,onClick,variant="primary",small,style={},disabled})=>{
   const v={primary:{background:C.azulMedio,color:C.branco,border:"none"},secondary:{background:"transparent",color:C.azulMedio,border:`1.5px solid ${C.azulMedio}`},danger:{background:C.vermelho,color:C.branco,border:"none"},ghost:{background:"transparent",color:C.cinzaClaro,border:`1px solid ${C.cinzaCard}`},ciano:{background:C.ciano,color:C.azulEscuro,border:"none"},verde:{background:C.verde,color:C.branco,border:"none"}};
   return <button onClick={onClick} disabled={disabled} style={{...v[variant],borderRadius:8,padding:small?"5px 12px":"9px 20px",fontSize:small?12:14,fontWeight:600,cursor:disabled?"not-allowed":"pointer",opacity:disabled?0.5:1,transition:"all 0.15s",fontFamily:"inherit",display:"inline-flex",alignItems:"center",gap:6,...style}}>{children}</button>;
@@ -562,7 +562,7 @@ function TelaLogin({usuarios,onLogin}){
   const [erro,setErro]=useState("");
 
   return(
-    <div style={{minHeight:"100vh",background:`linear-gradient(135deg,${C.azulEscuro},${C.azulMedio} 60%,${C.azulClaro})`,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+    <div style={{minHeight:"100vh",background:`linear-gradient(160deg,${C.cinzaEscuro} 0%,${C.azulMedio} 55%,${C.azulClaro} 100%)`,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
       <div style={{background:C.branco,borderRadius:20,padding:40,width:"100%",maxWidth:440,boxShadow:"0 24px 64px rgba(0,0,0,0.25)"}}>
         <div style={{textAlign:"center",marginBottom:32}}>
           <svg width="120" height="48" viewBox="0 0 220 80" style={{margin:"0 auto"}}>
@@ -590,7 +590,7 @@ function TelaLogin({usuarios,onLogin}){
                     <div style={{fontWeight:700,color:C.cinzaEscuro,fontSize:15}}>{u.nome}</div>
                     <div style={{fontSize:11,color:C.cinzaClaro,marginTop:2,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
                       <span>{u.perfil==="admin"?"👑 Admin":u.perfil==="gestor"?"🔑 Gestor":"👤 Colaborador"}</span>
-                      {(u.especialidades||[]).map(e=><span key={e} style={{background:C.azulEscuro,color:C.ciano,padding:"1px 5px",borderRadius:3,fontSize:9,fontWeight:800}}>{e}</span>)}
+                      {(u.especialidades||[]).map(e=><span key={e} style={{background:C.cinzaEscuro,color:C.ciano,padding:"1px 5px",borderRadius:3,fontSize:9,fontWeight:800}}>{e}</span>)}
                     </div>
                   </div>
                   <span style={{color:C.cinzaClaro,fontSize:22}}>›</span>
@@ -2376,7 +2376,7 @@ function Configuracoes({usuarios,onSalvarUsuarios,usuarioAtual}){
   const [lista,setLista]=useState(usuarios);
   const [editId,setEditId]=useState(null);
   const [showForm,setShowForm]=useState(false);
-  const VAZIO={id:"",nome:"",email:"",senha:"",salario:0,perfil:"colaborador",cor:"#2563a8",iniciais:"",ativo:true,expediente:expedientePadrao(),especialidades:[]};
+  const VAZIO={id:"",nome:"",email:"",senha:"",salario:0,perfil:"colaborador",cor:"#1a4a7a",iniciais:"",ativo:true,expediente:expedientePadrao(),especialidades:[]};
   const [form,setForm]=useState(VAZIO);
   const sf=(k,v)=>setForm(f=>({...f,[k]:v}));
   const se=(k,v)=>setForm(f=>({...f,expediente:{...f.expediente,[k]:v}}));
@@ -2427,7 +2427,7 @@ function Configuracoes({usuarios,onSalvarUsuarios,usuarioAtual}){
                   <div style={{fontSize:14,color:C.cinzaClaro}}>Somente 1 turno</div>
                 </div>
             }
-            <div style={{padding:"12px 16px",background:C.azulEscuro,borderRadius:10}}>
+            <div style={{padding:"12px 16px",background:C.cinzaEscuro,borderRadius:10}}>
               <div style={{fontSize:11,fontWeight:700,color:C.ciano,marginBottom:4}}>Meta Diária</div>
               <div style={{fontSize:22,fontWeight:800,color:C.branco}}>{calcHorasDia(eu.expediente)}h</div>
               <div style={{fontSize:10,color:"rgba(255,255,255,0.6)"}}>{labelModoExpediente(eu.expediente)||"por dia"}</div>
@@ -2435,7 +2435,7 @@ function Configuracoes({usuarios,onSalvarUsuarios,usuarioAtual}){
             <div style={{padding:"12px 16px",background:C.cinzaFundo,borderRadius:10,gridColumn:"1/-1"}}>
               <div style={{fontSize:11,fontWeight:700,color:C.cinzaEscuro,marginBottom:4}}>Especialidades</div>
               <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:4}}>
-                {(eu.especialidades||[]).map(e=><span key={e} style={{background:C.azulEscuro,color:C.ciano,padding:"2px 8px",borderRadius:4,fontSize:11,fontWeight:800}}>{e}</span>)}
+                {(eu.especialidades||[]).map(e=><span key={e} style={{background:C.cinzaEscuro,color:C.ciano,padding:"2px 8px",borderRadius:4,fontSize:11,fontWeight:800}}>{e}</span>)}
               </div>
             </div>
           </div>
@@ -2461,7 +2461,7 @@ function Configuracoes({usuarios,onSalvarUsuarios,usuarioAtual}){
     );
   }
 
-  const cores=["#2563a8","#7c3aed","#0891b2","#059669","#d97706","#dc2626","#db2777","#4f46e5","#0f766e","#9333ea"];
+  const cores=["#1a4a7a","#7c3aed","#0891b2","#059669","#d97706","#dc2626","#db2777","#4f46e5","#0f766e","#9333ea"];
 
   return(
     <div style={{display:"flex",flexDirection:"column",gap:20}}>
@@ -2603,7 +2603,7 @@ function Configuracoes({usuarios,onSalvarUsuarios,usuarioAtual}){
                     ⏰ {labelExpediente(u.expediente)} ({calcHorasDia(u.expediente)}h/dia)
                     {u.expediente?.turno2?.ativo&&<span style={{marginLeft:6,fontSize:10,background:u.expediente.modo==="OU"?"#fff7ed":"#eff6ff",color:u.expediente.modo==="OU"?"#c2410c":C.azulMedio,padding:"1px 6px",borderRadius:4,fontWeight:700}}>{u.expediente.modo==="OU"?"🔀 OU":"🔁 E"}</span>}
                   </div>
-                  {(u.especialidades||[]).length>0&&<div style={{display:"flex",gap:4,marginTop:4,flexWrap:"wrap"}}>{(u.especialidades||[]).map(e=><span key={e} style={{background:C.azulEscuro,color:C.ciano,padding:"1px 6px",borderRadius:3,fontSize:9,fontWeight:800}}>{e}</span>)}</div>}
+                  {(u.especialidades||[]).length>0&&<div style={{display:"flex",gap:4,marginTop:4,flexWrap:"wrap"}}>{(u.especialidades||[]).map(e=><span key={e} style={{background:C.cinzaEscuro,color:C.ciano,padding:"1px 6px",borderRadius:3,fontSize:9,fontWeight:800}}>{e}</span>)}</div>}
               </div>
               <div style={{display:"flex",gap:8}}>
                 <Btn onClick={()=>{setForm({...u, expediente: expedienteParaDiaSemana(u.expediente)});setEditId(u.id);setShowForm(true);}} variant="ghost" small>✏</Btn>
@@ -3273,7 +3273,7 @@ function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}){
             {/* Checklist de revisão */}
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
               {[
-                {campo:"revisaoMandado",   label:"📤 Mandado para revisão",           cor:"#2563a8"},
+                {campo:"revisaoMandado",   label:"📤 Mandado para revisão",           cor:"#1a4a7a"},
                 {campo:"revisaoFeita",     label:"✅ Revisão realizada pelo revisor",  cor:"#22c55e"},
                 {campo:"revisaoCorrigida", label:"🔧 Correções feitas pelo responsável", cor:"#f59e0b"},
               ].map(item=>(
@@ -3443,7 +3443,7 @@ function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}){
                         {a.autor_nome&&<span>👤 {a.autor_nome} · </span>}
                         {new Date(a.created_at).toLocaleDateString("pt-BR")}
                         {!isSessao&&!a.visivel_cliente&&<span style={{marginLeft:8,color:C.amarelo}}>👁 Oculto ao cliente</span>}
-                        {isSessao&&<span style={{marginLeft:6,color:"#8492a6"}}>(gerado automaticamente)</span>}
+                        {isSessao&&<span style={{marginLeft:6,color:"#8a9ab0"}}>(gerado automaticamente)</span>}
                       </div>
                     </div>
                     <div style={{display:"flex",flexDirection:"column",gap:4,alignItems:"center",flexShrink:0}}>
@@ -4401,7 +4401,7 @@ function Chat({
     <div style={{display:"flex",height:480,background:C.branco,borderRadius:14,overflow:"hidden",border:`1px solid ${C.cinzaCard}`,boxShadow:"0 8px 32px rgba(0,0,0,0.2)",position:"relative"}}>
 
       {/* ── SIDEBAR ── */}
-      <div style={{width:220,background:C.azulEscuro,display:"flex",flexDirection:"column",flexShrink:0}}>
+      <div style={{width:220,background:C.cinzaEscuro,display:"flex",flexDirection:"column",flexShrink:0}}>
         <div style={{padding:"14px 12px 10px",borderBottom:"1px solid rgba(255,255,255,0.1)"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
             <span style={{color:C.branco,fontWeight:800,fontSize:14}}>💬 Chat INTEC</span>
@@ -4447,7 +4447,7 @@ function Chat({
                 onClick={()=>onSelecionarCanal(c)}
                 onMouseEnter={e=>{if(!ativo)e.currentTarget.style.background="rgba(255,255,255,0.07)";}}
                 onMouseLeave={e=>{if(!ativo)e.currentTarget.style.background=ativo?"rgba(255,255,255,0.15)":"transparent";}}>
-                <div style={{width:26,height:26,borderRadius:"50%",background:outroU?.cor||"#8492a6",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:"#fff",flexShrink:0}}>
+                <div style={{width:26,height:26,borderRadius:"50%",background:outroU?.cor||"#8a9ab0",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:"#fff",flexShrink:0}}>
                   {nomeOutro.slice(0,2).toUpperCase()}
                 </div>
                 <span style={{fontSize:12,color:ativo?C.branco:"rgba(255,255,255,0.7)",fontWeight:ativo||nl>0?700:400,flex:1}}>{nomeOutro}</span>
@@ -5541,7 +5541,7 @@ export default function App(){
   if(carregando) return (
     <div style={{minHeight:"100vh",background:`linear-gradient(135deg,${C.azulEscuro},${C.azulMedio})`,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}>
       <svg width="120" height="48" viewBox="0 0 220 80">
-        <circle cx="28" cy="14" r="7" fill="none" stroke="#56bfe9" strokeWidth="3.5"/>
+        <circle cx="28" cy="14" r="7" fill="none" stroke="#4a90c4" strokeWidth="3.5"/>
         <path d="M21 28 Q21 52 28 52 Q35 52 35 28" fill="none" stroke="white" strokeWidth="5" strokeLinecap="round"/>
         <path d="M35 28 Q35 14 55 14 L80 52" fill="none" stroke="white" strokeWidth="5" strokeLinecap="round"/>
         <path d="M80 14 L80 52" fill="none" stroke="white" strokeWidth="5" strokeLinecap="round"/>
@@ -5609,7 +5609,7 @@ export default function App(){
           </button>
 
           <div style={{padding:"12px 16px 12px 4px",borderRight:`1px solid rgba(255,255,255,0.15)`,marginRight:8,flexShrink:0}}>
-            <svg width="80" height="32" viewBox="0 0 220 80"><circle cx="28" cy="14" r="7" fill="none" stroke="#56bfe9" strokeWidth="3.5"/><path d="M21 28 Q21 52 28 52 Q35 52 35 28" fill="none" stroke="white" strokeWidth="5" strokeLinecap="round"/><path d="M35 28 Q35 14 55 14 L80 52" fill="none" stroke="white" strokeWidth="5" strokeLinecap="round"/><path d="M80 14 L80 52" fill="none" stroke="white" strokeWidth="5" strokeLinecap="round"/><text x="95" y="45" fill="white" fontSize="36" fontWeight="800" fontFamily="'Segoe UI',sans-serif" letterSpacing="2">WM</text></svg>
+            <svg width="80" height="32" viewBox="0 0 220 80"><circle cx="28" cy="14" r="7" fill="none" stroke="#4a90c4" strokeWidth="3.5"/><path d="M21 28 Q21 52 28 52 Q35 52 35 28" fill="none" stroke="white" strokeWidth="5" strokeLinecap="round"/><path d="M35 28 Q35 14 55 14 L80 52" fill="none" stroke="white" strokeWidth="5" strokeLinecap="round"/><path d="M80 14 L80 52" fill="none" stroke="white" strokeWidth="5" strokeLinecap="round"/><text x="95" y="45" fill="white" fontSize="36" fontWeight="800" fontFamily="'Segoe UI',sans-serif" letterSpacing="2">WM</text></svg>
             <div style={{color:C.ciano,fontSize:8,letterSpacing:3,fontWeight:700,marginTop:-4}}>WM ENGENHARIA</div>
           </div>
 
