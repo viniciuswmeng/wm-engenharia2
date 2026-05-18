@@ -2860,7 +2860,7 @@ function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}){
   const s=(k,v)=>setForm(f=>({...f,[k]:v}));
   const addP=()=>{if(!np.desc||!np.valor)return;s("parcelas",[...(form.parcelas||[]),{...np,valor:parseFloat(np.valor)}]);setNp({desc:"",valor:"",pago:false});};
   const togP=i=>{const p=[...form.parcelas];p[i]={...p[i],pago:!p[i].pago};s("parcelas",p);};
-  const delP=i=>s("parcelas",form.parcelas.filter((_,x)=>x!==i));
+  const delP=i=>s("parcelas",(form.parcelas||[]).filter((_,x)=>x!==i));
   const rec=(form.parcelas||[]).reduce((a,p)=>a+(p.pago?p.valor:0),0);
   const pend=(form.parcelas||[]).reduce((a,p)=>a+(!p.pago?p.valor:0),0);
   return(
@@ -3293,7 +3293,7 @@ function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}){
             <h3 style={{color:C.azulEscuro,fontSize:13,fontWeight:700,margin:"0 0 12px",textTransform:"uppercase",letterSpacing:1}}>💰 Financeiro — Parcelas</h3>
             {(form.parcelas||[]).length>0&&(
               <div style={{marginBottom:12,display:"flex",flexDirection:"column",gap:6}}>
-                {form.parcelas.map((p,i)=>(
+                {(form.parcelas||[]).map((p,i)=>(
                   <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:p.pago?"#f0fdf4":"#fefce8",borderRadius:8,border:`1px solid ${p.pago?"#86efac":"#fde68a"}`}}>
                     <input type="checkbox" checked={p.pago} onChange={()=>togP(i)} style={{width:14,height:14,cursor:"pointer"}}/>
                     <span style={{flex:1,fontSize:13}}>{p.desc}</span>
@@ -4197,8 +4197,8 @@ function Dashboard({projetos,onAbrirProjeto,drive,onImportar,usuarioAtual}){
 // ─── FINANCEIRO ────────────────────────────────────────────────────────────────
 function Financeiro({projetos}){
   const com=projetos.filter(p=>(p.parcelas||[]).length>0);
-  const tot=com.reduce((a,p)=>a+p.parcelas.reduce((b,x)=>b+x.valor,0),0);
-  const rec=com.reduce((a,p)=>a+p.parcelas.reduce((b,x)=>b+(x.pago?x.valor:0),0),0);
+  const tot=com.reduce((a,p)=>a+(p.parcelas||[]).reduce((b,x)=>b+x.valor,0),0);
+  const rec=com.reduce((a,p)=>a+(p.parcelas||[]).reduce((b,x)=>b+(x.pago?x.valor:0),0),0);
   return(<div style={{display:"flex",flexDirection:"column",gap:20}}>
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:16}}>
       <Card style={{borderTop:`3px solid ${C.azulMedio}`,textAlign:"center"}}><div style={{fontSize:11,color:C.cinzaClaro,fontWeight:700,marginBottom:4}}>TOTAL CONTRATADO</div><div style={{fontSize:26,fontWeight:800,color:C.azulMedio}}>{fmt(tot)}</div></Card>
@@ -4207,7 +4207,7 @@ function Financeiro({projetos}){
     </div>
     <Card style={{padding:0,overflow:"hidden"}}>
       <div style={{padding:"14px 20px",borderBottom:`1px solid ${C.cinzaCard}`}}><h3 style={{color:C.azulEscuro,margin:0,fontSize:14,fontWeight:700}}>💰 Extrato por Projeto</h3></div>
-      <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}><thead><tr style={{background:C.cinzaFundo}}>{["Projeto","Status","Total","Recebido","Pendente","Progresso"].map(h=><th key={h} style={{padding:"8px 12px",color:C.cinzaEscuro,textAlign:"left",fontWeight:700,fontSize:11,borderBottom:`2px solid ${C.cinzaCard}`}}>{h}</th>)}</tr></thead><tbody>{com.map((p,i)=>{const t=p.parcelas.reduce((a,x)=>a+x.valor,0);const r=p.parcelas.reduce((a,x)=>a+(x.pago?x.valor:0),0);return <tr key={p.id} style={{borderBottom:`1px solid ${C.cinzaFundo}`,background:i%2===0?C.branco:"#fafbfc"}}><td style={{padding:"9px 12px"}}><div style={{fontWeight:600,color:C.azulMedio,fontSize:12}}>{p.codigo}</div><div style={{fontSize:11,color:C.cinzaClaro}}>{p.cliente.substring(0,35)}...</div></td><td style={{padding:"9px 12px"}}><Badge status={p.status}/></td><td style={{padding:"9px 12px",fontWeight:700}}>{fmt(t)}</td><td style={{padding:"9px 12px",color:C.verde,fontWeight:600}}>{fmt(r)}</td><td style={{padding:"9px 12px",color:(t-r)>0?C.amarelo:C.cinzaClaro,fontWeight:(t-r)>0?700:400}}>{fmt(t-r)}</td><td style={{padding:"9px 12px"}}><div style={{background:C.cinzaFundo,borderRadius:4,height:6,width:80}}><div style={{background:r===t?C.verde:C.azulClaro,height:6,borderRadius:4,width:`${t>0?(r/t)*100:0}%`}}/></div></td></tr>;})} </tbody></table></div>
+      <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}><thead><tr style={{background:C.cinzaFundo}}>{["Projeto","Status","Total","Recebido","Pendente","Progresso"].map(h=><th key={h} style={{padding:"8px 12px",color:C.cinzaEscuro,textAlign:"left",fontWeight:700,fontSize:11,borderBottom:`2px solid ${C.cinzaCard}`}}>{h}</th>)}</tr></thead><tbody>{com.map((p,i)=>{const t=(p.parcelas||[]).reduce((a,x)=>a+x.valor,0);const r=(p.parcelas||[]).reduce((a,x)=>a+(x.pago?x.valor:0),0);return <tr key={p.id} style={{borderBottom:`1px solid ${C.cinzaFundo}`,background:i%2===0?C.branco:"#fafbfc"}}><td style={{padding:"9px 12px"}}><div style={{fontWeight:600,color:C.azulMedio,fontSize:12}}>{p.codigo}</div><div style={{fontSize:11,color:C.cinzaClaro}}>{p.cliente.substring(0,35)}...</div></td><td style={{padding:"9px 12px"}}><Badge status={p.status}/></td><td style={{padding:"9px 12px",fontWeight:700}}>{fmt(t)}</td><td style={{padding:"9px 12px",color:C.verde,fontWeight:600}}>{fmt(r)}</td><td style={{padding:"9px 12px",color:(t-r)>0?C.amarelo:C.cinzaClaro,fontWeight:(t-r)>0?700:400}}>{fmt(t-r)}</td><td style={{padding:"9px 12px"}}><div style={{background:C.cinzaFundo,borderRadius:4,height:6,width:80}}><div style={{background:r===t?C.verde:C.azulClaro,height:6,borderRadius:4,width:`${t>0?(r/t)*100:0}%`}}/></div></td></tr>;})} </tbody></table></div>
     </Card>
   </div>);
 }
