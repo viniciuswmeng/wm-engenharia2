@@ -548,7 +548,7 @@ const Sel=({label,value,onChange,options,required})=>(
   <div style={{display:"flex",flexDirection:"column",gap:4}}>
     {label&&<label style={{fontSize:12,fontWeight:600,color:C.cinzaEscuro}}>{label}{required&&<span style={{color:C.vermelho}}> *</span>}</label>}
     <select value={value} onChange={e=>onChange(e.target.value)} style={{border:`1.5px solid ${C.cinzaCard}`,borderRadius:8,padding:"8px 12px",fontSize:14,fontFamily:"inherit",color:C.cinzaEscuro,outline:"none",background:C.branco,width:"100%",boxSizing:"border-box"}}>
-      {options.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
+      {(options||[]).map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
     </select>
   </div>
 );
@@ -1214,7 +1214,7 @@ function Produtividade({ registros, usuarios, projetos, usuarioAtual, calendario
         <Card><p style={{textAlign:'center',color:C.cinzaClaro,padding:20}}>Nenhum dado encontrado.</p></Card>
       )}
 
-      {dadosUsuario.map(d => {
+      {(dadosUsuario||[]).map(d => {
         const hPrevH = d.hPrevH;
         return (
           <div key={d.usuario.id} style={{display:'flex',flexDirection:'column',gap:16}}>
@@ -1658,7 +1658,7 @@ function ModuloCalendario({ calendario, usuarioAtual, registros, usuarios }) {
           <Card>
             <h3 style={{color:C.azulEscuro,margin:"0 0 14px",fontSize:14,fontWeight:700}}>{nomesMeses[mes]} {ano}</h3>
             <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3}}>
-              {semanas.map(s=>(
+              {(semanas||[]).map(s=>(
                 <div key={s} style={{textAlign:"center",fontSize:10,fontWeight:700,color:C.cinzaClaro,padding:"4px 0",background:C.cinzaFundo,borderRadius:4}}>{s}</div>
               ))}
               {Array(primeiroDia).fill(null).map((_,i)=><div key={"e"+i}/>)}
@@ -1702,7 +1702,7 @@ function ModuloCalendario({ calendario, usuarioAtual, registros, usuarios }) {
               {feriadosMes.length===0
                 ?<p style={{color:C.cinzaClaro,fontSize:12,margin:0}}>Nenhum feriado neste mes.</p>
                 :<div style={{display:"flex",flexDirection:"column",gap:5}}>
-                  {feriadosMes.map(f=>(
+                  {(feriadosMes||[]).map(f=>(
                     <div key={f.data} style={{display:"flex",justifyContent:"space-between",padding:"7px 10px",background:"#fff7ed",borderRadius:8,border:"1px solid #fed7aa",fontSize:12}}>
                       <span style={{fontWeight:700,color:C.laranja}}>{f.data.slice(8)}/{f.data.slice(5,7)}</span>
                       <span style={{color:C.cinzaEscuro,flex:1,marginLeft:10}}>{f.nome}</span>
@@ -1715,7 +1715,7 @@ function ModuloCalendario({ calendario, usuarioAtual, registros, usuarios }) {
             <Card>
               <h3 style={{color:C.azulEscuro,margin:"0 0 12px",fontSize:13,fontWeight:700}}>👥 Horas — {nomesMeses[mes]}</h3>
               <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                {resumoHoras.map(d=>(
+                {(resumoHoras||[]).map(d=>(
                   <div key={d.usuario.id} style={{padding:"10px 12px",background:C.cinzaFundo,borderRadius:8}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
                       <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -1775,7 +1775,7 @@ function ModuloCalendario({ calendario, usuarioAtual, registros, usuarios }) {
           {/* Lista completa do ano */}
           <div style={{display:"flex",flexDirection:"column",gap:6}}>
             {todosAno.length === 0 && <p style={{color:C.cinzaClaro,fontSize:13,textAlign:"center",padding:20}}>Nenhum feriado carregado. Clique em "Atualizar API".</p>}
-            {todosAno.map(([iso, info]) => (
+            {(todosAno||[]).map(([iso, info]) => (
               <div key={iso} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",
                 background:info.excluido?"#fef2f2":info.editado?"#fffbeb":info.origem==="manual"?"#f0fdf4":C.cinzaFundo,
                 borderRadius:10,border:`1px solid ${info.excluido?"#fecaca":info.editado?"#fde68a":info.origem==="manual"?"#86efac":C.cinzaCard}`,
@@ -2282,7 +2282,7 @@ function Escalas({ usuarioAtual, usuarios }) {
         <Card>
           <h3 style={{color:C.azulEscuro,margin:"0 0 14px",fontSize:14,fontWeight:700}}>📅 Próximas Semanas</h3>
           <div style={{display:"flex",flexDirection:"column",gap:6}}>
-            {semanas.map((s,i)=>{
+            {(semanas||[]).map((s,i)=>{
               const passada  = s.data < hoje;
               const atual    = s.data === semanaAtual?.data;
               const idx      = i % escala.membros.length;
@@ -2314,7 +2314,7 @@ function Escalas({ usuarioAtual, usuarios }) {
               <span style={{fontSize:11,color:C.cinzaClaro}}>{escala.membros.length} membro(s)</span>
             </div>
             <div style={{display:"flex",flexDirection:"column",gap:6}}>
-              {escala.membros.map((m,i)=>(
+              {(escala.membros||[]).map((m,i)=>(
                 <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:C.cinzaFundo,borderRadius:8}}>
                   <span style={{fontSize:11,fontWeight:700,color:C.cinzaClaro,minWidth:20}}>#{i+1}</span>
                   <span style={{flex:1,fontSize:13,fontWeight:600,color:C.cinzaEscuro}}>{m}</span>
@@ -2586,7 +2586,7 @@ function Configuracoes({usuarios,onSalvarUsuarios,usuarioAtual}){
         )}
 
         <div style={{display:"flex",flexDirection:"column",gap:10}}>
-          {lista.map(u=>(
+          {(lista||[]).map(u=>(
             <div key={u.id} style={{display:"flex",alignItems:"center",gap:14,padding:"12px 16px",borderRadius:10,border:`1.5px solid ${C.cinzaCard}`,opacity:u.ativo?1:0.55}}>
               <Avatar u={u} size={42}/>
               <div style={{flex:1}}>
@@ -2674,7 +2674,7 @@ function PainelDrive({drive,projetosExistentes,onImportar}){
             <Btn onClick={()=>{onImportar(pastasNovo.filter(p=>sel[p.id]));setPN([]);setSync(false);}} variant="verde" small disabled={qtd===0}>⬇ Importar {qtd}</Btn>
           </div>
           <div style={{display:"flex",flexDirection:"column",gap:6,maxHeight:280,overflowY:"auto"}}>
-            {pastasNovo.map(p=>(
+            {(pastasNovo||[]).map(p=>(
               <div key={p.id} onClick={()=>setSel(s=>({...s,[p.id]:!s[p.id]}))} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",background:sel[p.id]?"#f0f9ff":"#f8fafc",borderRadius:8,border:`1px solid ${sel[p.id]?C.azulClaro:C.cinzaCard}`,cursor:"pointer"}}>
                 <input type="checkbox" checked={!!sel[p.id]} onChange={()=>setSel(s=>({...s,[p.id]:!s[p.id]}))} onClick={e=>e.stopPropagation()} style={{width:15,height:15}}/>
                 <TipoBadge tipo={p.tipo}/><span style={{fontSize:12,fontWeight:600,color:C.azulMedio,minWidth:100}}>{p.codigo}</span>
@@ -3028,7 +3028,7 @@ function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}){
                 <div style={{display:"flex",flexDirection:"column",gap:12}}>
                   {/* Botões para adicionar membro */}
                   <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
-                    {usuariosDisponiveis.map(u=>{
+                    {(usuariosDisponiveis||[]).map(u=>{
                       const jaEsta = membros.find(m=>m.usuarioNome===u.nome);
                       return(
                         <button key={u.id} onClick={()=>jaEsta?null:adicionarMembro(u)}
@@ -3055,7 +3055,7 @@ function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}){
                   </span>}
 
                   {/* Cards por membro */}
-                  {membros.map((m,mIdx)=>{
+                  {(membros||[]).map((m,mIdx)=>{
                     const u = usuariosDisponiveis.find(x=>x.nome===m.usuarioNome)||{cor:C.azulMedio,nome:m.usuarioNome};
                     return(
                       <div key={m.usuarioNome} style={{border:`2px solid ${u.cor||C.azulMedio}22`,borderRadius:12,
@@ -3416,7 +3416,7 @@ function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}){
               {carregandoAtu && <div style={{textAlign:"center",color:C.cinzaClaro,padding:16}}>⏳ Carregando...</div>}
               {!carregandoAtu && atualizacoes.length===0 && <div style={{textAlign:"center",color:C.cinzaClaro,padding:16,fontSize:12}}>Nenhuma atualização ainda. Adicione a primeira acima!</div>}
               <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:360,overflowY:"auto"}}>
-                {atualizacoes.map(a=>{
+                {(atualizacoes||[]).map(a=>{
                   const isSessao = a.origem==="sessao" || a.tipo==="sessao";
                   return (
                   <div key={a.id} style={{display:"flex",gap:10,padding:"10px 12px",
@@ -4833,7 +4833,7 @@ function SelC({label,val,onChange,opts,full=false}) {
       <label style={{fontSize:10,fontWeight:700,color:C_CONTRATO.sub,textTransform:"uppercase",letterSpacing:.5}}>{label}</label>
       <select value={val} onChange={e=>onChange(e.target.value)}
         style={{border:`1px solid ${C_CONTRATO.borda}`,borderRadius:8,padding:"9px 12px",fontSize:13,fontFamily:"inherit",outline:"none",color:C_CONTRATO.texto,background:"#fff"}}>
-        {opts.map(o=><option key={o.v||o} value={o.v||o}>{o.l||o}</option>)}
+        {(opts||[]).map(o=><option key={o.v||o} value={o.v||o}>{o.l||o}</option>)}
       </select>
     </div>
   );
