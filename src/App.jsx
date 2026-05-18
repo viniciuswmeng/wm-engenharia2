@@ -4946,10 +4946,10 @@ function GeradorContratos({ projetos, usuarios, usuarioAtual }) {
   const toggleNaoIncluso = s => set("naoInclusos", form.naoInclusos.includes(s)?form.naoInclusos.filter(x=>x!==s):[...form.naoInclusos,s]);
   const addEtapa  = () => set("cronograma",[...form.cronograma,{etapa:`ETAPA ${form.cronograma.length+1} – NOVA ETAPA`,tarefas:[{nome:"",duracao:"",pred:""}]}]);
   const rmEtapa   = i => set("cronograma",form.cronograma.filter((_,idx)=>idx!==i));
-  const updEtapa  = (i,v) => set("cronograma",form.cronograma.map((e,idx)=>idx===i?{...e,etapa:v}:e));
-  const addTarefa = i => set("cronograma",form.cronograma.map((e,idx)=>idx===i?{...e,tarefas:[...e.tarefas,{nome:"",duracao:"",pred:""}]}:e));
-  const rmTarefa  = (i,j) => set("cronograma",form.cronograma.map((e,idx)=>idx===i?{...e,tarefas:e.tarefas.filter((_,jdx)=>jdx!==j)}:e));
-  const updTarefa = (i,j,k,v) => set("cronograma",form.cronograma.map((e,idx)=>idx===i?{...e,tarefas:e.tarefas.map((t,jdx)=>jdx===j?{...t,[k]:v}:t)}:e));
+  const updEtapa  = (i,v) => set("cronograma",(form.cronograma||[]).map((e,idx)=>idx===i?{...e,etapa:v}:e));
+  const addTarefa = i => set("cronograma",(form.cronograma||[]).map((e,idx)=>idx===i?{...e,tarefas:[...e.tarefas,{nome:"",duracao:"",pred:""}]}:e));
+  const rmTarefa  = (i,j) => set("cronograma",(form.cronograma||[]).map((e,idx)=>idx===i?{...e,tarefas:e.tarefas.filter((_,jdx)=>jdx!==j)}:e));
+  const updTarefa = (i,j,k,v) => set("cronograma",(form.cronograma||[]).map((e,idx)=>idx===i?{...e,tarefas:e.tarefas.map((t,jdx)=>jdx===j?{...t,[k]:v}:t)}:e));
   const resp1 = (usuarios||[]).find(u=>u.perfil==="gestor") || usuarioAtual;
   const resp2 = (usuarios||[]).filter(u=>u.perfil==="gestor")[1];
 
@@ -4986,7 +4986,7 @@ function GeradorContratos({ projetos, usuarios, usuarioAtual }) {
 <p><strong>Cláusula 14ª.</strong> Atividades marcadas com ⚠ no Anexo II dependem da disponibilidade do CONTRATANTE e não serão imputadas à CONTRATADA em caso de atraso por sua parte.</p>
 ${form.cronograma.length>0?`<h2 class="sec">Cronograma de Execução — Anexo II</h2>
 <table><tr><th>Tarefa</th><th>Duração</th><th>Pred.</th></tr>
-${form.cronograma.map(et=>`<tr><td colspan="3" style="background:#1a4a7a;color:#fff;font-weight:700;padding:8px">${et.etapa}</td></tr>${et.tarefas.map(t=>`<tr><td>${t.nome}</td><td>${t.duracao}</td><td>${t.pred}</td></tr>`).join("")}`).join("")}
+${(form.cronograma||[]).map(et=>`<tr><td colspan="3" style="background:#1a4a7a;color:#fff;font-weight:700;padding:8px">${et.etapa}</td></tr>${et.tarefas.map(t=>`<tr><td>${t.nome}</td><td>${t.duracao}</td><td>${t.pred}</td></tr>`).join("")}`).join("")}
 </table><p style="font-size:10pt">⚠ Condicionado à disponibilidade do CONTRATANTE — prazo suspenso em caso de atraso por sua parte.</p>`:""}
 <h2 class="sec">Da Confidencialidade</h2>
 <p><strong>Cláusula 15ª.</strong> As partes manterão sigilo sobre todas as informações técnicas, financeiras e pessoais por 5 (cinco) anos após o encerramento. A CONTRATADA poderá usar imagens não identificáveis da obra em portfólio mediante autorização do CONTRATANTE.</p>
@@ -5015,10 +5015,10 @@ ${form.cronograma.map(et=>`<tr><td colspan="3" style="background:#1a4a7a;color:#
 <h3 style="margin:14px 0 6px;font-size:11pt">1. Documentos a Fornecer pelo Contratante</h3>
 <p>☐ Projeto arquitetônico completo (plantas, cortes, fachadas) em DWG ou PDF;<br/>☐ Sondagem de solo (SPT) ou laudo geotécnico;<br/>☐ Número do processo de aprovação na Prefeitura (se houver);<br/>☐ Dados do fornecimento de energia da concessionária (se disponível).</p>
 <h3 style="margin:14px 0 6px;font-size:11pt">2. Entregas da Contratada</h3>
-${form.servicos.map(s=>`<p><strong>${s}:</strong> Plantas, detalhes construtivos, memória de cálculo e ART conforme normas técnicas vigentes. Arquivos em ${form.formatoEntrega}.</p>`).join("")}
+${(form.servicos||[]).map(s=>`<p><strong>${s}:</strong> Plantas, detalhes construtivos, memória de cálculo e ART conforme normas técnicas vigentes. Arquivos em ${form.formatoEntrega}.</p>`).join("")}
 ${form.adicionaisInclusos?`<p><strong>Adicionais:</strong> ${form.adicionaisInclusos}</p>`:""}
 <h3 style="margin:14px 0 6px;font-size:11pt">3. O Que Não Está Incluso</h3>
-${form.naoInclusos.map(n=>`<p>☐ ${n}</p>`).join("")}
+${(form.naoInclusos||[]).map(n=>`<p>☐ ${n}</p>`).join("")}
 <div class="ass-grid" style="margin-top:40px">
   <div class="ass-line">CONTRATANTE</div>
   <div class="ass-line">CONTRATADA – WM Engenharia Integrada</div>
@@ -5307,7 +5307,7 @@ h3{font-size:11pt;font-family:Arial,sans-serif;margin:8px 0 4px}
               {form.naoInclusos.includes(s)?"✖":"○"} {s}</button>)}
           </div>
           <SecC titulo="Cronograma de Execução (Anexo II)"/>
-          {form.cronograma.map((etapa,i)=>(
+          {(form.cronograma||[]).map((etapa,i)=>(
             <div key={i} style={{border:`1px solid ${C2.borda}`,borderRadius:10,marginBottom:12,overflow:"hidden"}}>
               <div style={{display:"flex",alignItems:"center",gap:8,background:C2.azul,padding:"10px 14px"}}>
                 <input value={etapa.etapa} onChange={e=>updEtapa(i,e.target.value)} style={{flex:1,background:"transparent",border:"none",color:"#fff",fontWeight:700,fontSize:13,outline:"none"}}/>
