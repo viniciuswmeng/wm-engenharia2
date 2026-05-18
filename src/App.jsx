@@ -4817,23 +4817,27 @@ function ChatFlutuante({ usuario, usuarios, aberto, onToggle, pulsando, temMenca
 // ─── COMPONENTES DO GERADOR DE CONTRATOS (fora do componente para evitar remount) ─
 const C_CONTRATO = { azul:"#0d1e35", azulM:"#1a4a7a", azulC:"#2e6da8", cinza:"#f0f4f8", borda:"#dde3ec", verde:"#16a34a", texto:"#1e293b", sub:"#64748b" };
 
-function InpC({label,val,onChange,type="text",placeholder="",full=false}) {
+function InpC({label,val,value,onChange,type="text",placeholder="",full=false,required=false,readOnly=false,style={}}) {
+  const v = val !== undefined ? val : (value !== undefined ? value : "");
   return (
     <div style={{display:"flex",flexDirection:"column",gap:4,flex:full?"1 1 100%":"1 1 200px"}}>
       <label style={{fontSize:10,fontWeight:700,color:C_CONTRATO.sub,textTransform:"uppercase",letterSpacing:.5}}>{label}</label>
-      <input type={type} value={val} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
-        style={{border:`1px solid ${C_CONTRATO.borda}`,borderRadius:8,padding:"9px 12px",fontSize:13,fontFamily:"inherit",outline:"none",color:C_CONTRATO.texto,background:"#fff"}}/>
+      <input type={type} value={v} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
+        required={required} readOnly={readOnly}
+        style={{border:`1px solid ${C_CONTRATO.borda}`,borderRadius:8,padding:"9px 12px",fontSize:13,fontFamily:"inherit",outline:"none",color:C_CONTRATO.texto,background:readOnly?"#f8fafc":"#fff",...style}}/>
     </div>
   );
 }
 
-function SelC({label,val,onChange,opts,full=false}) {
+function SelC({label,val,value,onChange,opts,options,full=false}) {
+  const v = val !== undefined ? val : (value !== undefined ? value : "");
+  const o = opts || options || [];
   return (
     <div style={{display:"flex",flexDirection:"column",gap:4,flex:full?"1 1 100%":"1 1 200px"}}>
       <label style={{fontSize:10,fontWeight:700,color:C_CONTRATO.sub,textTransform:"uppercase",letterSpacing:.5}}>{label}</label>
-      <select value={val} onChange={e=>onChange(e.target.value)}
+      <select value={v} onChange={e=>onChange(e.target.value)}
         style={{border:`1px solid ${C_CONTRATO.borda}`,borderRadius:8,padding:"9px 12px",fontSize:13,fontFamily:"inherit",outline:"none",color:C_CONTRATO.texto,background:"#fff"}}>
-        {(opts||[]).map(o=><option key={o.v||o} value={o.v||o}>{o.l||o}</option>)}
+        {o.map(op=><option key={op.v||op.value||op} value={op.v||op.value||op}>{op.l||op.label||op}</option>)}
       </select>
     </div>
   );
