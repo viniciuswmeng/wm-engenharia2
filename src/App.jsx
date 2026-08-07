@@ -6161,6 +6161,7 @@ export default function App(){
     {id:"horas",        label:"Horas",       icone:"⏱"},
     {id:"agenda",       label:"Agenda",      icone:"📅"},
     ...(!isColab ? [{id:"contratos", label:"Contratos", icone:"📄"}] : []),
+    ...(!isColab ? [{id:"orcamentos", label:"Orçamentos", icone:"🧮"}] : []),
   ];
 
   // Abas no menu lateral
@@ -6171,6 +6172,7 @@ export default function App(){
     {id:"horas",        label:"Horas & Produtividade", icone:"⏱", grupo:"horas"},
     {id:"agenda",       label:"Agenda & Escalas",  icone:"📅", grupo:"agenda"},
     ...(!isColab ? [{id:"contratos", label:"Contratos", icone:"📄", grupo:"principal"}] : []),
+    ...(!isColab ? [{id:"orcamentos", label:"Orçamentos", icone:"🧮", grupo:"principal"}] : []),
     {id:"config",       label:"Configurações",     icone:"⚙",  grupo:"config"},
   ];
 
@@ -6303,6 +6305,15 @@ export default function App(){
         {aba==="agenda"    &&<AbaAgenda calendario={calendario} usuarioAtual={user} registros={registros} usuarios={usuarios}/>}
         {aba==="config"    &&<Configuracoes usuarios={usuarios} onSalvarUsuarios={salvarUsuarios} usuarioAtual={user}/>}
         {aba==="contratos"  &&<GeradorContratos projetos={projetos} usuarios={usuarios} usuarioAtual={user}/>}
+        {aba==="orcamentos" && (
+          <div style={{margin:"-28px -24px",height:"calc(100vh - 88px)"}}>
+            <iframe
+              src="/orcamentos.html"
+              title="Gerador de Orçamentos"
+              style={{width:"100%",height:"100%",border:"none",display:"block"}}
+            />
+          </div>
+        )}
       </main>
 
       {modal&&<ModalProjeto projeto={modal.projeto} modo={modal.modo} onClose={()=>setModal(null)} onSave={salvarP} onExcluir={excluirP} usuarios={usuarios}/>}
