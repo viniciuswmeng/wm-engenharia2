@@ -5061,7 +5061,7 @@ body{width:210mm;margin:0 auto;padding:6mm 0;color:#1a1a1a;-webkit-print-color-a
 .pg{position:relative;width:210mm;height:297mm;overflow:hidden;background:#fff;margin:0 auto 6mm;box-shadow:0 2px 12px rgba(0,0,0,.25);break-after:page;page-break-after:always}
 .pg:last-child{break-after:auto;page-break-after:auto}
 .pg img.fundo{position:absolute;top:0;left:0;width:210mm;height:297mm;z-index:0}
-.area{position:absolute;z-index:1;overflow:hidden}
+.area{position:absolute;z-index:1;overflow:visible}
 .npag{position:absolute;z-index:1;font:8pt Arial,Helvetica,sans-serif;color:#6b7280;text-align:right}
 .doc{font-family:Arial,Helvetica,sans-serif;font-size:10.5pt;line-height:1.45;color:#1a1a1a}
 .doc h1{text-align:center;font-size:12.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#0d1e35;margin:0 0 10px}
@@ -5086,9 +5086,12 @@ body{width:210mm;margin:0 auto;padding:6mm 0;color:#1a1a1a;-webkit-print-color-a
 </head><body>
 <div id="fonte" class="doc" style="position:absolute;left:-10000px;top:0">${linhasContrato}</div>
 <script>
-(function(){
+(document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(function(){
   // Margens (mm) — área útil entre o cabeçalho e o rodapé do papel timbrado
   var TOPO = 44, BASE = 36, ESQ = 24, DIR = 24;
+  // Folga de segurança: ao imprimir, o navegador pode refazer as quebras de linha e
+  // ganhar uma linha a mais por página; a folga evita que o texto encoste no rodapé.
+  var FOLGA = 8;
   var PAPEL = ${JSON.stringify(PAPEL)};
   var r = document.createElement("div"); r.style.cssText = "position:absolute;width:100mm;height:1px;visibility:hidden"; document.body.appendChild(r);
   var MM = r.getBoundingClientRect().width / 100; r.remove();
@@ -5101,10 +5104,10 @@ body{width:210mm;margin:0 auto;padding:6mm 0;color:#1a1a1a;-webkit-print-color-a
     var area = document.createElement("div"); area.className = "area doc";
     area.style.cssText = "top:" + TOPO + "mm;left:" + ESQ + "mm;width:" + UTIL_W + "px;height:" + UTIL_H + "px";
     fluxo = document.createElement("div"); area.appendChild(fluxo); pg.appendChild(area);
-    var np = document.createElement("div"); np.className = "npag"; np.style.cssText = "right:" + DIR + "mm;top:" + (297 - BASE + 2) + "mm"; pg.appendChild(np);
+    var np = document.createElement("div"); np.className = "npag"; np.style.cssText = "right:" + DIR + "mm;top:" + (297 - BASE + 3) + "mm"; pg.appendChild(np);
     document.body.appendChild(pg); paginas.push(np);
   }
-  function cabe(){ return fluxo.offsetHeight <= UTIL_H; }
+  function cabe(){ return fluxo.offsetHeight <= UTIL_H - FOLGA * MM; }
   function vazio(){ return !fluxo.children.length; }
   function ehTitulo(n){ return /^H[1-3]$/.test(n.tagName); }
   function tabelaNova(modelo){
@@ -5136,13 +5139,13 @@ body{width:210mm;margin:0 auto;padding:6mm 0;color:#1a1a1a;-webkit-print-color-a
     if (!cabe() && fluxo.children.length > 1) { fluxo.removeChild(no); novaPagina(); fluxo.appendChild(no); }
     // título não fica sozinho no fim da página
     var prox = nos[i + 1];
-    if ((ehTitulo(no) || /\bsec\b/.test(no.className)) && prox && fluxo.children.length > 1 && (UTIL_H - fluxo.offsetHeight) < 22 * MM) {
+    if ((ehTitulo(no) || /\bsec\b/.test(no.className)) && prox && fluxo.children.length > 1 && (UTIL_H - FOLGA * MM - fluxo.offsetHeight) < 22 * MM) {
       fluxo.removeChild(no); novaPagina(); fluxo.appendChild(no);
     }
   });
   fonte.remove();
   paginas.forEach(function(np, i){ np.textContent = "Página " + (i + 1) + " de " + paginas.length; });
-})();
+});
 </script>
 </body>
 </html>`;
