@@ -5034,7 +5034,8 @@ function GeradorContratos({ projetos, usuarios, usuarioAtual }) {
 <h3>1. Documentos a Fornecer pelo Contratante</h3>
 <p>☐ Projeto arquitetônico completo (plantas, cortes, fachadas) em DWG ou PDF;<br/>☐ Sondagem de solo (SPT) ou laudo geotécnico;<br/>☐ Número do processo de aprovação na Prefeitura (se houver);<br/>☐ Dados do fornecimento de energia da concessionária (se disponível).</p>
 <h3>2. Entregas da Contratada</h3>
-${(form.servicos||[]).map(s=>`<p><strong>${s}:</strong> Plantas, detalhes construtivos, memória de cálculo e ART conforme normas técnicas vigentes. Arquivos em ${form.formatoEntrega}.</p>`).join("")}
+${(form.servicos||[]).map(s=>`<p><strong>${s}:</strong> Plantas, detalhes construtivos e ART, conforme normas técnicas vigentes. Arquivos em ${form.formatoEntrega}.</p>`).join("")}
+<p>Memória de cálculo e memorial descritivo não fazem parte das entregas; podem ser fornecidos somente se contratados à parte.</p>
 ${form.adicionaisInclusos?`<p><strong>Adicionais:</strong> ${form.adicionaisInclusos}</p>`:""}
 <h3>3. O Que Não Está Incluso</h3>
 ${(form.naoInclusos||[]).map(n=>`<p>☐ ${n}</p>`).join("")}
