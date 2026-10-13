@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { db, supabase, iniciarRealtime, enviarEmail, portal, chat } from "./supabase.js";
+import { db, supabase, authClient, iniciarRealtime, enviarEmail, portal, chat } from "./supabase.js";
 import CronogramaEditor from "./contratos/CronogramaEditor.jsx";
 import { gerar as gerarCronograma, normalizar as normalizarCronograma, tabelaHTML as cronogramaTabelaHTML } from "./contratos/cronograma.js";
 
@@ -145,11 +145,11 @@ const DISCIPLINAS_CB = [
 ];
 
 const USUARIOS_PADRAO = [
-  { id:"vinicius", nome:"Vinicius", email:"wmengenhariaintegrada@gmail.com", senha:"1234",
+  { id:"vinicius", nome:"Vinicius", email:"vinicius.wilk13@gmail.com",
     perfil:"gestor", cor:"#1a4a7a", iniciais:"VI", ativo:true,
     expediente:{ turno1:{inicio:"09:00",fim:"12:00"}, turno2:{ativo:true,inicio:"14:00",fim:"18:00"}, modo:"E" },
     salario:0, especialidades:["PE","PR","LT","PF","CT"] },
-  { id:"jonathan", nome:"Jonathan", email:"wmengenhariaintegrada@gmail.com", senha:"1234",
+  { id:"jonathan", nome:"Jonathan", email:"jonathanmartins.eng@gmail.com",
     perfil:"gestor", cor:"#dc2626", iniciais:"JO", ativo:true,
     expediente:{ turno1:{inicio:"09:00",fim:"12:00"}, turno2:{ativo:true,inicio:"14:00",fim:"18:00"}, modo:"E" },
     especialidades:["EL","PH"] },
@@ -561,66 +561,32 @@ const Sel=({label,value,onChange,options,required})=>(
 const Avatar=({u,size=36})=><div style={{width:size,height:size,borderRadius:"50%",background:u?.cor||C.azulMedio,display:"flex",alignItems:"center",justifyContent:"center",color:C.branco,fontWeight:800,fontSize:size*0.35,flexShrink:0}}>{u?.iniciais||"?"}</div>;
 
 // ─── TELA DE LOGIN ─────────────────────────────────────────────────────────────
-function TelaLogin({usuarios,onLogin}){
-  const [etapa,setEtapa]=useState("sel");
-  const [userSel,setUserSel]=useState(null);
-  const [senha,setSenha]=useState("");
-  const [erro,setErro]=useState("");
+// Contas Google com acesso garantido (primeiro acesso cria/vincula o usuário).
+// Demais pessoas entram se o e-mail Google estiver cadastrado em Configurações → Colaboradores.
+const ACESSOS_GOOGLE = {
+  "jonathanmartins.eng@gmail.com":     { id:"jonathan",   nome:"Jonathan",      perfil:"gestor",      cor:"#dc2626" },
+  "vinicius.wilk13@gmail.com":         { id:"vinicius",   nome:"Vinicius",      perfil:"gestor",      cor:"#1a4a7a" },
+  "wmengenhariaintegrada@gmail.com":   { id:"wm",         nome:"WM Engenharia", perfil:"admin",       cor:"#0d1e35" },
+  "estagiario.wmengenharia@gmail.com": { id:"estagiario", nome:"Estagiário",    perfil:"colaborador", cor:"#059669" },
+};
+const normEmail = e => String(e||"").trim().toLowerCase();
 
+// ─── TELA DE LOGIN (Google) ────────────────────────────────────────────────────
+function TelaLogin({estado,erro,onGoogle}){
+  const [indo,setIndo]=useState(false);
+  const entrar=async()=>{ setIndo(true); try{ await onGoogle(); }catch{ setIndo(false); } };
   return(
-    <div style={{minHeight:"100vh",background:`linear-gradient(160deg,${C.cinzaEscuro} 0%,${C.azulMedio} 55%,${C.azulClaro} 100%)`,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-      <div style={{background:C.branco,borderRadius:20,padding:40,width:"100%",maxWidth:440,boxShadow:"0 24px 64px rgba(0,0,0,0.25)"}}>
-        <div style={{textAlign:"center",marginBottom:32}}>
-          <img src="/Logo_Sem_Fundo.png" alt="WM Engenharia" style={{height:120,objectFit:"contain",margin:"0 auto",display:"block"}}/>
-        </div>
-
-        {etapa==="sel"?(
-          <>
-            <h2 style={{color:C.cinzaEscuro,fontSize:18,fontWeight:700,margin:"0 0 6px",textAlign:"center"}}>Quem está acessando?</h2>
-            <p style={{color:C.cinzaClaro,fontSize:13,margin:"0 0 24px",textAlign:"center"}}>Selecione seu perfil para continuar</p>
-            <div style={{display:"flex",flexDirection:"column",gap:10}}>
-              {usuarios.filter(u=>u.ativo).map(u=>(
-                <div key={u.id} onClick={()=>{setUserSel(u);setEtapa("senha");setErro("");setSenha("");}}
-                  style={{display:"flex",alignItems:"center",gap:14,padding:"14px 16px",borderRadius:12,border:`2px solid ${C.cinzaCard}`,cursor:"pointer",transition:"all 0.2s"}}
-                  onMouseEnter={e=>{e.currentTarget.style.borderColor=C.azulMedio;e.currentTarget.style.background="#f0f6ff";}}
-                  onMouseLeave={e=>{e.currentTarget.style.borderColor=C.cinzaCard;e.currentTarget.style.background=C.branco;}}>
-                  <Avatar u={u} size={44}/>
-                  <div style={{flex:1}}>
-                    <div style={{fontWeight:700,color:C.cinzaEscuro,fontSize:15}}>{u.nome}</div>
-                    <div style={{fontSize:11,color:C.cinzaClaro,marginTop:2,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-                      <span>{u.perfil==="admin"?"👑 Admin":u.perfil==="gestor"?"🔑 Gestor":"👤 Colaborador"}</span>
-                      {(u.especialidades||[]).map(e=><span key={e} style={{background:C.cinzaEscuro,color:C.ciano,padding:"1px 5px",borderRadius:3,fontSize:9,fontWeight:800}}>{e}</span>)}
-                    </div>
-                  </div>
-                  <span style={{color:C.cinzaClaro,fontSize:22}}>›</span>
-                </div>
-              ))}
-            </div>
-          </>
-        ):(
-          <>
-            <button onClick={()=>{setEtapa("sel");setSenha("");setErro("");}} style={{background:"none",border:"none",color:C.azulMedio,cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:20,display:"flex",alignItems:"center",gap:4}}>← Voltar</button>
-            <div style={{display:"flex",alignItems:"center",gap:14,padding:"14px 16px",borderRadius:12,background:C.cinzaFundo,marginBottom:24}}>
-              <Avatar u={userSel} size={48}/>
-              <div>
-                <div style={{fontWeight:700,color:C.cinzaEscuro,fontSize:16}}>{userSel?.nome}</div>
-                <div style={{fontSize:12,color:C.cinzaClaro}}>{userSel?.email}</div>
-              </div>
-            </div>
-            <div style={{display:"flex",flexDirection:"column",gap:16}}>
-              <div style={{display:"flex",flexDirection:"column",gap:4}}>
-                <label style={{fontSize:12,fontWeight:600,color:C.cinzaEscuro}}>Senha <span style={{color:C.vermelho}}>*</span></label>
-                <input type="password" value={senha} onChange={e=>setSenha(e.target.value)}
-                  placeholder="Digite sua senha"
-                  autoFocus
-                  onKeyDown={e=>{ if(e.key==="Enter"){ if(userSel.senha===senha) onLogin(userSel); else{setErro("Senha incorreta.");setSenha("");} } }}
-                  style={{border:`1.5px solid ${C.cinzaCard}`,borderRadius:8,padding:"10px 12px",fontSize:14,fontFamily:"inherit",color:C.cinzaEscuro,outline:"none",background:C.branco,width:"100%",boxSizing:"border-box"}}/>
-              </div>
-              {erro&&<div style={{padding:"8px 12px",background:"#fef2f2",borderRadius:8,fontSize:13,color:C.vermelho,border:"1px solid #fecaca"}}>⚠ {erro}</div>}
-              <Btn onClick={()=>{ if(userSel.senha===senha) onLogin(userSel); else {setErro("Senha incorreta.");setSenha("");} }} style={{width:"100%",justifyContent:"center"}}>Entrar no Sistema</Btn>
-            </div>
-          </>
-        )}
+    <div style={{minHeight:"100vh",background:`linear-gradient(160deg,${C.cinzaEscuro} 0%,${C.azulMedio} 55%,${C.azulClaro} 100%)`,display:"flex",alignItems:"center",justifyContent:"center",padding:20,fontFamily:"'Segoe UI',system-ui,sans-serif"}}>
+      <div style={{background:C.branco,borderRadius:20,padding:40,width:"100%",maxWidth:420,boxShadow:"0 24px 64px rgba(0,0,0,0.25)",textAlign:"center"}}>
+        <img src="/Logo_Sem_Fundo.png" alt="WM Engenharia" style={{height:120,objectFit:"contain",margin:"0 auto 24px",display:"block"}}/>
+        <h2 style={{color:C.cinzaEscuro,fontSize:18,fontWeight:700,margin:"0 0 6px"}}>Acesse o sistema</h2>
+        <p style={{color:C.cinzaClaro,fontSize:13,margin:"0 0 24px"}}>Entre com a sua conta Google cadastrada na WM</p>
+        <button onClick={entrar} disabled={indo||estado==="verificando"}
+          style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"center",gap:12,padding:"12px 16px",borderRadius:10,border:`1.5px solid ${C.cinzaCard}`,background:C.branco,cursor:indo?"wait":"pointer",fontSize:15,fontWeight:600,color:C.cinzaEscuro,fontFamily:"inherit",boxShadow:"0 1px 3px rgba(13,30,53,0.08)",opacity:(indo||estado==="verificando")?0.7:1}}>
+          <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
+          {estado==="verificando"?"Verificando acesso…":indo?"Abrindo o Google…":"Entrar com Google"}
+        </button>
+        {erro&&<div style={{marginTop:16,padding:"10px 12px",background:"#fef2f2",borderRadius:8,fontSize:13,color:C.vermelho,border:"1px solid #fecaca",textAlign:"left"}}>⚠ {erro}</div>}
       </div>
     </div>
   );
@@ -2375,7 +2341,7 @@ function Configuracoes({usuarios,onSalvarUsuarios,usuarioAtual}){
   const [lista,setLista]=useState(usuarios);
   const [editId,setEditId]=useState(null);
   const [showForm,setShowForm]=useState(false);
-  const VAZIO={id:"",nome:"",email:"",senha:"",salario:0,perfil:"colaborador",cor:"#1a4a7a",iniciais:"",ativo:true,expediente:expedientePadrao(),especialidades:[]};
+  const VAZIO={id:"",nome:"",email:"",salario:0,perfil:"colaborador",cor:"#1a4a7a",iniciais:"",ativo:true,expediente:expedientePadrao(),especialidades:[]};
   const [form,setForm]=useState(VAZIO);
   const sf=(k,v)=>setForm(f=>({...f,[k]:v}));
   const se=(k,v)=>setForm(f=>({...f,expediente:{...f.expediente,[k]:v}}));
@@ -2383,7 +2349,7 @@ function Configuracoes({usuarios,onSalvarUsuarios,usuarioAtual}){
   useEffect(()=>{ onSalvarUsuarios(lista); },[lista]);
 
   const salvarForm=()=>{
-    if(!form.nome||!form.email||!form.senha) return;
+    if(!form.nome||!form.email) return;
     const id=form.id||form.nome.toLowerCase().replace(/\s+/g,".").normalize("NFD").replace(/[\u0300-\u036f]/g,"");
     const iniciais=form.iniciais||form.nome.split(" ").map(p=>p[0]).join("").substring(0,2).toUpperCase();
     const u={...form,id,iniciais};
@@ -2478,8 +2444,7 @@ function Configuracoes({usuarios,onSalvarUsuarios,usuarioAtual}){
             <h3 style={{color:C.azulEscuro,margin:"0 0 16px",fontSize:14}}>{editId?"✏ Editar":"➕ Novo"} Colaborador</h3>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
               <InpC label="Nome completo *" value={form.nome} onChange={v=>sf("nome",v)}/>
-              <InpC label="Email" value={form.email} onChange={v=>sf("email",v)} type="email"/>
-              <InpC label="Senha *" value={form.senha} onChange={v=>sf("senha",v)} type="password"/>
+              <InpC label="E-mail Google (login) *" value={form.email} onChange={v=>sf("email",v.trim().toLowerCase())} type="email" placeholder="nome@gmail.com"/>
               <InpC label="Salario Mensal (R$)" value={form.salario||""} onChange={v=>sf("salario",parseFloat(v)||0)} type="number" placeholder="Ex: 3500"/>
               <SelC label="Perfil" value={form.perfil} onChange={v=>sf("perfil",v)} options={[{value:"colaborador",label:"👤 Colaborador"},{value:"gestor",label:"🔑 Gestor"},{value:"admin",label:"👑 Admin"}]}/>
               {/* Expediente por dia da semana */}
@@ -6135,16 +6100,8 @@ export default function App(){
     }
   };
 
-  // Tela de carregamento
-  if(carregando) return (
-    <div style={{minHeight:"100vh",background:`linear-gradient(135deg,${C.azulEscuro},${C.azulMedio})`,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}>
-      <img src="/Logo_Sem_Fundo.png" alt="WM Engenharia" style={{height:44,objectFit:"contain",filter:"brightness(0) invert(1)"}}/>
-      <div style={{color:"rgba(255,255,255,0.7)",fontSize:14}}>Carregando dados...</div>
-    </div>
-  );
-
   const fazerLogin = (u) => {
-    const uBase = usuarios.find(x=>x.id===u.id) || u;
+    const uBase = { ...(usuarios.find(x=>x.id===u.id) || {}), ...u };
     // Garantir que o expediente está no formato por dia da semana
     const uAtualizado = {...uBase, expediente: expedienteParaDiaSemana(uBase.expediente)};
     setUser(uAtualizado);
@@ -6155,9 +6112,82 @@ export default function App(){
   const fazerLogout = () => {
     localStorage.removeItem("intec_user_logado");
     setUser(null);
+    authClient.auth.signOut().catch(()=>{});
   };
 
-  if(!user) return <TelaLogin usuarios={usuarios} onLogin={fazerLogin}/>;
+  // ── Login com Google (Supabase Auth) ──
+  const [authStatus, setAuthStatus] = useState("verificando"); // verificando | fora | dentro
+  const [authEmail,  setAuthEmail]  = useState("");
+  const [authErro,   setAuthErro]   = useState("");
+  useEffect(() => {
+    let vivo = true;
+    authClient.auth.getSession().then(({ data }) => {
+      if (!vivo) return;
+      setAuthEmail(normEmail(data.session?.user?.email));
+      setAuthStatus(data.session ? "dentro" : "fora");
+    }).catch(() => { if (vivo) setAuthStatus("fora"); });
+    const { data: sub } = authClient.auth.onAuthStateChange((_ev, session) => {
+      setAuthEmail(normEmail(session?.user?.email));
+      setAuthStatus(session ? "dentro" : "fora");
+    });
+    return () => { vivo = false; sub?.subscription?.unsubscribe(); };
+  }, []);
+  const entrarComGoogle = async () => {
+    setAuthErro("");
+    const { error } = await authClient.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.origin, queryParams: { prompt: "select_account" } },
+    });
+    if (error) { setAuthErro("Não foi possível abrir o login do Google: " + error.message); throw error; }
+  };
+  // Vincula a conta Google a um usuário do sistema
+  useEffect(() => {
+    if (carregando || authStatus === "verificando") return;
+    if (authStatus === "fora") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (user) { localStorage.removeItem("intec_user_logado"); setUser(null); }
+      return;
+    }
+    const email = authEmail;
+    if (!email) return;
+    if (user && normEmail(user.email) === email) return;
+    const b = ACESSOS_GOOGLE[email];
+    const idsReservados = Object.values(ACESSOS_GOOGLE).map(x => x.id);
+    let u = null;
+    if (b) u = usuarios.find(x => x.id === b.id)
+      || usuarios.find(x => normEmail(x.email) === email && x.perfil === b.perfil && !idsReservados.includes(x.id));
+    else u = usuarios.find(x => normEmail(x.email) === email && !Object.keys(ACESSOS_GOOGLE).includes(email));
+    if (u && u.ativo === false) u = null;
+    if (!u && !b) {
+      setAuthErro(`A conta ${email} não tem acesso ao sistema. Peça a um administrador para cadastrar este e-mail em Configurações → Colaboradores.`);
+      authClient.auth.signOut();
+      return;
+    }
+    if (!u) {
+      u = { id: b.id, nome: b.nome, email, perfil: b.perfil, cor: b.cor,
+        iniciais: b.nome.split(" ").map(p => p[0]).join("").substring(0, 2).toUpperCase(),
+        ativo: true, salario: 0, expediente: expedientePadrao(), especialidades: [] };
+    } else if (normEmail(u.email) !== email) {
+      u = { ...u, email };
+    }
+    const lista = usuarios.some(x => x.id === u.id) ? usuarios.map(x => x.id === u.id ? u : x) : [...usuarios, u];
+    if (JSON.stringify(lista) !== JSON.stringify(usuarios)) {
+      setUsuarios(lista);
+      db.usuarios.salvar(u).catch(e => console.error("Erro ao vincular usuário:", e));
+    }
+    setAuthErro("");
+    fazerLogin(u);
+  }, [carregando, authStatus, authEmail, usuarios]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Tela de carregamento
+  if(carregando) return (
+    <div style={{minHeight:"100vh",background:`linear-gradient(135deg,${C.azulEscuro},${C.azulMedio})`,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}>
+      <img src="/Logo_Sem_Fundo.png" alt="WM Engenharia" style={{height:44,objectFit:"contain",filter:"brightness(0) invert(1)"}}/>
+      <div style={{color:"rgba(255,255,255,0.7)",fontSize:14}}>Carregando dados...</div>
+    </div>
+  );
+
+  if(!user || authStatus!=="dentro") return <TelaLogin estado={authStatus} erro={authErro} onGoogle={entrarComGoogle}/>;
 
   const isAdmin    = user.perfil === "admin";
   const isGestorOuAdmin = ["admin","gestor"].includes(user.perfil);
@@ -6243,7 +6273,7 @@ export default function App(){
               <Avatar u={user} size={26}/>
               <div style={{color:C.branco}}>
                 <div style={{fontSize:12,fontWeight:700}}>{user.nome.split(" ")[0]}</div>
-                <div style={{fontSize:9,color:C.ciano}}>{user.perfil==="gestor"?"Gestor":"Colab."}</div>
+                <div style={{fontSize:9,color:C.ciano}}>{user.perfil==="admin"?"Admin":user.perfil==="gestor"?"Gestor":"Colab."}</div>
               </div>
             </div>
           </div>
