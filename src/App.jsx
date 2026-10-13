@@ -123,7 +123,11 @@ const TIPOS = {
   PE:"Proj. Estrutural",   PR:"Proj. Reforço",        LT:"Laudo Técnico",
   CB:"Compatibilização",   EL:"Proj. Elétrico",        PH:"Proj. Hidrossanitário",
   PA:"Proj. Arquitetônico", PF:"Proj. Fundação",       CT:"Consultoria", RE:"Revisão",
+  PP:"Proj. Piscina",      PI:"Proj. Interiores",
 };
+
+// Módulo Obras (public/obras.html): avisos de progresso calculado pelo checklist
+const obrasProgressoListeners = new Set();
 
 // Disciplinas do sistema — mesmos tipos de TIPOS
 const DISCIPLINAS_CB = [
@@ -2714,7 +2718,13 @@ function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}){
       obsCliente:         projeto.obs_cliente        || "",
     };
   });
-  const [abaModal, setAbaModal] = useState("info"); // info | financeiro | portal
+  const [abaModal, setAbaModal] = useState("info"); // info | execucao | financeiro | portal | checklist
+  // Progresso vindo do checklist da obra (aba Checklist) — mantém o formulário em dia
+  useEffect(() => {
+    const fn = (id, pct) => { if (id && id === form.id) setForm(f => ({ ...f, progresso: pct })); };
+    obrasProgressoListeners.add(fn);
+    return () => { obrasProgressoListeners.delete(fn); };
+  }, [form.id]);
   const [atualizacoes, setAtualizacoes] = useState([]);
   const [carregandoAtu, setCarregandoAtu] = useState(false);
   const [novaAtu, setNovaAtu] = useState({ titulo:"", descricao:"", icone:"📝", tipo:"manual", visivelCliente:true });
@@ -2865,14 +2875,14 @@ function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}){
   const pend=(form.parcelas||[]).reduce((a,p)=>a+(!p.pago?p.valor:0),0);
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(15,25,50,0.7)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-      <div style={{background:C.branco,borderRadius:16,width:"100%",maxWidth:700,maxHeight:"90vh",overflow:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}} onClick={e=>e.stopPropagation()}>
+      <div style={{background:C.branco,borderRadius:16,width:"100%",maxWidth:abaModal==="checklist"?1180:700,maxHeight:"90vh",overflow:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}} onClick={e=>e.stopPropagation()}>
         <div style={{background:`linear-gradient(135deg,${C.azulEscuro},${C.azulMedio})`,padding:"20px 24px",borderRadius:"16px 16px 0 0",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div><div style={{color:C.ciano,fontSize:11,fontWeight:700,letterSpacing:1,marginBottom:4}}>WM ENGENHARIA</div><h2 style={{color:C.branco,margin:0,fontSize:18}}>{modo==="novo"?"Novo Projeto":"Editar Projeto"}</h2></div>
           <button onClick={onClose} style={{background:"rgba(255,255,255,0.15)",border:"none",color:C.branco,borderRadius:8,width:32,height:32,cursor:"pointer",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
         </div>
         {/* Sub-abas do modal */}
         <div style={{display:"flex",gap:0,borderBottom:`2px solid ${C.cinzaCard}`}}>
-          {[{id:"info",label:"📋 Projeto"},{id:"execucao",label:"🔍 Revisões"},{id:"financeiro",label:"💰 Financeiro"},{id:"portal",label:"🔗 Portal Cliente"}].map(t=>(
+          {[{id:"info",label:"📋 Projeto"},{id:"checklist",label:"✅ Checklist"},{id:"execucao",label:"🔍 Revisões"},{id:"financeiro",label:"💰 Financeiro"},{id:"portal",label:"🔗 Portal Cliente"}].map(t=>(
             <button key={t.id} onClick={()=>setAbaModal(t.id)} style={{background:"none",border:"none",padding:"12px 18px",cursor:"pointer",fontSize:13,fontFamily:"inherit",fontWeight:abaModal===t.id?700:500,color:abaModal===t.id?C.azulMedio:C.cinzaClaro,borderBottom:abaModal===t.id?`2px solid ${C.azulMedio}`:"2px solid transparent",marginBottom:-2,transition:"all 0.15s"}}>
               {t.label}
             </button>
@@ -3233,6 +3243,24 @@ function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}){
               };
               onSave(formFinal);
             }}>💾 Salvar</Btn></div>
+          </div>
+        </>}
+
+        {/* ─── ABA CHECKLIST: obra vinculada (módulo Obras) ─── */}
+        {abaModal==="checklist" && <>
+          {modo==="novo" || !form.id ? (
+            <div style={{padding:"20px",background:C.cinzaFundo,borderRadius:12,textAlign:"center",fontSize:13,color:C.cinzaClaro}}>
+              Salve o projeto primeiro para abrir o checklist.
+            </div>
+          ) : (
+            <div style={{margin:"-24px -24px 0",height:"68vh",borderBottom:`1px solid ${C.cinzaCard}`}}>
+              <iframe src={`/obras.html?projeto=${encodeURIComponent(form.id)}`} title="Checklist da obra"
+                style={{width:"100%",height:"100%",border:"none",display:"block"}}/>
+            </div>
+          )}
+          <div style={{display:"flex",gap:10,justifyContent:"space-between",alignItems:"center",paddingTop:8}}>
+            <span style={{fontSize:12,color:C.cinzaClaro}}>Progresso calculado pelas etapas: <strong style={{color:C.azulMedio}}>{form.progresso||0}%</strong> · as marcações são salvas na hora</span>
+            <div style={{display:"flex",gap:10}}><Btn variant="ghost" onClick={onClose}>Fechar</Btn><Btn onClick={()=>onSave(form)}>💾 Salvar Projeto</Btn></div>
           </div>
         </>}
 
@@ -5590,6 +5618,36 @@ export default function App(){
     registrosRef.current = registros;
   }, [registros]);
   useEffect(() => { projetosRef.current  = projetos;   }, [projetos]);
+
+  // ── Ponte com o módulo Obras (public/obras.html, mesmo domínio) ──
+  useEffect(() => {
+    window.WMObras = {
+      supabase,
+      usuario:   () => userRef.current || {},
+      projetos:  () => (projetosRef.current || []).map(p => ({ id:p.id, codigo:p.codigo, cliente:p.cliente, tipo:p.tipo, progresso:p.progresso||0, status:p.status })),
+      abrirProjeto: (id) => {
+        const p = (projetosRef.current || []).find(x => x.id === id);
+        if (p) setModal({ projeto:p, modo:"editar" });
+      },
+      atualizarProgresso: async (id, pct) => {
+        const p = (projetosRef.current || []).find(x => x.id === id);
+        if (!p) return;
+        const progresso = Math.max(0, Math.min(100, Math.round(pct || 0)));
+        if ((p.progresso || 0) === progresso) return;
+        const n = { ...p, progresso };
+        // Status automático: o checklist só conclui o projeto (100%); demais mudanças ficam para o salvar normal
+        if (n.statusAuto && calcStatusAuto(n) === "CONCLUÍDO") n.status = "CONCLUÍDO";
+        projetosRef.current = (projetosRef.current || []).map(x => x.id === id ? n : x);
+        setProjetos(ps => ps.map(x => x.id === id ? { ...x, progresso, status:n.status } : x));
+        obrasProgressoListeners.forEach(fn => { try { fn(id, progresso); } catch { /* ignore */ } });
+        try {
+          const { error } = await supabase.from('projetos').update({ progresso, status:n.status }).eq('id', id);
+          if (error) throw error;
+        } catch (e) { console.error("Erro ao atualizar progresso pela obra:", e); }
+      },
+    };
+    return () => { delete window.WMObras; };
+  }, []);
   useEffect(() => { userRef.current = user; }, [user]);
 
   // ── Chat global: carrega canais + assinaturas sempre ativas ─────────────
@@ -6162,6 +6220,7 @@ export default function App(){
     {id:"agenda",       label:"Agenda",      icone:"📅"},
     ...(!isColab ? [{id:"contratos", label:"Contratos", icone:"📄"}] : []),
     ...(!isColab ? [{id:"orcamentos", label:"Orçamentos", icone:"🧮"}] : []),
+    {id:"obras",        label:"Obras",       icone:"🏠"},
   ];
 
   // Abas no menu lateral
@@ -6173,6 +6232,7 @@ export default function App(){
     {id:"agenda",       label:"Agenda & Escalas",  icone:"📅", grupo:"agenda"},
     ...(!isColab ? [{id:"contratos", label:"Contratos", icone:"📄", grupo:"principal"}] : []),
     ...(!isColab ? [{id:"orcamentos", label:"Orçamentos", icone:"🧮", grupo:"principal"}] : []),
+    {id:"obras",        label:"Obras (checklist e briefing)", icone:"🏠", grupo:"principal"},
     {id:"config",       label:"Configurações",     icone:"⚙",  grupo:"config"},
   ];
 
@@ -6305,6 +6365,15 @@ export default function App(){
         {aba==="agenda"    &&<AbaAgenda calendario={calendario} usuarioAtual={user} registros={registros} usuarios={usuarios}/>}
         {aba==="config"    &&<Configuracoes usuarios={usuarios} onSalvarUsuarios={salvarUsuarios} usuarioAtual={user}/>}
         {aba==="contratos"  &&<GeradorContratos projetos={projetos} usuarios={usuarios} usuarioAtual={user}/>}
+        {aba==="obras" && (
+          <div style={{margin:"-28px -24px",height:"calc(100vh - 88px)"}}>
+            <iframe
+              src="/obras.html"
+              title="Obras"
+              style={{width:"100%",height:"100%",border:"none",display:"block"}}
+            />
+          </div>
+        )}
         {aba==="orcamentos" && (
           <div style={{margin:"-28px -24px",height:"calc(100vh - 88px)"}}>
             <iframe
