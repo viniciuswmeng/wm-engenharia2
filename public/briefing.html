@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<title>Formulário de cadastro</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap">
+<style>
+:root{--bg:#f4f5f8;--card:#fff;--line:#d9dee7;--ink:#18202e;--muted:#5a6578;--acc:#3d4a5c;--ok:#1e8e4e;--err:#c0392b}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Open Sans",system-ui,-apple-system,"Segoe UI",sans-serif}
+.top{background:var(--acc);color:#fff;padding:22px 16px 18px}
+.top .in,.wrap{max-width:760px;margin:0 auto}
+.emp{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.85}
+h1{margin:6px 0 2px;font-size:24px;line-height:1.2}
+.sub{opacity:.9;font-size:14px}
+.wrap{padding:0 16px 80px}
+.bar{position:sticky;top:0;z-index:5;background:var(--bg);padding:12px 0 10px;border-bottom:1px solid var(--line)}
+.bar .row{display:flex;justify-content:space-between;gap:10px;font-size:13px;color:var(--muted);flex-wrap:wrap}
+.bar .row b{color:var(--ink)}
+.meter{height:6px;background:var(--line);border-radius:3px;margin-top:8px;overflow:hidden}
+.meter i{display:block;height:100%;width:0;background:var(--ok);transition:width .2s}
+.intro{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-top:16px;font-size:15px}
+.intro p{margin:0 0 8px}.intro p:last-child{margin:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-top:14px;overflow:hidden}
+.card>h2,.card>summary{margin:0;padding:14px 16px;font-size:17px;font-weight:700;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:8px}
+details.card>summary{cursor:pointer;list-style:none}
+details.card>summary::-webkit-details-marker{display:none}
+details.card:not([open])>summary{border-bottom:0}
+.cnt{font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap}
+.cnt.done{color:var(--ok)}
+.qs{padding:10px 16px 16px;display:flex;flex-direction:column;gap:16px}
+.q label{display:block;font-weight:600;font-size:15px;margin-bottom:6px}
+.q small{display:block;color:var(--muted);font-size:13px;font-weight:400}
+textarea,input[type=text],input[type=number],select{width:100%;font:inherit;font-size:16px;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:#fbfcfd}
+textarea{resize:vertical;min-height:46px;overflow:hidden}
+textarea:focus,input:focus,select:focus{outline:2px solid var(--acc);outline-offset:1px;background:#fff}
+.q.filled textarea{border-color:#9fd3b5}
+.brow{display:grid;grid-template-columns:1fr 110px 110px auto;gap:8px;align-items:end;margin-top:8px}
+.brow span{font-size:12px;color:var(--muted);display:block}
+.btn{font:600 15px "Open Sans",system-ui,sans-serif;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--ink);padding:10px 14px;cursor:pointer}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+.btn.big{width:100%;padding:15px;font-size:17px}
+.btn.x{color:var(--err)}
+.btn[disabled]{opacity:.6}
+.add{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;padding:14px 16px}
+.foot{margin-top:24px;display:flex;flex-direction:column;gap:10px}
+.save{font-size:13px;color:var(--muted)}
+.save.err{color:var(--err);font-weight:600}
+.msg{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:26px 18px;margin-top:22px;text-align:center}
+.msg h2{margin:0 0 8px}
+.namebox{padding:14px 16px}
+.hd{margin:28px 0 2px;font-size:18px}
+.hint{margin:0;color:var(--muted);font-size:14px}
+.empty{margin:4px 0 0;color:var(--muted);font-size:14px}
+.opts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.opt{font:600 14px "Open Sans",system-ui,sans-serif;padding:7px 12px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--muted);cursor:pointer}
+.opt[aria-pressed="true"]{background:#e6ebf2;border-color:var(--acc);color:var(--acc)}
+.pages{display:flex;gap:6px;margin-top:16px}
+.pg{flex:1;font:700 14px "Open Sans",system-ui,sans-serif;padding:11px 10px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--muted);cursor:pointer;text-align:left}
+.pg small{display:block;font-weight:600;font-size:12px;color:var(--muted)}
+.pg[aria-current="page"]{border-color:var(--acc);background:var(--acc);color:#fff}
+.pg[aria-current="page"] small{color:#dfe5ee}
+.nav{display:flex;gap:8px;flex-wrap:wrap}
+.nav .btn{flex:1}
+@media (max-width:560px){.brow{grid-template-columns:1fr 1fr auto}.brow .n{grid-column:1/-1}.add{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="top"><div class="in" id="top"></div></div>
+<div class="wrap" id="app"></div>
+<script>
+function salvarApi(token, payload, final) {
+  return fetch('/api/briefing', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token: token, payload: payload, final: !!final }) })
+    .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok || !j.ok) throw new Error(j.error || ('erro ' + r.status)); return j; }); });
+}
+(function () {
+  var m = location.pathname.match(/\/briefing\/([A-Za-z0-9_-]+)/), t = m ? m[1] : new URLSearchParams(location.search).get('t') || '';
+  fetch('/api/briefing?token=' + encodeURIComponent(t), { cache: 'no-store' })
+    .then(function (r) { return r.json(); })
+    .catch(function () { return { erro: 'Não foi possível carregar o formulário. Verifique a conexão e recarregue a página.' }; })
+    .then(iniciar);
+})();
+function iniciar(D) {
+  if (D && D.form && D.form.projeto) document.title = 'Cadastro · ' + D.form.projeto;
+  var F = D.form, R = D.resp || {};
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function uid() { return 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function hhmm() { var d = new Date(); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+
+  if (D.erro || !F) {
+    $('top').innerHTML = '<div class="emp">Formulário de cadastro</div><h1>Link indisponível</h1>';
+    $('app').innerHTML = '<div class="msg"><p>' + esc(D.erro || 'Formulário não encontrado.') + '</p></div>';
+    return;
+  }
+  $('top').innerHTML = '<div class="emp">' + esc(F.empresa || 'Cadastro de projeto') + '</div><h1>' + esc(F.projeto) + '</h1><div class="sub">Formulário de cadastro' + (F.cliente ? ' · ' + esc(F.cliente) : '') + '</div>';
+  if (F.fechado) {
+    $('app').innerHTML = '<div class="msg"><h2>Formulário encerrado</h2><p>Este formulário já foi fechado pela equipe de projeto. Em caso de dúvida, fale com o responsável.</p></div>';
+    return;
+  }
+
+  var pre = F.prefill || {};
+  var st = { respondente: R.respondente || '', cad: {}, amb: [], banho: [] };
+  Object.keys(pre.cad || {}).forEach(function (k) { st.cad[k] = pre.cad[k]; });
+  Object.keys(R.cad || {}).forEach(function (k) { st.cad[k] = R.cad[k]; });
+  var rAmb = {}; (R.ambientes || []).forEach(function (a) { rAmb[a.id] = a; });
+  function nsOf(o) { return o.ns || o.perguntas.map(function (_, i) { return i; }); }
+  (F.ambientes || []).forEach(function (a) {
+    var ans = {}, p0 = (pre.amb || {})[a.id] || {}, r0 = (rAmb[a.id] || {}).ans || {};
+    Object.keys(p0).forEach(function (i) { ans[i] = p0[i]; });
+    Object.keys(r0).forEach(function (i) { ans[i] = r0[i]; });
+    st.amb.push({ id: a.id, tipo: a.tipo, nome: a.nome, perguntas: a.perguntas, ns: nsOf(a), ans: ans, novo: false });
+  });
+  (R.ambientes || []).forEach(function (a) {
+    if (a.novo && F.tipos && F.tipos[a.tipo] && !st.amb.some(function (x) { return x.id === a.id; }))
+      st.amb.push({ id: a.id, tipo: a.tipo, nome: a.nome, perguntas: F.tipos[a.tipo].perguntas, ns: nsOf(F.tipos[a.tipo]), ans: a.ans || {}, novo: true });
+  });
+  var hasP2 = (F.grupos || []).some(function (g) { return g.pg === 2; });
+  var page = 1;
+  st.banho = ((R.banho && R.banho.length) ? R.banho : (pre.banho || [])).map(function (x) { return { n: x.n || '', t: x.t || '', b: x.b || '' }; });
+  var status = R.status || '';
+
+  function parts(v) { return String(v || '').split(/\s*;\s*/).map(function (x) { return x.trim(); }).filter(Boolean); }
+  function qHtml(key, label, hint, val, opts, multi) {
+    var cur = parts(val), oh = '';
+    if (opts && opts.length) oh = '<div class="opts">' + opts.map(function (o) { return '<button type="button" class="opt" data-for="' + esc(key) + '" data-opt="' + esc(o) + '"' + (multi ? ' data-multi="1"' : '') + ' aria-pressed="' + (cur.indexOf(o) >= 0) + '">' + esc(o) + '</button>'; }).join('') + '</div>';
+    return '<div class="q' + (val && String(val).trim() ? ' filled' : '') + '"><label for="' + esc(key) + '">' + esc(label) + (hint ? '<small>' + esc(hint) + '</small>' : '') + (multi ? '<small>Pode marcar mais de uma opção</small>' : '') + '</label><textarea id="' + esc(key) + '" data-k="' + esc(key) + '" rows="1">' + esc(val || '') + '</textarea>' + oh + '</div>';
+  }
+  function banhoHtml() {
+    if (!st.banho.length) return '<p class="empty">Nenhum morador adicionado.</p>';
+    return st.banho.map(function (r, i) {
+      return '<div class="brow" data-b="' + i + '"><label class="n"><span>Morador</span><input type="text" data-bf="n" value="' + esc(r.n) + '"></label>' +
+        '<label><span>Minutos por banho</span><input type="number" inputmode="numeric" min="0" data-bf="t" value="' + esc(r.t) + '"></label>' +
+        '<label><span>Banhos por dia</span><input type="number" inputmode="numeric" min="0" data-bf="b" value="' + esc(r.b) + '"></label>' +
+        '<button class="btn x" type="button" data-bdel="' + i + '" aria-label="Remover morador">×</button></div>';
+    }).join('');
+  }
+  function render() {
+    var tipos = Object.keys(F.tipos || {});
+    var first = (F.cliente || '').split(' ')[0];
+    var h = '<div class="bar"><div class="row"><span><b id="pc">0</b> de <b id="pt">0</b> respondidas</span><span class="save" id="save">' +
+      (status === 'enviado' ? 'Respostas já enviadas · você ainda pode alterar' : 'As respostas são salvas automaticamente') + '</span></div><div class="meter"><i id="meter"></i></div></div>' +
+      '';
+    if (hasP2) {
+      var c1 = pageCount(1), c2 = pageCount(2);
+      h += '<div class="pages" role="tablist"><button type="button" class="pg" data-page="1" aria-current="' + (page === 1 ? 'page' : 'false') + '">1 · Projeto<small id="pc1">' + c1.d + ' de ' + c1.t + '</small></button><button type="button" class="pg" data-page="2" aria-current="' + (page === 2 ? 'page' : 'false') + '">2 · Interiores<small id="pc2">' + c2.d + ' de ' + c2.t + '</small></button></div>';
+    }
+    if (page === 1) {
+      h += '<div class="intro"><p>Olá' + (first ? ', ' + esc(first) : '') + '! Este formulário reúne as informações de que precisamos para desenvolver os projetos da sua obra.</p>' +
+        '<p>Responda o que souber e deixe em branco o que ainda não estiver definido. Tudo é salvo automaticamente e você pode voltar pelo mesmo link quando quiser.' + (hasP2 ? ' O formulário tem duas páginas: depois desta, vem a página de <b>Interiores</b>.' : ' Ao terminar, toque em <b>Enviar respostas</b> no final da página.') + '</p></div>' +
+        '<div class="card"><h2>Quem está respondendo</h2><div class="namebox"><input type="text" id="resp" value="' + esc(st.respondente) + '" placeholder="Seu nome" autocomplete="name" aria-label="Seu nome"></div></div>';
+    } else {
+      h += '<div class="intro"><p><b>Página 2 · Interiores.</b> Estas perguntas nos ajudam a entender a rotina da família, os gostos e o que cada ambiente precisa ter. Ao terminar, toque em <b>Enviar respostas</b> no final da página.</p></div>';
+    }
+    (F.grupos || []).forEach(function (g) {
+      if ((g.pg || 1) !== page) return;
+      h += '<details class="card" open data-g="' + esc(g.id) + '"><summary><span>' + esc(g.titulo) + '</span><span class="cnt"></span></summary><div class="qs">' +
+        g.perguntas.map(function (q) { return qHtml('k:' + q.k, q.t, q.h0 != null ? q.h0 : q.h, st.cad[q.k], q.o, q.m); }).join('');
+      if (g.banho) h += '<div class="q"><label>Perfil de banho por morador<small>Tempo médio de cada banho e quantos banhos por dia</small></label><div id="banho">' + banhoHtml() + '</div><button class="btn" type="button" id="bAdd" style="margin-top:10px">+ Morador</button></div>';
+      h += '</div></details>';
+    });
+    if (page === 1 && (st.amb.length || tipos.length)) {
+      h += '<h2 class="hd">Ambientes</h2><p class="hint">Toque em cada ambiente para abrir as perguntas.</p>';
+      st.amb.forEach(function (a) {
+        h += '<details class="card" data-a="' + esc(a.id) + '"><summary><span class="an">' + esc(a.nome) + '</span><span class="cnt"></span></summary>' +
+          (a.novo ? '<div class="qs" style="padding-bottom:0"><div class="q"><label>Nome do ambiente</label><input type="text" data-an="' + esc(a.id) + '" value="' + esc(a.nome) + '"></div></div>' : '') +
+          '<div class="qs">' + a.perguntas.map(function (q, i) { var n = a.ns[i]; return qHtml('a:' + a.id + ':' + n, q, '', a.ans[n]); }).join('') +
+          (a.novo ? '<button class="btn x" type="button" data-arm="' + esc(a.id) + '">Remover este ambiente</button>' : '') + '</div></details>';
+      });
+      if (tipos.length) h += '<div class="card"><h2>Faltou algum ambiente?</h2><div class="add"><select id="nTipo" aria-label="Tipo de ambiente">' +
+        tipos.map(function (t) { return '<option value="' + esc(t) + '">' + esc(F.tipos[t].rotulo) + '</option>'; }).join('') +
+        '</select><input type="text" id="nNome" placeholder="Nome (ex.: Banheiro suíte 2)" aria-label="Nome do ambiente"><button class="btn" type="button" id="nAdd">Adicionar</button></div></div>';
+    }
+    if (hasP2 && page === 1) h += '<div class="foot"><button class="btn pri big" type="button" data-page="2">Continuar: Interiores →</button><span class="save" id="save2"></span></div>';
+    else h += '<div class="foot">' + (hasP2 ? '<button class="btn" type="button" data-page="1">← Voltar para a página 1</button>' : '') + '<button class="btn pri big" type="button" id="send">Enviar respostas</button><span class="save" id="save2"></span></div>';
+    $('app').innerHTML = h;
+    Array.prototype.forEach.call(document.querySelectorAll('textarea'), autosize);
+    counts();
+  }
+  function autosize(t) { t.style.height = 'auto'; t.style.height = Math.max(46, t.scrollHeight + 2) + 'px'; }
+  function pageCount(pg) {
+    var T = 0, Dn = 0;
+    (F.grupos || []).forEach(function (g) {
+      if ((g.pg || 1) !== pg) return;
+      T += g.perguntas.length; Dn += g.perguntas.filter(function (q) { return String(st.cad[q.k] || '').trim(); }).length;
+    });
+    if (pg === 1) st.amb.forEach(function (a) { T += a.ns.length; Dn += a.ns.filter(function (n) { return String(a.ans[n] || '').trim(); }).length; });
+    return { t: T, d: Dn };
+  }
+  function counts() {
+    (F.grupos || []).forEach(function (g) {
+      var el = document.querySelector('[data-g="' + g.id + '"] .cnt'); if (!el) return;
+      var t = g.perguntas.length, d = g.perguntas.filter(function (q) { return String(st.cad[q.k] || '').trim(); }).length;
+      el.textContent = d + '/' + t; el.classList.toggle('done', d === t);
+    });
+    st.amb.forEach(function (a) {
+      var el = document.querySelector('[data-a="' + a.id + '"] .cnt'); if (!el) return;
+      var t = a.ns.length, d = a.ns.filter(function (n) { return String(a.ans[n] || '').trim(); }).length;
+      el.textContent = d + '/' + t; el.classList.toggle('done', d === t);
+    });
+    var c1 = pageCount(1), c2 = hasP2 ? pageCount(2) : { t: 0, d: 0 }, T = c1.t + c2.t, Dn = c1.d + c2.d;
+    if ($('pc1')) { $('pc1').textContent = c1.d + ' de ' + c1.t; $('pc2').textContent = c2.d + ' de ' + c2.t; }
+    if ($('pc')) { $('pc').textContent = Dn; $('pt').textContent = T; $('meter').style.width = (T ? Dn / T * 100 : 0) + '%'; }
+  }
+  function payload() {
+    var cad = {};
+    Object.keys(st.cad).forEach(function (k) { if (String(st.cad[k] || '').trim()) cad[k] = st.cad[k]; });
+    return {
+      respondente: st.respondente, cad: cad,
+      ambientes: st.amb.map(function (a) { return { id: a.id, tipo: a.tipo, nome: a.nome, novo: a.novo, ans: a.ans }; }),
+      banho: st.banho.filter(function (r) { return r.n || r.t || r.b; })
+    };
+  }
+  var tmr = null, saving = false, again = false;
+  function setSave(t, err) { var s = $('save'); if (s) { s.textContent = t; s.classList.toggle('err', !!err); } }
+  function sched() { clearTimeout(tmr); setSave('Salvando…'); tmr = setTimeout(doSave, 1800); }
+  function doSave() {
+    tmr = null;
+    if (saving) { again = true; return; }
+    saving = true;
+    salvarApi(F.token, payload(), false)
+      .then(function () { saving = false; setSave('Salvo às ' + hhmm()); if (again) { again = false; doSave(); } })
+      .catch(function (e) { saving = false; setSave('Não foi possível salvar agora (' + (e && e.message || 'sem conexão') + '). Tentaremos de novo.', true); tmr = setTimeout(doSave, 8000); });
+  }
+  function thanks() {
+    $('app').innerHTML = '<div class="msg"><h2>Respostas enviadas</h2><p>Obrigado! ' + esc(F.empresa || 'A equipe de projeto') + ' vai revisar as informações e entrar em contato se precisar de algum detalhe.</p><p>Se quiser alterar alguma resposta, é só abrir este mesmo link de novo.</p><button class="btn" type="button" id="back">Voltar ao formulário</button></div>';
+    window.scrollTo(0, 0);
+  }
+
+  document.addEventListener('input', function (e) {
+    var t = e.target, d = t.dataset || {};
+    if (d.k) {
+      var p = d.k.split(':');
+      if (p[0] === 'k') st.cad[p[1]] = t.value;
+      else { var a = st.amb.filter(function (x) { return x.id === p[1]; })[0]; if (a) a.ans[p[2]] = t.value; }
+      autosize(t); t.parentNode.classList.toggle('filled', !!t.value.trim()); counts(); sched(); return;
+    }
+    if (t.id === 'resp') { st.respondente = t.value; sched(); return; }
+    if (d.an) { var a2 = st.amb.filter(function (x) { return x.id === d.an; })[0]; if (a2) { a2.nome = t.value; t.closest('details').querySelector('.an').textContent = t.value || 'Ambiente'; } sched(); return; }
+    if (d.bf) { var r = st.banho[+t.closest('.brow').dataset.b]; if (r) r[d.bf] = t.value; sched(); }
+  });
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    if (t.id === 'bAdd') { st.banho.push({ n: '', t: '', b: '' }); $('banho').innerHTML = banhoHtml(); var ins = $('banho').querySelectorAll('input[data-bf="n"]'); ins[ins.length - 1].focus(); return; }
+    if (t.dataset && t.dataset.bdel != null) { st.banho.splice(+t.dataset.bdel, 1); $('banho').innerHTML = banhoHtml(); sched(); return; }
+    if (t.id === 'nAdd') {
+      var tipo = $('nTipo').value, nome = $('nNome').value.trim() || F.tipos[tipo].rotulo;
+      var id = uid(); st.amb.push({ id: id, tipo: tipo, nome: nome, perguntas: F.tipos[tipo].perguntas, ns: nsOf(F.tipos[tipo]), ans: {}, novo: true });
+      render(); sched(); var el = document.querySelector('[data-a="' + id + '"]'); if (el) { el.open = true; el.scrollIntoView({ block: 'start' }); } return;
+    }
+    if (t.dataset && t.dataset.arm) {
+      if (t.dataset.sure) { st.amb = st.amb.filter(function (x) { return x.id !== t.dataset.arm; }); render(); sched(); }
+      else { t.dataset.sure = '1'; t.textContent = 'Toque de novo para confirmar a remoção'; }
+      return;
+    }
+    if (t.id === 'back') { page = 1; render(); return; }
+    var pgb = t.closest('[data-page]');
+    if (pgb) { page = +pgb.dataset.page; render(); window.scrollTo(0, 0); return; }
+    var ob = t.closest('.opt');
+    if (ob) {
+      var ta = document.getElementById(ob.dataset.for); if (!ta) return;
+      var o = ob.dataset.opt, group = Array.prototype.map.call(ob.parentNode.querySelectorAll('.opt'), function (x) { return x.dataset.opt; }), ps = parts(ta.value);
+      if (ob.dataset.multi) ps = ps.indexOf(o) >= 0 ? ps.filter(function (x) { return x !== o; }) : ps.concat([o]);
+      else { var had = ps.indexOf(o) >= 0; ps = ps.filter(function (x) { return group.indexOf(x) < 0; }); if (!had) ps.unshift(o); }
+      ta.value = ps.join('; '); ta.dispatchEvent(new Event('input', { bubbles: true }));
+      var now = parts(ta.value); Array.prototype.forEach.call(ob.parentNode.querySelectorAll('.opt'), function (x) { x.setAttribute('aria-pressed', now.indexOf(x.dataset.opt) >= 0); });
+      return;
+    }
+    if (t.id === 'send') {
+      var s2 = $('save2');
+      if (!st.respondente.trim() && page !== 1) { page = 1; render(); $('resp').focus(); $('resp').scrollIntoView({ block: 'center' }); var s3 = $('save2'); if (s3) { s3.textContent = 'Informe seu nome antes de enviar.'; s3.className = 'save err'; } return; }
+      if (!st.respondente.trim()) { s2.textContent = 'Informe seu nome no início do formulário antes de enviar.'; s2.className = 'save err'; $('resp').focus(); $('resp').scrollIntoView({ block: 'center' }); return; }
+      clearTimeout(tmr); t.disabled = true; t.textContent = 'Enviando…'; s2.textContent = ''; s2.className = 'save';
+      salvarApi(F.token, payload(), true)
+        .then(function () { status = 'enviado'; thanks(); })
+        .catch(function (err) { t.disabled = false; t.textContent = 'Enviar respostas'; s2.textContent = 'Não foi possível enviar: ' + (err && err.message || 'verifique a conexão e tente de novo.'); s2.className = 'save err'; });
+    }
+  });
+  render();
+}
+</script>
+</body>
+</html>
