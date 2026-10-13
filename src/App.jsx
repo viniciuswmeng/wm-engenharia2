@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { db, supabase, authClient, iniciarRealtime, enviarEmail, portal, chat } from "./supabase.js";
+import { db, supabase, authClient, lembrarLogin, iniciarRealtime, enviarEmail, portal, chat } from "./supabase.js";
 import CronogramaEditor from "./contratos/CronogramaEditor.jsx";
 import { gerar as gerarCronograma, normalizar as normalizarCronograma, tabelaHTML as cronogramaTabelaHTML } from "./contratos/cronograma.js";
 
@@ -574,18 +574,37 @@ const normEmail = e => String(e||"").trim().toLowerCase();
 // ─── TELA DE LOGIN (Google) ────────────────────────────────────────────────────
 function TelaLogin({estado,erro,onGoogle}){
   const [indo,setIndo]=useState(false);
-  const entrar=async()=>{ setIndo(true); try{ await onGoogle(); }catch{ setIndo(false); } };
+  const [lembrar,setLembrar]=useState(()=>lembrarLogin.get());
+  const ultima = useMemo(()=>{ try{ return JSON.parse(localStorage.getItem("wm-ultima-conta")||"null"); }catch{ return null; } },[]);
+  const entrar=async(hint)=>{ setIndo(true); lembrarLogin.set(lembrar); try{ await onGoogle(hint); }catch{ setIndo(false); } };
+  const G = <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>;
+  const ocupado = indo||estado==="verificando";
+  const botao = {width:"100%",display:"flex",alignItems:"center",justifyContent:"center",gap:12,padding:"12px 16px",borderRadius:10,border:`1.5px solid ${C.cinzaCard}`,background:C.branco,cursor:ocupado?"wait":"pointer",fontSize:15,fontWeight:600,color:C.cinzaEscuro,fontFamily:"inherit",boxShadow:"0 1px 3px rgba(13,30,53,0.08)",opacity:ocupado?0.7:1};
   return(
     <div style={{minHeight:"100vh",background:`linear-gradient(160deg,${C.cinzaEscuro} 0%,${C.azulMedio} 55%,${C.azulClaro} 100%)`,display:"flex",alignItems:"center",justifyContent:"center",padding:20,fontFamily:"'Segoe UI',system-ui,sans-serif"}}>
-      <div style={{background:C.branco,borderRadius:20,padding:40,width:"100%",maxWidth:420,boxShadow:"0 24px 64px rgba(0,0,0,0.25)",textAlign:"center"}}>
-        <img src="/Logo_Sem_Fundo.png" alt="WM Engenharia" style={{height:120,objectFit:"contain",margin:"0 auto 24px",display:"block"}}/>
+      <div style={{background:C.branco,borderRadius:20,padding:"36px 36px 28px",width:"100%",maxWidth:420,boxShadow:"0 24px 64px rgba(0,0,0,0.25)",textAlign:"center"}}>
+        <img src="/Logo_Sem_Fundo.png" alt="WM Engenharia" style={{height:110,objectFit:"contain",margin:"0 auto 20px",display:"block"}}/>
         <h2 style={{color:C.cinzaEscuro,fontSize:18,fontWeight:700,margin:"0 0 6px"}}>Acesse o sistema</h2>
-        <p style={{color:C.cinzaClaro,fontSize:13,margin:"0 0 24px"}}>Entre com a sua conta Google cadastrada na WM</p>
-        <button onClick={entrar} disabled={indo||estado==="verificando"}
-          style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"center",gap:12,padding:"12px 16px",borderRadius:10,border:`1.5px solid ${C.cinzaCard}`,background:C.branco,cursor:indo?"wait":"pointer",fontSize:15,fontWeight:600,color:C.cinzaEscuro,fontFamily:"inherit",boxShadow:"0 1px 3px rgba(13,30,53,0.08)",opacity:(indo||estado==="verificando")?0.7:1}}>
-          <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
-          {estado==="verificando"?"Verificando acesso…":indo?"Abrindo o Google…":"Entrar com Google"}
-        </button>
+        <p style={{color:C.cinzaClaro,fontSize:13,margin:"0 0 22px"}}>Entre com a sua conta Google cadastrada na WM</p>
+        {ultima?.email ? (<>
+          <button onClick={()=>entrar(ultima.email)} disabled={ocupado} style={{...botao,justifyContent:"flex-start",textAlign:"left"}}>
+            {G}
+            <span style={{flex:1,minWidth:0}}>
+              <span style={{display:"block",fontSize:14.5}}>{estado==="verificando"?"Verificando acesso…":indo?"Abrindo o Google…":`Continuar como ${ultima.nome||ultima.email.split("@")[0]}`}</span>
+              <span style={{display:"block",fontSize:12,color:C.cinzaClaro,fontWeight:400,overflow:"hidden",textOverflow:"ellipsis"}}>{ultima.email}</span>
+            </span>
+          </button>
+          <button onClick={()=>entrar(null)} disabled={ocupado} style={{marginTop:10,background:"none",border:"none",color:C.azulClaro,fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>Usar outra conta Google</button>
+        </>) : (
+          <button onClick={()=>entrar(null)} disabled={ocupado} style={botao}>
+            {G}{estado==="verificando"?"Verificando acesso…":indo?"Abrindo o Google…":"Entrar com Google"}
+          </button>
+        )}
+        <label style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginTop:18,fontSize:13,color:C.cinzaEscuro,cursor:"pointer",userSelect:"none"}}>
+          <input type="checkbox" checked={lembrar} onChange={e=>{setLembrar(e.target.checked);lembrarLogin.set(e.target.checked);}} style={{width:16,height:16,accentColor:C.azulMedio,cursor:"pointer"}}/>
+          Manter conectado neste computador
+        </label>
+        <div style={{fontSize:11,color:C.cinzaClaro,marginTop:6}}>{lembrar?"Você continua conectado mesmo fechando o navegador.":"A sessão termina quando você fechar o navegador."}</div>
         {erro&&<div style={{marginTop:16,padding:"10px 12px",background:"#fef2f2",borderRadius:8,fontSize:13,color:C.vermelho,border:"1px solid #fecaca",textAlign:"left"}}>⚠ {erro}</div>}
       </div>
     </div>
@@ -612,6 +631,7 @@ function ModalHoras({tipo,projetos,usuarioAtual,sessaoAtiva,onIniciar,onEncerrar
   const [hf,        setHf]          = useState(new Date().toTimeString().slice(0,5));
   const [obs,       setObs]         = useState("");
   const [filtroAno, setFAno]        = useState("todos");
+  const [busca,     setBusca]       = useState("");
 
   const ativos = projetos.filter(p=>!["CONCLUÍDO","CANCELADO"].includes(statusN(p.status)));
   const anos   = useMemo(()=>[...new Set(ativos.map(p=>p.ano))].filter(Boolean).sort((a,b)=>b-a),[ativos]);
@@ -626,22 +646,6 @@ function ModalHoras({tipo,projetos,usuarioAtual,sessaoAtiva,onIniciar,onEncerrar
 
   const opts=[{value:"",label:"Selecione o projeto..."},...ativosFiltrados.map(p=>({value:p.id,label:`${p.codigo} — ${p.cliente.substring(0,50)}`}))];
 
-  // Botões de tipo de sessão
-  const BotoesTipo = () => (
-    <div style={{display:"flex",gap:8,marginBottom:4}}>
-      {[
-        {id:"projeto", label:"📁 Projetos",      sub:"Vincula a um projeto"},
-        {id:"admin",   label:"⚙ Administrativa", sub:"Orçamentos, reuniões..."},
-      ].map(t=>(
-        <div key={t.id} onClick={()=>{setTipoSessao(t.id);setProjSel("");setCatSel("");}}
-          style={{flex:1,padding:"10px 12px",borderRadius:10,border:`2px solid ${tipoSessao===t.id?C.azulMedio:C.cinzaCard}`,background:tipoSessao===t.id?C.azulEscuro:"white",cursor:"pointer",transition:"all 0.15s",textAlign:"center"}}>
-          <div style={{fontSize:14,fontWeight:700,color:tipoSessao===t.id?C.branco:C.cinzaEscuro}}>{t.label}</div>
-          <div style={{fontSize:11,color:tipoSessao===t.id?"rgba(255,255,255,0.7)":C.cinzaClaro,marginTop:2}}>{t.sub}</div>
-        </div>
-      ))}
-    </div>
-  );
-
   const wrap=(children,titulo,sub,gradFrom,gradTo)=>(
     <div style={{position:"fixed",inset:0,background:"rgba(15,25,50,0.8)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
       <div style={{background:C.branco,borderRadius:20,width:"100%",maxWidth:500,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 64px rgba(0,0,0,0.3)"}}>
@@ -654,63 +658,116 @@ function ModalHoras({tipo,projetos,usuarioAtual,sessaoAtiva,onIniciar,onEncerrar
     </div>
   );
 
-  if(tipo==="checkin") return wrap(<>
-    <BotoesTipo/>
-
-    {tipoSessao==="projeto" ? (<>
-      <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-        <label style={{fontSize:12,fontWeight:600,color:C.cinzaEscuro,whiteSpace:"nowrap"}}>Ano:</label>
-        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-          {["todos",...anos].map(a=>(
-            <button key={a} onClick={()=>{setFAno(a);setProjSel("");}}
-              style={{padding:"3px 10px",borderRadius:20,border:`1.5px solid ${filtroAno==a?C.azulMedio:C.cinzaCard}`,background:filtroAno==a?C.azulMedio:"transparent",color:filtroAno==a?C.branco:C.cinzaClaro,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",transition:"all 0.15s"}}>
-              {a==="todos"?"Todos":a}
-            </button>
-          ))}
-        </div>
-      </div>
-      <SelC label={`Projeto * (${ativosFiltrados.length} disponíveis)`} value={projSel} onChange={setProjSel} options={opts}/>
-    </>) : (<>
-      <div>
-        <label style={{fontSize:12,fontWeight:600,color:C.cinzaEscuro,display:"block",marginBottom:8}}>Categoria *</label>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-          {CATS_ADMIN.map(c=>(
-            <div key={c.id} onClick={()=>setCatSel(c.id)}
-              style={{padding:"10px 12px",borderRadius:8,border:`2px solid ${catSel===c.id?C.azulMedio:C.cinzaCard}`,background:catSel===c.id?"#eff6ff":"white",cursor:"pointer",display:"flex",alignItems:"center",gap:8,transition:"all 0.15s"}}>
-              <span style={{fontSize:18}}>{c.icone}</span>
-              <span style={{fontSize:12,fontWeight:600,color:catSel===c.id?C.azulMedio:C.cinzaEscuro}}>{c.label}</span>
+  if(tipo==="checkin") {
+    const q = busca.trim().toLowerCase();
+    const lista = q ? ativosFiltrados.filter(p=>`${p.codigo} ${p.cliente} ${p.tipo}`.toLowerCase().includes(q)) : ativosFiltrados;
+    const fora = verificarForaExpediente(hi, usuarioAtual?.expediente);
+    const okSel = tipoSessao==="projeto" ? !!projSel : !!catSel;
+    const pode = okSel && !!obs.trim();
+    const falta = !okSel ? (tipoSessao==="projeto"?"Escolha o projeto":"Escolha a categoria") : !obs.trim() ? "Descreva a atividade" : "";
+    const iniciar = () => { if(pode) onIniciar(tipoSessao==="projeto"?projSel:null, hi, obs, tipoSessao==="admin"?catSel:null); };
+    const rot = {fontSize:11,fontWeight:700,color:C.cinzaClaro,textTransform:"uppercase",letterSpacing:.6};
+    const campo = {border:`1.5px solid ${C.cinzaCard}`,borderRadius:10,padding:"9px 12px",fontSize:14,fontFamily:"inherit",color:C.cinzaEscuro,outline:"none",background:C.branco,boxSizing:"border-box"};
+    const avisoCor = { antes:["#dbeafe","#1e40af","🌅"], intervalo:["#fef3c7","#92400e","🍽"], depois:["#fef3c7","#92400e","🌙"], folga:["#fce7f3","#9d174d","🏖"] };
+    return (
+      <div style={{position:"fixed",inset:0,background:"rgba(15,25,50,0.75)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+        <div style={{background:C.branco,borderRadius:18,width:"100%",maxWidth:520,maxHeight:"92vh",display:"flex",flexDirection:"column",boxShadow:"0 24px 64px rgba(0,0,0,0.3)",overflow:"hidden",fontFamily:"'Segoe UI',system-ui,sans-serif"}}>
+          {/* Cabeçalho */}
+          <div style={{background:`linear-gradient(135deg,${C.azulEscuro},${C.azulMedio})`,padding:"16px 20px",display:"flex",alignItems:"center",gap:14}}>
+            <div style={{width:40,height:40,borderRadius:12,background:"rgba(255,255,255,0.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>⏱</div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{color:C.branco,fontSize:17,fontWeight:800}}>Iniciar sessão</div>
+              <div style={{color:"rgba(255,255,255,0.75)",fontSize:12.5}}>Olá, {usuarioAtual.nome}! No que você vai trabalhar?</div>
             </div>
-          ))}
-        </div>
-      </div>
-    </>)}
+            <button onClick={onFechar} aria-label="Fechar" style={{background:"rgba(255,255,255,0.12)",border:"none",color:C.branco,width:32,height:32,borderRadius:8,cursor:"pointer",fontSize:18,lineHeight:1}}>×</button>
+          </div>
 
-    <InpC label="Hora de início" type="time" value={hi} onChange={setHi}/>
-    {/* Aviso se estiver fora do expediente */}
-    {(()=>{
-      const fora = verificarForaExpediente(hi, usuarioAtual?.expediente);
-      if(!fora) return null;
-      const icones = { antes:'🌅', intervalo:'🍽', depois:'🌙', folga:'🏖' };
-      const cores  = { antes:'#dbeafe', intervalo:'#fef3c7', depois:'#fef3c7', folga:'#fce7f3' };
-      const textos = { antes:'#1e40af', intervalo:'#92400e', depois:'#92400e', folga:'#9d174d' };
-      return(
-        <div style={{background:cores[fora.tipo],border:`1px solid ${textos[fora.tipo]}40`,borderRadius:8,padding:"10px 14px",fontSize:12,color:textos[fora.tipo],display:"flex",gap:8,alignItems:"flex-start"}}>
-          <span style={{fontSize:16,flexShrink:0}}>{icones[fora.tipo]}</span>
-          <div>
-            <strong>{fora.motivo}</strong> — esta sessão será registrada como <strong>hora extra</strong> e não será encerrada automaticamente.
+          <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:14,overflowY:"auto"}}>
+            {/* Tipo de sessão */}
+            <div style={{display:"flex",background:C.cinzaFundo,borderRadius:12,padding:4,gap:4}}>
+              {[{id:"projeto",label:"📁 Projeto"},{id:"admin",label:"⚙ Administrativa"}].map(t=>{
+                const at=tipoSessao===t.id;
+                return <button key={t.id} onClick={()=>{setTipoSessao(t.id);setProjSel("");setCatSel("");}}
+                  style={{flex:1,border:"none",borderRadius:9,padding:"9px 10px",cursor:"pointer",fontFamily:"inherit",fontSize:13.5,fontWeight:700,
+                    background:at?C.branco:"transparent",color:at?C.azulMedio:C.cinzaClaro,boxShadow:at?"0 1px 4px rgba(13,30,53,0.12)":"none",transition:"all .15s"}}>{t.label}</button>;
+              })}
+            </div>
+
+            {tipoSessao==="projeto" ? (
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                  <input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="🔍 Buscar por código ou cliente" aria-label="Buscar projeto" style={{...campo,flex:1,padding:"8px 12px",fontSize:13}}/>
+                  <div style={{display:"flex",gap:4}}>
+                    {["todos",...anos].map(a=>(
+                      <button key={a} onClick={()=>{setFAno(a);}}
+                        style={{padding:"6px 10px",borderRadius:8,border:`1.5px solid ${filtroAno==a?C.azulMedio:C.cinzaCard}`,background:filtroAno==a?C.azulMedio:C.branco,color:filtroAno==a?C.branco:C.cinzaClaro,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                        {a==="todos"?"Todos":a}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div role="listbox" aria-label="Projetos" style={{border:`1.5px solid ${C.cinzaCard}`,borderRadius:12,maxHeight:232,overflowY:"auto"}}>
+                  {lista.length===0 && <div style={{padding:16,textAlign:"center",fontSize:13,color:C.cinzaClaro}}>Nenhum projeto ativo encontrado</div>}
+                  {lista.map((p,i)=>{
+                    const sel=projSel===p.id;
+                    return (
+                      <div key={p.id} role="option" aria-selected={sel} onClick={()=>setProjSel(p.id)}
+                        style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",cursor:"pointer",borderTop:i?`1px solid ${C.cinzaFundo}`:"none",
+                          background:sel?"#e8f1fb":C.branco,borderLeft:`3px solid ${sel?C.azulMedio:"transparent"}`}}>
+                        <TipoBadge tipo={p.tipo}/>
+                        <span style={{fontSize:12,fontWeight:800,color:C.azulMedio,whiteSpace:"nowrap"}}>{p.codigo}</span>
+                        <span style={{fontSize:13,color:C.cinzaEscuro,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.cliente}</span>
+                        {sel&&<span style={{color:C.azulMedio,fontWeight:800}}>✓</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{fontSize:11,color:C.cinzaClaro}}>{lista.length} projeto(s) ativo(s){filtroAno!=="todos"?` em ${filtroAno}`:""}</div>
+              </div>
+            ) : (
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:8}}>
+                {CATS_ADMIN.map(c=>{
+                  const sel=catSel===c.id;
+                  return <button key={c.id} onClick={()=>setCatSel(c.id)}
+                    style={{padding:"9px 10px",borderRadius:10,border:`1.5px solid ${sel?C.azulMedio:C.cinzaCard}`,background:sel?"#e8f1fb":C.branco,cursor:"pointer",display:"flex",alignItems:"center",gap:8,fontFamily:"inherit",textAlign:"left"}}>
+                    <span style={{fontSize:17}}>{c.icone}</span>
+                    <span style={{fontSize:12.5,fontWeight:700,color:sel?C.azulMedio:C.cinzaEscuro,minWidth:0,overflowWrap:"anywhere",lineHeight:1.25}}>{c.label.replace("/"," / ")}</span>
+                  </button>;
+                })}
+              </div>
+            )}
+
+            {/* Descrição + horário */}
+            <div style={{display:"flex",flexDirection:"column",gap:6}}>
+              <label htmlFor="ck-obs" style={rot}>O que você vai fazer?</label>
+              <textarea id="ck-obs" value={obs} onChange={e=>setObs(e.target.value)} rows={2}
+                onKeyDown={e=>{ if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)) iniciar(); }}
+                placeholder={tipoSessao==="projeto"?"Ex.: Modelagem estrutural no Eberick":"Ex.: Orçamento para o cliente X"}
+                style={{...campo,resize:"vertical",minHeight:58,lineHeight:1.4}}/>
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+              <label htmlFor="ck-hi" style={rot}>Início</label>
+              <input id="ck-hi" type="time" value={hi} onChange={e=>setHi(e.target.value)} style={{...campo,width:118,padding:"7px 10px"}}/>
+              <button onClick={()=>setHi(new Date().toTimeString().slice(0,5))} style={{background:"none",border:"none",color:C.azulClaro,fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit",padding:0}}>Agora</button>
+            </div>
+            {fora && (
+              <div style={{background:avisoCor[fora.tipo][0],borderRadius:10,padding:"8px 12px",fontSize:12,color:avisoCor[fora.tipo][1],display:"flex",gap:8,alignItems:"center"}}>
+                <span style={{fontSize:15}}>{avisoCor[fora.tipo][2]}</span>
+                <span><strong>{fora.motivo}</strong> — conta como <strong>hora extra</strong> e não encerra sozinha.</span>
+              </div>
+            )}
+          </div>
+
+          {/* Rodapé */}
+          <div style={{padding:"12px 20px",borderTop:`1px solid ${C.cinzaCard}`,display:"flex",alignItems:"center",gap:10,background:"#fafcfe"}}>
+            <span style={{fontSize:12,color:C.cinzaClaro,flex:1}}>{falta}</span>
+            <Btn variant="ghost" onClick={onFechar}>Agora não</Btn>
+            <Btn onClick={iniciar} disabled={!pode}>▶ Iniciar sessão</Btn>
           </div>
         </div>
-      );
-    })()}
-    <InpC label="O que você vai fazer? *" value={obs} onChange={setObs}
-      placeholder={tipoSessao==="projeto"?"Ex: Modelagem estrutural no Eberick...":"Ex: Orçamento para cliente X..."} required/>
-    {!obs.trim()&&<span style={{fontSize:11,color:C.vermelho,fontSize:11}}>⚠ Descrição obrigatória</span>}
-    <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
-      <Btn variant="ghost" onClick={onFechar}>Agora não</Btn>
-      <Btn onClick={()=>onIniciar(tipoSessao==="projeto"?projSel:null, hi, obs, tipoSessao==="admin"?catSel:null)}
-        disabled={tipoSessao==="projeto"?(!projSel||!obs.trim()):(!catSel||!obs.trim())}>▶ Iniciar</Btn>
-    </div>
-  </>, "⏱ Iniciar Sessão de Trabalho", `Olá, ${usuarioAtual.nome}! O que você vai fazer?`, C.azulEscuro, C.azulMedio);
+      </div>
+    );
+  }
 
   if(tipo==="aviso") return wrap(<>
     {sessaoAtiva&&<div style={{padding:"12px 16px",background:C.cinzaFundo,borderRadius:10,fontSize:13}}>
@@ -6132,11 +6189,11 @@ export default function App(){
     });
     return () => { vivo = false; sub?.subscription?.unsubscribe(); };
   }, []);
-  const entrarComGoogle = async () => {
+  const entrarComGoogle = async (dica) => {
     setAuthErro("");
     const { error } = await authClient.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: window.location.origin, queryParams: { prompt: "select_account" } },
+      options: { redirectTo: window.location.origin, queryParams: dica ? { login_hint: dica } : { prompt: "select_account" } },
     });
     if (error) { setAuthErro("Não foi possível abrir o login do Google: " + error.message); throw error; }
   };
@@ -6176,6 +6233,7 @@ export default function App(){
       db.usuarios.salvar(u).catch(e => console.error("Erro ao vincular usuário:", e));
     }
     setAuthErro("");
+    try { localStorage.setItem("wm-ultima-conta", JSON.stringify({ email, nome: u.nome })); } catch { /* sem armazenamento */ }
     fazerLogin(u);
   }, [carregando, authStatus, authEmail, usuarios]); // eslint-disable-line react-hooks/exhaustive-deps
 
