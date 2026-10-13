@@ -7,7 +7,17 @@ import { createClient } from '@supabase/supabase-js';
 const SUPABASE_URL  = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
+// Cliente de dados: continua usando a chave pública (anon), sem sessão de usuário.
+// Assim o login com Google não altera o acesso às tabelas enquanto as regras do
+// banco (RLS) não forem revistas para usuários autenticados.
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, {
+  auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+});
+
+// Cliente só para autenticação (login com Google). Sessão salva em chave própria.
+export const authClient = createClient(SUPABASE_URL, SUPABASE_ANON, {
+  auth: { storageKey: 'wm-auth', persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+});
 
 // ─── PROJETOS ──────────────────────────────────────────────────────────────────
 export const db = {
