@@ -4,14 +4,13 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Obras · WM Engenharia</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&family=IBM+Plex+Mono:wght@500&display=swap">
 <style>
 :root{
-  --bg:#f4f5f8; --surface:#ffffff; --line:#d9dee7; --ink:#18202e; --muted:#5a6578;
-  --warn:#b26a00; --warn-bg:#fff3de; --na:#8a93a3; --danger:#c0392b;
-  --cad:#3d4a5c; --cad-ink:#3d4a5c; --cad-tint:#eceff4; --cad-on:#ffffff;
+  --bg:#f0f4f8; --surface:#ffffff; --line:#e2eaf3; --ink:#0d1e35; --muted:#6b7c93;
+  --warn:#d97706; --warn-bg:#fffbeb; --na:#8a9ab0; --danger:#ef4444;
+  --cad:#1a4a7a; --cad-ink:#1a4a7a; --cad-tint:#e8f4fd; --cad-on:#ffffff;
+  --wm-escuro:#0d1e35; --wm-medio:#1a4a7a; --wm-claro:#2e6da8; --wm-ciano:#4a90c4;
+  --shadow:0 2px 12px rgba(13,30,53,.08);
   --hid:#1d5fc4; --hid-ink:#1a55b0; --hid-tint:#e7effb; --hid-on:#ffffff;
   --san:#1e8e4e; --san-ink:#177a42; --san-tint:#e4f4ea; --san-on:#ffffff;
   --ele:#f0b400; --ele-ink:#8a6200; --ele-tint:#fdf4d6; --ele-on:#2b2100;
@@ -20,36 +19,8 @@
   --est:#9b2c3e; --est-ink:#8a2436; --est-tint:#f7e4e7; --est-on:#ffffff;
   --arq:#0f8287; --arq-ink:#0b6c70; --arq-tint:#e0f3f3; --arq-on:#ffffff;
   --acc:var(--cad); --acc-ink:var(--cad-ink); --acc-tint:var(--cad-tint); --acc-on:var(--cad-on);
-  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
-  --sans:"Open Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
-}
-@media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]){
-    --bg:#0e131b; --surface:#161d28; --line:#2a3342; --ink:#e5eaf2; --muted:#9aa6b8;
-    --warn:#f0b35a; --warn-bg:#33270f; --na:#6c778a; --danger:#ef7b6d;
-    --cad:#5c6b82; --cad-ink:#b4c2d6; --cad-tint:#1f2733; --cad-on:#ffffff;
-    --hid:#3b7fe0; --hid-ink:#8ab8ff; --hid-tint:#172640; --hid-on:#ffffff;
-    --san:#2fae66; --san-ink:#6fd99b; --san-tint:#14301f; --san-on:#ffffff;
-    --ele:#f2c230; --ele-ink:#f5cf55; --ele-tint:#332a0c; --ele-on:#2b2100;
-    --pis:#b458d4; --pis-ink:#d99af0; --pis-tint:#2b1a36; --pis-on:#ffffff;
-    --int:#e2804a; --int-ink:#f3a77c; --int-tint:#3a2116; --int-on:#ffffff;
-    --est:#d0566a; --est-ink:#f0a0ad; --est-tint:#3a1a20; --est-on:#ffffff;
-    --arq:#2fb3b8; --arq-ink:#7fd8db; --arq-tint:#12302f; --arq-on:#ffffff;
-    color-scheme:dark;
-  }
-}
-:root[data-theme="dark"]{
-  --bg:#0e131b; --surface:#161d28; --line:#2a3342; --ink:#e5eaf2; --muted:#9aa6b8;
-  --warn:#f0b35a; --warn-bg:#33270f; --na:#6c778a; --danger:#ef7b6d;
-  --cad:#5c6b82; --cad-ink:#b4c2d6; --cad-tint:#1f2733; --cad-on:#ffffff;
-  --hid:#3b7fe0; --hid-ink:#8ab8ff; --hid-tint:#172640; --hid-on:#ffffff;
-  --san:#2fae66; --san-ink:#6fd99b; --san-tint:#14301f; --san-on:#ffffff;
-  --ele:#f2c230; --ele-ink:#f5cf55; --ele-tint:#332a0c; --ele-on:#2b2100;
-  --pis:#b458d4; --pis-ink:#d99af0; --pis-tint:#2b1a36; --pis-on:#ffffff;
-    --int:#e2804a; --int-ink:#f3a77c; --int-tint:#3a2116; --int-on:#ffffff;
-    --est:#d0566a; --est-ink:#f0a0ad; --est-tint:#3a1a20; --est-on:#ffffff;
-    --arq:#2fb3b8; --arq-ink:#7fd8db; --arq-tint:#12302f; --arq-on:#ffffff;
-  color-scheme:dark;
+  --mono:ui-monospace,"Cascadia Mono",Consolas,"SF Mono",monospace;
+  --sans:"Segoe UI",system-ui,-apple-system,sans-serif;
 }
 body[data-acc="hid"]{--acc:var(--hid);--acc-ink:var(--hid-ink);--acc-tint:var(--hid-tint);--acc-on:var(--hid-on)}
 body[data-acc="san"]{--acc:var(--san);--acc-ink:var(--san-ink);--acc-tint:var(--san-tint);--acc-on:var(--san-on)}
@@ -385,26 +356,93 @@ a.btn{text-decoration:none}
 .wmchip .wmopen{padding:4px 6px 4px 10px}.wmchip .wmopen:hover{text-decoration:underline}
 .wmchip .wmx{padding:0 9px;color:var(--danger);border-left:1px solid var(--line)}
 #wmSel{max-width:340px}
-body.embed header.top,body.embed #btnHome,body.embed #projSel,body.embed label[for=projSel],body.embed #btnNew,body.embed footer{display:none!important}
+body.embed header.top .ttl,body.embed #btnSettings,body.embed #btnHome,body.embed #projSel,body.embed label[for=projSel],body.embed #btnNew,body.embed footer{display:none!important}
 body.embed .wrap{padding-top:10px}
 #embedBox h2{margin-top:0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ===== Visual do sistema WM ===== */
+body{font-size:14px;padding:28px 24px 64px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1400px}
+header.top{display:flex;flex-wrap:wrap;align-items:flex-start;gap:12px 16px;padding:0 0 4px}
+header.top .ttl{flex:1 1 320px;min-width:0}
+header.top h1{font-size:24px;font-weight:800;color:var(--wm-escuro);margin:0;line-height:1.25}
+header.top .lede{font-size:13px;color:var(--muted);margin:2px 0 0}
+.topact{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.topact .saveinfo{font:600 11.5px var(--sans);color:var(--muted);margin:0 6px 0 0}
+.folderinfo{flex-basis:100%;font-size:12px;color:var(--muted);margin-top:-6px}
+.folderinfo:empty{display:none}
+.btn{font:600 13px var(--sans);padding:8px 16px;border-radius:8px;border:1.5px solid var(--line);background:#fff;color:var(--wm-escuro);transition:all .15s}
+.btn:hover:not([disabled]){border-color:var(--wm-claro);color:var(--wm-medio)}
+.btn.pri{background:var(--wm-medio);border-color:var(--wm-medio);color:#fff}
+.btn.pri:hover:not([disabled]){background:var(--wm-claro);border-color:var(--wm-claro);color:#fff}
+.btn.danger{color:var(--danger)}
+.btn.danger:hover:not([disabled]){border-color:var(--danger);color:var(--danger)}
+.btn.edit[aria-pressed="true"]{background:var(--warn-bg);border-color:var(--warn);color:var(--warn)}
+select,input[type=text],input[type=date],input[type=number],input[type=time],input[type=search],textarea{border:1.5px solid var(--line);border-radius:8px;padding:8px 12px;background:#fff;outline:none;transition:border-color .15s}
+select:focus,input:focus,textarea:focus{border-color:var(--wm-claro)}
+:focus-visible{outline:2px solid var(--wm-claro);outline-offset:2px}
+.projbar,.formpanel,.panel,details.sec,.folderbar{border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}
+.projbar{padding:18px 20px}
+.formpanel{border-top:1px solid var(--line);padding:20px 24px}
+.formpanel h2{font-size:18px;font-weight:800;color:var(--wm-escuro)}
+.panel{padding:18px 20px}
+.panel>h2,.subh,.hsec{font:700 11.5px var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--wm-claro);border-left:3px solid var(--wm-claro);padding-left:10px;margin:2px 0 12px}
+.hsec{margin:24px 0 10px}
+.field span,.lbl{font:700 11px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:#3b4a60}
+fieldset{border:1px solid var(--line);border-radius:10px}
+legend{font:700 11px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:#3b4a60;padding:0 6px}
+#home{margin-top:20px}
+.homehead{background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:16px 20px}
+.homehead h2{font-size:18px;font-weight:800;color:var(--wm-escuro)}
+.chip{border-radius:8px;border:1.5px solid var(--line);background:#fff;color:var(--muted);padding:6px 12px}
+.chip[aria-pressed="true"]{background:var(--wm-medio);border-color:var(--wm-medio);color:#fff}
+.pgrid{grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.pcard{position:relative;overflow:hidden;border:1.5px solid var(--line);border-radius:12px;padding:16px 16px 14px 22px;box-shadow:0 2px 8px rgba(26,58,107,.06);transition:all .2s}
+.pcard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--wm-claro)}
+.pcard.pnew::before{display:none}
+.pcard:hover{border-color:var(--wm-claro);transform:translateY(-2px);box-shadow:0 8px 24px rgba(26,58,107,.15)}
+.pcard h3{font-size:15px;font-weight:700;color:var(--wm-escuro)}
+.pcard.pnew{border-style:dashed;box-shadow:none;color:var(--wm-medio);font-weight:700}
+.comp{border-radius:4px;font:800 10px var(--sans);letter-spacing:1px;background:var(--wm-escuro);color:var(--wm-ciano);border:0;padding:2px 8px}
+.comp.in{background:#fef3c7;color:#92400e}
+.comp.wm{color:#4a90c4}
+.homehead h2{display:none}
+.empty{border:1.5px dashed var(--line);border-radius:12px;background:#fff}
+.tabs{margin-top:22px;border-bottom:2px solid var(--line);gap:0}
+.tab{font:600 13px var(--sans);padding:12px 16px;border-bottom:2px solid transparent}
+.tab[aria-selected="true"]{font-weight:700;color:var(--wm-medio)}
+.bar{background:var(--bg)}
+.meter{height:8px;background:var(--line)}
+.stage-head{border-radius:12px;background:linear-gradient(135deg,var(--acc),color-mix(in srgb,var(--acc) 72%,#0d1e35));box-shadow:var(--shadow)}
+details.sec>summary{padding:13px 18px}
+summary h3{font-size:14.5px;color:var(--wm-escuro)}
+.esb{border-radius:8px;border-width:1.5px}
+.st button{border-radius:8px;border-width:1.5px}
+.tag{border-radius:6px}
+.fab{bottom:calc(96px + env(safe-area-inset-bottom,0px));background:linear-gradient(135deg,var(--wm-escuro),var(--wm-medio));box-shadow:0 6px 20px rgba(13,30,53,.35)}
+.hwin{bottom:156px;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.hw-head{background:linear-gradient(135deg,var(--wm-escuro),var(--wm-medio))}
+footer{font-size:12px}
+body.embed{padding:14px 20px 40px}
+body.embed .fab{bottom:calc(18px + env(safe-area-inset-bottom,0px))}
+body.embed .hwin{bottom:78px}
 </style>
 </head><body>
 
 <div class="wrap">
   <header class="top">
-    <div class="kicker">WM Engenharia · Obras <span class="dots"><i style="background:var(--arq)"></i><i style="background:var(--est)"></i><i style="background:var(--hid)"></i><i style="background:var(--san)"></i><i style="background:var(--ele)"></i><i style="background:var(--pis)"></i><i style="background:var(--int)"></i></span></div>
-    <h1>Obras: cadastro, checklist e evolução</h1>
-    <p class="lede">Cadastre a obra com o briefing do cliente, acompanhe o checklist de cada disciplina e registre a evolução até a entrega. Todo número precisa ter origem: norma, usuário, fabricante, arquitetura ou premissa explicitada.</p>
-  </header>
-
-  <section class="folderbar">    <div class="pb-row"><span class="msg" id="folderInfo"></span>
-      <button class="btn" id="btnReload" type="button">Recarregar</button>
-      <button class="btn" id="btnSettings" type="button">Configurações</button>
-      <span class="saveinfo" id="saveinfo">Carregando…</span>
+    <div class="ttl">
+      <h1><span aria-hidden="true">🏠</span> Obras</h1>
+      <p class="lede">Cadastro do cliente, checklist por disciplina, atas e evolução de cada obra</p>
     </div>
-  </section>
+    <div class="topact">
+      <span class="saveinfo" id="saveinfo">Carregando…</span>
+      <button class="btn" id="btnReload" type="button">⟳ Recarregar</button>
+      <button class="btn" id="btnSettings" type="button">⚙ Configurações</button>
+    </div>
+    <span class="msg folderinfo" id="folderInfo"></span>
+  </header>
   <section class="formpanel" id="setPanel" hidden><h2>Configurações</h2>
     <fieldset style="margin:4px 0 14px"><legend>Módulos</legend>
       <label><input type="checkbox" id="stInt"> Projeto de interiores disponível (aparece na criação de obras e como aba nas obras que o tiverem)</label>
@@ -424,6 +462,7 @@ body.embed .wrap{padding-top:10px}
       <fieldset id="fComp"><legend>Empresa responsável pela elaboração *</legend>
         <label><input type="radio" name="fcomp" id="fcWM" value="WM Engenharia Integrada"> WM Engenharia Integrada</label>
         <label><input type="radio" name="fcomp" id="fcIN" value="Intec Engenharia Integrada"> Intec Engenharia Integrada</label>
+        <small class="msg" id="fcIntecNote" hidden>Obras da Intec ficam visíveis só para você e não são vinculadas a projetos da WM.</small>
       </fieldset>
       <fieldset id="fDisc"><legend>Disciplinas</legend></fieldset>
       <fieldset id="fHid"><legend>Sistema hidráulico</legend>
@@ -830,7 +869,7 @@ DEF.arq={name:"Arquitetônico",stages:[]};
 const DISC=["arq","est","hid","san","ele","pis","int"];
 function discEnabled(k){return k!=="int"||typeof settings==="undefined"||settings.intEnabled!==false}
 function dOn(p,k){return !!(p&&p.discs&&p.discs[k])&&discEnabled(k)}
-const COLORS={cad:"#3d4a5c",hid:"#1d5fc4",san:"#1e8e4e",ele:"#e0a800",pis:"#9a37b8",int:"#c8571f",est:"#9b2c3e",arq:"#0f8287"};
+const COLORS={cad:"#1a4a7a",hid:"#1d5fc4",san:"#1e8e4e",ele:"#e0a800",pis:"#9a37b8",int:"#c8571f",est:"#9b2c3e",arq:"#0f8287"};
 
 /* ============ CADASTRO ============ */
 const CAD=[
@@ -1145,7 +1184,7 @@ function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt
 function today(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 function fmtD(s){if(!s)return"";const[a,m,d]=s.split("-");return d+"/"+m+"/"+a}
 function norm(p){p.status=p.status||{};p.notes=p.notes||{};p.cad=p.cad||{};p.amb=p.amb||[];p.bath=p.bath||[];p.log=p.log||[];p.hist=p.hist||{};p.phase=p.phase||{};p.due=p.due||{};p.discs=p.discs||{hid:true};p.hidMode=p.hidMode||"afaq";p.pisMode=p.pisMode||"aq";p.etapa=p.etapa||{};p.atas=p.atas||[];return p}
-function loadLocal(){try{const r=JSON.parse(localStorage.getItem(LS)||"null");if(r){projects=r.projects||{};for(const id in projects)norm(projects[id]);curId=r.curId||null;if(r.help)help=r.help;if(r.settings)Object.assign(settings,r.settings);if(r.ftpl&&r.ftpl.v===1){ftpl=r.ftpl;if(mergeFtpl(ftpl)){ftpl.updatedAt=Date.now();ftplDirty=true}}if(r.tpl)for(const k in r.tpl){if(r.tpl[k]&&r.tpl[k].v===2){tpl[k]=r.tpl[k];tplCustom[k]=true}}}}catch(e){}}
+function loadLocal(){try{const r=JSON.parse(localStorage.getItem(LS)||"null");if(r){projects=r.projects||{};for(const id in projects){norm(projects[id]);if(!podeVer(projects[id]))delete projects[id]}curId=r.curId||null;if(r.help)help=r.help;if(r.settings)Object.assign(settings,r.settings);if(r.ftpl&&r.ftpl.v===1){ftpl=r.ftpl;if(mergeFtpl(ftpl)){ftpl.updatedAt=Date.now();ftplDirty=true}}if(r.tpl)for(const k in r.tpl){if(r.tpl[k]&&r.tpl[k].v===2){tpl[k]=r.tpl[k];tplCustom[k]=true}}}}catch(e){}}
 function saveLocal(){try{const t={};for(const k in tplCustom)t[k]=tpl[k];localStorage.setItem(LS,JSON.stringify({projects,curId,tpl:t,help,settings,ftpl}))}catch(e){}}
 
 /* ============ PERSISTÊNCIA (Supabase do sistema WM) ============ */
@@ -1161,6 +1200,13 @@ function setInfo(t){$("saveinfo").textContent=t}
 function hhmm(){const d=new Date();return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")}
 function slug(s){return (s||"projeto").normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^\w\- ]+/g,"").trim().replace(/\s+/g,"_").slice(0,50)||"projeto"}
 function quem(){return (WM&&WM.usuario&&WM.usuario().nome)||""}
+/* Obras da Intec: visíveis só para o Jonathan e nunca vinculadas a projetos da WM */
+const INTEC="Intec Engenharia Integrada";
+function isIntec(p){return !!p&&p.company===INTEC}
+function ehJon(){if(!WM)return true;let u={};try{u=WM.usuario()||{}}catch(e){}
+  const n=String(u.nome||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase();
+  return u.id==="jonathan"||n==="jonathan"||n.startsWith("jonathan ")}
+function podeVer(p){return !isIntec(p)||ehJon()}
 
 /* arquivos (atas assinadas, anexos da ajuda) no Storage */
 async function writeFile(dir,name,data){
@@ -1227,7 +1273,7 @@ async function syncFromFolder(){
       SB.from("obras_briefing").select("token,resposta").not("resposta","is",null)]);
     if(ro.error)throw ro.error;if(rc.error)throw rc.error;
     const seen={},next={...projects};
-    (ro.data||[]).forEach(r=>{const src=r.dados,id=r.id;if(!src||!src.name||!id)return;seen[id]=true;const loc=projects[id];
+    (ro.data||[]).forEach(r=>{const src=r.dados,id=r.id;if(!src||!src.name||!id||!podeVer(src))return;seen[id]=true;const loc=projects[id];
       if(dirty.has(id)&&loc&&(loc.updatedAt||0)>=(src.updatedAt||0))return;
       if(!loc||(src.updatedAt||0)>(loc.updatedAt||0))next[id]=norm(JSON.parse(JSON.stringify(src)));
       else if((loc.updatedAt||0)>(src.updatedAt||0))dirty.add(id);});
@@ -1283,13 +1329,14 @@ function wmPct(p,tipo){
   return Math.round(ks.reduce((s,k)=>s+counts(k,p).pct,0)/ks.length);
 }
 function wmSyncProgress(id){
-  const p=projects[id];if(!p||!WM||!WM.atualizarProgresso)return;
+  const p=projects[id];if(!p||!WM||!WM.atualizarProgresso||isIntec(p))return;
   wmLinks(p).forEach(pid=>{const wp=wmProj(pid);if(!wp)return;const pct=wmPct(p,wp.tipo);
     if(pct!==null&&pct!==(wp.progresso||0)){try{WM.atualizarProgresso(pid,pct)}catch(e){}}});
 }
-function obraDoProjeto(pid){return Object.keys(projects).find(id=>wmLinks(projects[id]).includes(pid))||null}
+function obraDoProjeto(pid){return Object.keys(projects).find(id=>!isIntec(projects[id])&&wmLinks(projects[id]).includes(pid))||null}
 function wmLinkBar(){
   const el=$("wmLinks"),p=cur();if(!el)return;if(!p||!WM){el.hidden=true;return}el.hidden=false;
+  if(isIntec(p)){el.innerHTML=`<span class="lbl">Projetos WM</span><span class="msg">Obra da Intec: visível só para você e sem vínculo com os projetos da WM.</span>`;return}
   const links=wmLinks(p),all=wmProjetos();
   const livres=all.filter(x=>!links.includes(x.id)).sort((a,b)=>String(a.codigo).localeCompare(String(b.codigo)));
   el.innerHTML=`<span class="lbl">Projetos WM</span>${links.map(pid=>{const w=wmProj(pid);const pct=w?wmPct(p,w.tipo):null;
@@ -1297,7 +1344,7 @@ function wmLinkBar(){
     <select id="wmSel" aria-label="Projeto do sistema WM"><option value="">Vincular projeto…</option>${livres.map(x=>{const o=obraDoProjeto(x.id);return `<option value="${esc(x.id)}">${esc(x.codigo)} · ${esc(x.tipo)} · ${esc(x.cliente||"")}${o?" (já em "+esc(projects[o].name)+")":""}</option>`}).join("")}</select>`;
 }
 document.addEventListener("change",e=>{
-  if(e.target.id!=="wmSel"||!e.target.value)return;const p=cur();if(!p)return;const pid=e.target.value;
+  if(e.target.id!=="wmSel"||!e.target.value)return;const p=cur();if(!p||isIntec(p))return;const pid=e.target.value;
   const o=obraDoProjeto(pid);if(o&&o!==curId){projects[o].wm=wmLinks(projects[o]).filter(x=>x!==pid);touchProject(o,false)}
   p.wm=[...wmLinks(p),pid];const w=wmProj(pid);
   const want=w&&wmDiscs(w.tipo);if(want)want.forEach(k=>{if(!p.discs[k]&&discEnabled(k))p.discs[k]=true});
@@ -1315,7 +1362,7 @@ function embedOpen(){
   embedReady=true;const pid=EMBED,oid=obraDoProjeto(pid),w=wmProj(pid);
   if(oid){curId=oid;const want=w&&wmDiscs(w.tipo);const first=want&&want.find(k=>dOn(projects[oid],k));tab=first||"cad";showProject(oid);return}
   view="embedNew";$("home").hidden=true;$("projView").hidden=true;$("formPanel").hidden=true;
-  const opts=sortedIds().map(id=>`<option value="${id}">${esc(projects[id].name)}${projects[id].client?" · "+esc(projects[id].client):""}</option>`).join("");
+  const opts=sortedIds().filter(id=>!isIntec(projects[id])).map(id=>`<option value="${id}">${esc(projects[id].name)}${projects[id].client?" · "+esc(projects[id].client):""}</option>`).join("");
   let box=$("embedBox");if(!box){box=document.createElement("section");box.id="embedBox";box.className="panel";$("home").before(box)}
   box.hidden=false;
   box.innerHTML=`<h2>Checklist deste projeto</h2><p class="msg">O checklist, o cadastro do cliente e as atas ficam na <b>obra</b>, que pode reunir vários projetos (hidrossanitário, elétrico, estrutural…). Este projeto${w?` (<b>${esc(w.codigo)}</b> · ${esc(w.tipo)})`:""} ainda não está vinculado a nenhuma obra.</p>
@@ -1345,6 +1392,7 @@ async function importLegacy(){
     m("Lendo a pasta…");let nP=0,nT=0,nF=0,nB=0;
     for(const {n,j} of await legacyJson(await legacyDir(root,"projetos"))){
       const src=j&&(j.projeto||j);const id=n.split("__").pop().replace(/\.json$/,"");if(!src||!src.name||!id)continue;
+      if(!podeVer(src))continue;
       const loc=projects[id];if(loc&&(loc.updatedAt||0)>=(src.updatedAt||0))continue;
       const p=norm(JSON.parse(JSON.stringify(src)));delete p.savedToFolder;p.updatedAt=Math.max(p.updatedAt||0,1);projects[id]=p;dirty.add(id);nP++;
     }
@@ -1420,6 +1468,7 @@ function showHome(){if(EMBED){embedOpen();return}view="home";closeForm();$("home
 function showProject(id){if(id)curId=id;if($("embedBox"))$("embedBox").hidden=true;if(!cur())return showHome();view="project";curAta=null;saveLocal();$("home").hidden=true;$("projView").hidden=false;renderAll();window.scrollTo({top:0})}
 function renderHome(){
   if(view!=="home")return;
+  $("homeComp").hidden=!ehJon();if(!ehJon())homeComp="all";
   $("homeComp").innerHTML=[["all","Todas"],["WM Engenharia Integrada","WM"],["Intec Engenharia Integrada","Intec"]].map(([v,n])=>`<button class="chip" type="button" data-comp="${v}" aria-pressed="${homeComp===v}">${n}</button>`).join("");
   const q=$("homeSearch").value.trim().toLowerCase();
   const ids=sortedIds().filter(id=>{const p=projects[id];return(homeComp==="all"||p.company===homeComp)&&(!q||[p.name,p.client,p.addr,p.company].join(" ").toLowerCase().includes(q))});
@@ -1453,7 +1502,7 @@ function openForm(mode){
   $("fDisc").innerHTML=`<legend>Projetos</legend>`+DISC.filter(discEnabled).map(k=>`<label><input type="checkbox" id="fd-${k}" ${p?(p.discs[k]?"checked":""):(k==="hid"||k==="san"?"checked":"")}> <span class="tag ${k}">${tpl[k].name}</span></label>`).join("");
   const hm=p?p.hidMode:"afaq";$("hmAfaq").checked=hm!=="af";$("hmAf").checked=hm==="af";
   const pm=p?p.pisMode:"aq";$("pmAq").checked=pm!=="sem";$("pmSem").checked=pm==="sem";
-  $("fcWM").checked=!!p&&p.company==="WM Engenharia Integrada";$("fcIN").checked=!!p&&p.company==="Intec Engenharia Integrada";
+  $("fcWM").checked=!!p&&p.company==="WM Engenharia Integrada";$("fcIN").checked=!!p&&p.company==="Intec Engenharia Integrada";$("fcIN").closest("label").hidden=!ehJon();$("fcIntecNote").hidden=!ehJon();
   $("formTitle").textContent=mode==="edit"?"Editar dados da obra":"Nova obra";
   $("fDel").hidden=mode!=="edit";$("fDelConf").hidden=true;$("fErr").textContent="";
   $("fSave").textContent=mode==="edit"?"Salvar alterações":"Criar obra";
@@ -1471,12 +1520,13 @@ $("pform").addEventListener("submit",e=>{
   e.preventDefault();
   const name=$("fName").value.trim(),discs={};DISC.forEach(k=>{const el=$("fd-"+k);discs[k]=el?el.checked:!!(formMode==="edit"&&cur()&&cur().discs[k])});
   if(!name){$("fErr").textContent="Informe o nome da obra.";$("fName").focus();return}
-  const company=$("fcWM").checked?$("fcWM").value:$("fcIN").checked?$("fcIN").value:"";
+  const company=$("fcWM").checked?$("fcWM").value:($("fcIN").checked&&ehJon())?$("fcIN").value:"";
   if(!company){$("fErr").textContent="Informe a empresa responsável pela elaboração.";return}
   if(!DISC.some(k=>discs[k])){$("fErr").textContent="Escolha ao menos uma disciplina.";return}
   const base={name,company,client:$("fClient").value.trim(),addr:$("fAddr").value.trim(),rev:$("fRev").value.trim(),discs,hidMode:$("hmAf").checked?"af":"afaq",pisMode:$("pmSem").checked?"sem":"aq"};
   if(formMode==="edit"&&cur()){
     const p=cur(),old=JSON.stringify(p.discs)+p.hidMode+p.pisMode+p.rev+p.company;Object.assign(p,base);
+    if(isIntec(p)&&wmLinks(p).length){p.log.push({id:uid(),date:today(),disc:"geral",type:"Outro",text:"Vínculos com projetos da WM removidos (obra da Intec)"});p.wm=[]}
     if(discs.pis&&!p.amb.some(a=>a.type==="piscina"))p.amb.push({id:uid(),type:"piscina",name:"Piscina",ans:{}});
     if(old!==JSON.stringify(p.discs)+p.hidMode+p.pisMode+p.rev+p.company)p.log.unshift({id:uid(),date:today(),disc:"geral",type:"Revisão",text:"Dados da obra atualizados"+(p.rev?" ("+p.rev+")":"")});
   }else{
