@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { db, supabase, authClient, lembrarLogin, iniciarRealtime, enviarEmail, portal, chat } from "./supabase.js";
 import CronogramaEditor from "./contratos/CronogramaEditor.jsx";
+import { SinoNotificacoes, PaginaTarefas } from "./lembretes/Central.jsx";
+import { useCentral, usePush, useAvisosAbertos } from "./lembretes/hooks.js";
 import { gerar as gerarCronograma, normalizar as normalizarCronograma, tabelaHTML as cronogramaTabelaHTML } from "./contratos/cronograma.js";
 
 // ─── CONFIG ────────────────────────────────────────────────────────────────────
@@ -6172,6 +6174,20 @@ export default function App(){
     authClient.auth.signOut().catch(()=>{});
   };
 
+  // ── Central de lembretes e tarefas ──
+  const central = useCentral({ supabase, user, usuarios, projetos, registros });
+  const push = usePush({ supabase, user });
+  useAvisosAbertos(central.meus);
+  const [tarefaFoco, setTarefaFoco] = useState(null);
+  const [obraFoco, setObraFoco] = useState(null);
+  const abrirLembrete = (lk) => {
+    if (!lk) return;
+    if (lk.projetoId) { const p = projetos.find(x => x.id === lk.projetoId); if (p) setModal({ projeto:p, modo:"editar" }); return; }
+    if (lk.obraId) { setObraFoco(lk.obraId); setAba("obras"); return; }
+    if (lk.tarefaId) { setTarefaFoco(lk.tarefaId); setAba("tarefas"); return; }
+    if (lk.aba) setAba(lk.aba);
+  };
+
   // ── Login com Google (Supabase Auth) ──
   const [authStatus, setAuthStatus] = useState("verificando"); // verificando | fora | dentro
   const [authEmail,  setAuthEmail]  = useState("");
@@ -6261,6 +6277,7 @@ export default function App(){
     ...(!isColab ? [{id:"contratos", label:"Contratos", icone:"📄"}] : []),
     ...(!isColab ? [{id:"orcamentos", label:"Orçamentos", icone:"🧮"}] : []),
     {id:"obras",        label:"Obras",       icone:"🏠"},
+    {id:"tarefas",      label:"Tarefas",     icone:"✅"},
   ];
 
   // Abas no menu lateral
@@ -6273,6 +6290,7 @@ export default function App(){
     ...(!isColab ? [{id:"contratos", label:"Contratos", icone:"📄", grupo:"principal"}] : []),
     ...(!isColab ? [{id:"orcamentos", label:"Orçamentos", icone:"🧮", grupo:"principal"}] : []),
     {id:"obras",        label:"Obras (checklist e briefing)", icone:"🏠", grupo:"principal"},
+    {id:"tarefas",      label:"Tarefas",           icone:"✅", grupo:"principal"},
     {id:"config",       label:"Configurações",     icone:"⚙",  grupo:"config"},
   ];
 
@@ -6323,6 +6341,8 @@ export default function App(){
                 📲
               </button>
             )}
+            <SinoNotificacoes central={central} push={push} user={user} usuarios={usuarios} projetos={projetos}
+              onAbrir={abrirLembrete} onVerTarefas={()=>setAba("tarefas")} gestor={["admin","gestor"].includes(user.perfil)}/>
             {sessaoAtiva&&<div style={{background:"rgba(34,197,94,0.2)",border:"1px solid rgba(34,197,94,0.4)",borderRadius:8,padding:"4px 8px",fontSize:11,color:C.verde,fontWeight:700,whiteSpace:"nowrap"}}>▶ Sessão</div>}
             {!sessaoAtiva&&<Btn onClick={()=>setModalH("checkin")} variant="ciano" small>▶ Iniciar</Btn>}
             {sessaoAtiva&&<Btn onClick={()=>setModalH("encerramento")} small style={{background:"rgba(239,68,68,0.15)",color:"#fca5a5",border:"1px solid rgba(239,68,68,0.3)"}}>⏹</Btn>}
@@ -6405,10 +6425,13 @@ export default function App(){
         {aba==="agenda"    &&<AbaAgenda calendario={calendario} usuarioAtual={user} registros={registros} usuarios={usuarios}/>}
         {aba==="config"    &&<Configuracoes usuarios={usuarios} onSalvarUsuarios={salvarUsuarios} usuarioAtual={user}/>}
         {aba==="contratos"  &&<GeradorContratos projetos={projetos} usuarios={usuarios} usuarioAtual={user}/>}
+        {aba==="tarefas" && <PaginaTarefas central={central} user={user} usuarios={usuarios} projetos={projetos}
+          gestor={["admin","gestor"].includes(user.perfil)} tarefaFoco={tarefaFoco} onFocoUsado={()=>setTarefaFoco(null)}/>}
         {aba==="obras" && (
           <div style={{margin:"-28px -24px",height:"calc(100vh - 88px)"}}>
             <iframe
-              src="/obras.html"
+              key={obraFoco||"obras"}
+              src={obraFoco?`/obras.html?obra=${encodeURIComponent(obraFoco)}`:"/obras.html"}
               title="Obras"
               style={{width:"100%",height:"100%",border:"none",display:"block"}}
             />
