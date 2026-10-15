@@ -63,49 +63,88 @@ export function useCentral({ supabase, user, usuarios, projetos, registros }) {
 
 const b64ToBytes = s => { const p = "=".repeat((4 - (s.length % 4)) % 4); const b = atob((s + p).replace(/-/g, "+").replace(/_/g, "/")); return Uint8Array.from(b, c => c.charCodeAt(0)); };
 
+// Registro do service worker (registra se ainda não houver; não espera para sempre)
+async function registroSW() {
+  let reg = await navigator.serviceWorker.getRegistration("/");
+  if (!reg) reg = await navigator.serviceWorker.register("/sw.js");
+  if (reg.active) return reg;
+  return await Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise((_, rej) => setTimeout(() => rej(new Error("o serviço de notificações do navegador não iniciou (recarregue a página com Ctrl+F5)")), 10000)),
+  ]);
+}
+const mesmaChave = (sub, chave) => {
+  try {
+    const k = sub.options && sub.options.applicationServerKey;
+    if (!k) return true;
+    const a = new Uint8Array(k), b = b64ToBytes(chave);
+    return a.length === b.length && a.every((x, i) => x === b[i]);
+  } catch { return true; }
+};
+
 export function usePush({ supabase, user }) {
   const suportado = typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
-  const [estado, setEstado] = useState(suportado ? "verificando" : "sem-suporte"); // verificando | sem-chave | desligado | ligado | bloqueado | sem-suporte
+  const [estado, setEstado] = useState(suportado ? "verificando" : "sem-suporte"); // verificando | sem-chave | desligado | ligado | bloqueado | sem-suporte | erro
   const [chave, setChave] = useState("");
+  const [erro, setErro] = useState("");
   useEffect(() => {
     if (!suportado || !user) return;
     let vivo = true;
     (async () => {
       let pk = "";
-      try { const r = await fetch("/api/push?acao=chave"); pk = (await r.json()).publicKey || ""; } catch { /* sem servidor */ }
+      try { const r = await fetch("/api/push?acao=chave", { cache: "no-store" }); pk = String((await r.json()).publicKey || "").trim(); } catch { /* sem servidor */ }
       if (!vivo) return;
       setChave(pk);
       if (!pk) { setEstado("sem-chave"); return; }
       if (Notification.permission === "denied") { setEstado("bloqueado"); return; }
-      const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.getSubscription();
-      if (vivo) setEstado(sub ? "ligado" : "desligado");
+      try {
+        const reg = await registroSW();
+        const sub = await reg.pushManager.getSubscription();
+        if (vivo) setEstado(sub && mesmaChave(sub, pk) && Notification.permission === "granted" ? "ligado" : "desligado");
+      } catch (e) { if (vivo) { setErro(e.message || String(e)); setEstado("desligado"); } }
     })();
     return () => { vivo = false; };
   }, [suportado, user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Retorna "" se deu certo ou a mensagem do problema
   const ativar = async () => {
-    const perm = await Notification.requestPermission();
-    if (perm !== "granted") { setEstado(perm === "denied" ? "bloqueado" : "desligado"); return false; }
-    const reg = await navigator.serviceWorker.ready;
-    let sub = await reg.pushManager.getSubscription();
-    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(chave) });
-    const { error } = await supabase.from("push_assinaturas").upsert({ endpoint: sub.endpoint, usuario_id: user.id, dados: sub.toJSON(), dispositivo: navigator.userAgent.slice(0, 160) });
-    if (error) { console.error(error); return false; }
-    setEstado("ligado");
-    return true;
+    setErro("");
+    try {
+      const perm = await Notification.requestPermission();
+      if (perm !== "granted") { setEstado(perm === "denied" ? "bloqueado" : "desligado"); return perm === "denied" ? "Notificações bloqueadas no navegador" : "Permissão não concedida"; }
+      const reg = await registroSW();
+      let sub = await reg.pushManager.getSubscription();
+      if (sub && !mesmaChave(sub, chave)) { await sub.unsubscribe(); sub = null; } // assinatura antiga com outra chave
+      if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(chave) });
+      const { error } = await supabase.from("push_assinaturas").upsert({ endpoint: sub.endpoint, usuario_id: user.id, dados: sub.toJSON(), dispositivo: navigator.userAgent.slice(0, 160) });
+      if (error) throw new Error(/relation|does not exist|schema cache/i.test(error.message || "") ? "tabela push_assinaturas não existe (rode supabase/notificacoes.sql)" : error.message);
+      setEstado("ligado");
+      return "";
+    } catch (e) {
+      console.error("Ativar notificações:", e);
+      const m = e && e.message ? e.message : String(e);
+      const txt = /applicationServerKey|invalid|InvalidAccessError/i.test(m) ? "chave pública inválida na Vercel (confira VAPID_PUBLIC_KEY, sem espaços)" : m;
+      setErro(txt);
+      return txt;
+    }
   };
   const desativar = async () => {
-    const reg = await navigator.serviceWorker.ready;
-    const sub = await reg.pushManager.getSubscription();
-    if (sub) { await supabase.from("push_assinaturas").delete().eq("endpoint", sub.endpoint); await sub.unsubscribe(); }
+    try {
+      const reg = await registroSW();
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) { await supabase.from("push_assinaturas").delete().eq("endpoint", sub.endpoint); await sub.unsubscribe(); }
+    } catch (e) { console.error(e); }
     setEstado("desligado");
   };
   const testar = async () => {
-    const r = await fetch("/api/push?acao=teste", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ usuarioId: user.id }) });
-    return r.ok;
+    try {
+      const r = await fetch("/api/push?acao=teste", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ usuarioId: user.id }) });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok) return "Teste enviado — deve aparecer no canto da tela";
+      return j.erro || j.error || (r.status === 404 ? "nenhum computador ativo encontrado para você" : `erro ${r.status}`);
+    } catch (e) { return e.message || String(e); }
   };
-  return { estado, ativar, desativar, testar };
+  return { estado, erro, ativar, desativar, testar };
 }
 
 // Avisos no computador enquanto o sistema está aberto (uma vez por lembrete por dia)

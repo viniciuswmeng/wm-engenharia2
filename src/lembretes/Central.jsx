@@ -45,7 +45,7 @@ function ConfigPush({ push, gestor }) {
   if (e === "verificando") return <div style={{ fontSize: 12, color: C.cinzaClaro }}>Verificando notificações…</div>;
   if (e === "sem-chave") return (
     <div style={{ fontSize: 12, color: C.azulEscuro }}>
-      <div>Notificações do computador ainda não configuradas no servidor.</div>
+      <div>Notificações do computador ainda não configuradas no servidor. Se você já cadastrou as chaves na Vercel, falta fazer o <b>Redeploy</b> (as variáveis só valem para publicações novas).</div>
       {gestor && !chaves && <button style={{ ...btn("link"), marginTop: 4 }} onClick={async () => setChaves(await gerarChavesVapid())}>Gerar chaves (uma vez só)</button>}
       {chaves && <div style={{ marginTop: 6, background: C.cinzaFundo, borderRadius: 8, padding: 8, fontSize: 11, lineHeight: 1.5 }}>
         Na Vercel → projeto → Settings → Environment Variables, crie as 3 variáveis abaixo e faça um novo deploy:
@@ -64,9 +64,9 @@ function ConfigPush({ push, gestor }) {
     <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: C.azulEscuro, flexWrap: "wrap" }}>
       <span>🔔 Notificações no computador: <b style={{ color: e === "ligado" ? "#16a34a" : C.cinzaClaro }}>{e === "ligado" ? "ativas" : "desligadas"}</b></span>
       {e === "ligado"
-        ? <><button style={btn("link")} onClick={async () => setMsg((await push.testar()) ? "Teste enviado" : "Falha ao enviar")}>Testar</button><button style={btn("link", { color: C.cinzaClaro })} onClick={push.desativar}>Desativar</button></>
-        : <button style={btn("link")} onClick={async () => setMsg((await push.ativar()) ? "" : "Não foi possível ativar")}>Ativar</button>}
-      {msg && <span style={{ color: C.cinzaClaro }}>{msg}</span>}
+        ? <><button style={btn("link")} onClick={async () => { setMsg("Enviando…"); setMsg(await push.testar()); }}>Testar</button><button style={btn("link", { color: C.cinzaClaro })} onClick={push.desativar}>Desativar</button></>
+        : <button style={btn("link")} onClick={async () => { setMsg("Ativando…"); const r = await push.ativar(); setMsg(r ? "Não ativou: " + r : "Ativado neste computador"); }}>Ativar</button>}
+      {(msg || push.erro) && <div style={{ flexBasis: "100%", color: /Não ativou|erro|inválida|não existe|bloque/i.test(msg || push.erro) ? "#b45309" : C.cinzaClaro }}>{msg || push.erro}</div>}
     </div>);
 }
 
