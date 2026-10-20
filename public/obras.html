@@ -1299,6 +1299,7 @@ async function syncFromFolder(){
     projects=next;if(curId&&!projects[curId])curId=null;if(!curId)curId=sortedIds()[0]||null;
     firstSync=true;saveLocal();
     if(EMBED&&!embedReady)embedOpen();
+    else if(QS.get("obra")&&!obraAberta&&projects[QS.get("obra")]){obraAberta=true;tab="cad";showProject(QS.get("obra"))}
     else if(!same||(tch&&!cadEdit&&!editMode))renderAll();
     if(crChanged){if(view==="home")renderHome();else{renderClientBox();renderTabs()}}
     if(dirty.size||tplDirty.size||helpDirty||settingsDirty||ftplDirty)queue();else{lastSync=hhmm();setInfo("Sincronizado · "+lastSync)}
@@ -1357,7 +1358,7 @@ document.addEventListener("click",e=>{
 });
 
 /* ---- modo incorporado (aba Checklist do projeto) ---- */
-let embedReady=false;
+let embedReady=false,obraAberta=false;
 function embedOpen(){
   embedReady=true;const pid=EMBED,oid=obraDoProjeto(pid),w=wmProj(pid);
   if(oid){curId=oid;const want=w&&wmDiscs(w.tipo);const first=want&&want.find(k=>dOn(projects[oid],k));tab=first||"cad";showProject(oid);return}

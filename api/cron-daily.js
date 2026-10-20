@@ -85,8 +85,19 @@ export default async function handler(req) {
       })
     });
 
+    // Notificação da manhã no computador (dias úteis) — lembretes e tarefas
+    let lembretes = null;
+    const dow = new Date(Date.now() - 3 * 3600000).getUTCDay(); // horário de Brasília
+    if (dow >= 1 && dow <= 5) {
+      try {
+        const r = await fetch(`${BASE_URL}/api/cron-lembretes`, { headers: { authorization: `Bearer ${process.env.CRON_SECRET}` } });
+        lembretes = await r.json().catch(() => null);
+      } catch (e) { console.error('cron-lembretes:', e); }
+    }
+
     return new Response(JSON.stringify({
       ok: true,
+      lembretes,
       resumoDiario: true,
       alertasCriticos: criticos.length,
     }), { status: 200, headers: { 'Content-Type': 'application/json' } });
