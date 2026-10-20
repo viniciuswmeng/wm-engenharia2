@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { db, supabase, iniciarRealtime, enviarEmail, portal, chat } from "./supabase.js";
+import * as syncHoras from "./sessoesSync.js";
 
 // ─── CONFIG ────────────────────────────────────────────────────────────────────
 const GOOGLE_CLIENT_ID = "785068362914-9ivc6k8riad6d29dgij91f93dklgoia6.apps.googleusercontent.com";
@@ -1874,15 +1875,15 @@ function BancoHoras({registros,setRegistros,usuarios,projetos,usuarioAtual,onAbr
   const excluirSessao = async (id) => {
     if(!window.confirm("Excluir este registro?")) return;
     setRegistros(x=>x.filter(x2=>x2.id!==id));
-    try { await db.sessoes.excluir(id); } catch(e){ console.error("Erro excluir sessao:",e); }
+    syncHoras.excluir(id);
   };
 
   const salvarObs = async (id) => {
-    setRegistros(x=>x.map(r=>r.id===id?{...r,obs:novaObs}:r));
+    // obs e obsInicio juntos: a leitura do banco usa obs_inicio, então editar só "obs" se perdia ao recarregar
+    const reg = registros.find(r=>r.id===id);
+    setRegistros(x=>x.map(r=>r.id===id?{...r,obs:novaObs,obsInicio:novaObs}:r));
     setEditandoObs(null);
-    try {
-      await db.sessoes.atualizarObs(id, novaObs);
-    } catch(e){ console.error("Erro salvar obs:",e); }
+    if(reg) syncHoras.salvar({...reg, obs:novaObs, obsInicio:novaObs});
   };
 
   const meses=useMemo(()=>{const s=new Set();registros.forEach(r=>{if(r.data)s.add(r.data.slice(0,7));});return [...s].sort((a,b)=>b.localeCompare(a));},[registros]);
@@ -5699,7 +5700,16 @@ export default function App(){
           }
           return current;
         });
-        setRegistros(s);
+        // Junta com o que ainda não foi confirmado pelo banco (fila local)
+        const cache = syncHoras.lerCache();
+        if(s.length===0 && cache.length>0) {
+          // Banco veio vazio mas este computador tem registros: não apaga nada, mostra o cache e reenvia
+          console.warn("[banco de horas] servidor retornou 0 sessões; usando cópia local e reenviando", cache.length);
+          syncHoras.reenviar(cache);
+          setRegistros(syncHoras.mesclar(cache));
+        } else {
+          setRegistros(syncHoras.mesclar(s));
+        }
       } catch(e) {
         console.error("Erro ao carregar Supabase:", e);
         // Fallback para localStorage se Supabase falhar
@@ -5712,7 +5722,8 @@ export default function App(){
           // Normalizar expediente de cada usuário ao carregar do localStorage
           setUsuarios(us.map(u=>({...u, expediente: normalizarExpediente(u.expediente)})));
         } catch{} }
-        if(ls) { try { setRegistros(JSON.parse(ls)); } catch{} }
+        if(ls) { try { setRegistros(syncHoras.mesclar(JSON.parse(ls))); } catch{} }
+        else setRegistros(syncHoras.mesclar([]));
       } finally {
         setCarregando(false);
       }
@@ -5738,13 +5749,19 @@ export default function App(){
             setRegistros(r => r.filter(x => x.id !== payload.old?.id));
           } else {
             const s = await db.sessoes.listar();
-            setRegistros(s);
+            setRegistros(syncHoras.mesclar(s));
           }
         } catch(e) { console.error("Realtime sessoes:", e); }
       },
     });
     return cleanup; // cleanup ao desmontar
   }, []);
+
+  // ── Banco de horas: cópia local sempre atualizada + reenvio automático ──
+  useEffect(() => { if(!carregando) syncHoras.salvarCache(registros); }, [registros, carregando]);
+  useEffect(() => { syncHoras.iniciarSincronizacaoAutomatica(); }, []);
+  const [statusHoras, setStatusHoras] = useState(syncHoras.getStatus());
+  useEffect(() => syncHoras.onStatus(setStatusHoras), []);
 
   // ── Timer central de notificações (30min) ──────────────────────────────────
   useEffect(()=>{
@@ -5975,9 +5992,7 @@ export default function App(){
     // Atualizar estado e ref imediatamente — evita race condition
     setRegistros(prev => { const novo = [...prev, nova]; registrosRef.current = novo; return novo; });
     setModalH(null);
-    try {
-      await db.sessoes.salvar(nova);
-    } catch(e) { console.error("Erro salvar sessao:", e); }
+    syncHoras.salvar(nova);
   };
 
   // ── ENCERRAR SESSÃO ─────────────────────────────────────────────────────────
@@ -6015,13 +6030,8 @@ export default function App(){
     setModalH(null);
 
     // Persistir no banco
-    try {
-      await db.sessoes.encerrarCompleto(
-        sessaoId, hf, dur,
-        sessaoAberta.obsInicio||sessaoAberta.obs||"",
-        obsFim||"", minutosExtras
-      );
-    } catch(e) { console.error("Erro encerrar sessao:", e); }
+    // Grava a sessão completa (upsert): se o início não tinha chegado ao banco, cria agora
+    syncHoras.salvar(sessaoFechada);
   };
 
   // Atualizar ref da função encerrar para o timer sempre usar a versão mais recente
@@ -6180,6 +6190,15 @@ export default function App(){
 
   return(
     <div style={{minHeight:"100vh",background:C.cinzaFundo,fontFamily:"'Segoe UI',system-ui,sans-serif"}}>
+      {statusHoras.pendentes>0 && statusHoras.erro && (
+        <div style={{background:"#FEF3C7",borderBottom:"1px solid #F59E0B",color:"#7C2D12",padding:"8px 20px",fontSize:13,display:"flex",gap:12,alignItems:"center",justifyContent:"center",flexWrap:"wrap",position:"relative",zIndex:201}}>
+          <span>⚠️ <b>{statusHoras.pendentes} registro(s) de horas ainda não foram salvos no servidor</b> — estão guardados neste computador e serão reenviados automaticamente. Motivo: {statusHoras.erro}</span>
+          <button onClick={()=>syncHoras.sincronizar()} disabled={statusHoras.sincronizando}
+            style={{background:"#B45309",color:"#fff",border:"none",borderRadius:6,padding:"4px 12px",cursor:"pointer",fontSize:12,fontWeight:600}}>
+            {statusHoras.sincronizando?"Enviando…":"Tentar agora"}
+          </button>
+        </div>
+      )}
       {/* ── NAVBAR ── */}
       <div style={{background:`linear-gradient(135deg,${C.azulEscuro},${C.azulMedio})`,padding:"0 20px",boxShadow:"0 4px 20px rgba(26,58,107,0.3)",position:"sticky",top:0,zIndex:200}}>
         <div style={{maxWidth:1400,margin:"0 auto",display:"flex",alignItems:"center",gap:8}}>
