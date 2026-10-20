@@ -112,23 +112,30 @@ export const db = {
   },
 
   sessoes: {
+    // Lista TODAS as sessões (paginado: o Supabase devolve no máximo 1000 linhas por consulta)
     async listar() {
-      const { data, error } = await supabase
-        .from('sessoes_horas')
-        .select('*')
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data.map(toSessaoFront);
+      const todos = [];
+      let ordenar = true;
+      for (let de = 0; ; de += 1000) {
+        let q = supabase.from('sessoes_horas').select('*');
+        if (ordenar) q = q.order('created_at', { ascending: false });
+        const { data, error } = await q.range(de, de + 999);
+        if (error) {
+          // Tabela sem created_at: tenta de novo sem ordenar
+          if (ordenar && /created_at/.test(error.message || '')) { ordenar = false; de -= 1000; continue; }
+          throw error;
+        }
+        todos.push(...(data || []));
+        if (!data || data.length < 1000) break;
+      }
+      return todos.map(toSessaoFront);
     },
+    // Grava a sessão inteira (insert ou update). Usado tanto para iniciar quanto para encerrar,
+    // assim uma sessão cujo insert falhou é criada no encerramento em vez de se perder.
     async salvar(sessao) {
       const row = toSessaoBack(sessao);
-      const { data, error } = await supabase
-        .from('sessoes_horas')
-        .upsert(row, { onConflict: 'id' })
-        .select()
-        .single();
-      if (error) throw error;
-      return toSessaoFront(data);
+      const salvo = await upsertTolerante('sessoes_horas', row);
+      return salvo ? toSessaoFront(salvo) : sessao;
     },
     async encerrar(id, horaFim, duracaoMin, obs, minutosExtras=0) {
       const { data, error } = await supabase
@@ -352,6 +359,33 @@ function toUsuarioBack(u) {
   };
 }
 
+// ─── GRAVAÇÃO TOLERANTE ────────────────────────────────────────────────────────
+// Se o banco não tiver alguma coluna que o sistema envia (ex.: tabela criada numa versão
+// antiga), o Supabase recusa a gravação INTEIRA. Aqui removemos a coluna desconhecida e
+// tentamos de novo, para o registro nunca deixar de ser salvo por causa disso.
+const colunasAusentes = {};
+export async function upsertTolerante(tabela, row) {
+  const ausentes = colunasAusentes[tabela] || (colunasAusentes[tabela] = new Set());
+  let r = { ...row };
+  ausentes.forEach(c => { delete r[c]; });
+  for (let i = 0; i < 12; i++) {
+    const { data, error } = await supabase.from(tabela).upsert(r, { onConflict: 'id' }).select();
+    if (!error) return (data && data[0]) || null;
+    const msg = error.message || '';
+    const m = /Could not find the '([^']+)' column/.exec(msg) || /column "?([a-zA-Z_]+)"? (?:of relation "?[a-zA-Z_]+"? )?does not exist/.exec(msg);
+    if (m && m[1] in r && m[1] !== 'id') {
+      console.warn(`[${tabela}] coluna "${m[1]}" não existe no banco — gravando sem ela. Rode supabase/sessoes_horas.sql.`);
+      ausentes.add(m[1]); delete r[m[1]]; continue;
+    }
+    // inicio_ts criado como timestamp em vez de número
+    if (/timestamp|date\/time/i.test(msg) && typeof r.inicio_ts === 'number') {
+      r.inicio_ts = new Date(r.inicio_ts).toISOString(); continue;
+    }
+    throw error;
+  }
+  throw new Error('Não foi possível gravar em ' + tabela);
+}
+
 function toSessaoFront(r) {
   return {
     id:             r.id,
@@ -363,7 +397,7 @@ function toSessaoFront(r) {
     horaFim:        r.hora_fim,
     duracaoMin:     r.duracao_min,
     minutosExtras:  r.minutos_extras || 0,
-    inicioTs:       r.inicio_ts,
+    inicioTs:       typeof r.inicio_ts === 'string' && isNaN(Number(r.inicio_ts)) ? Date.parse(r.inicio_ts) : (r.inicio_ts != null ? Number(r.inicio_ts) : null),
     obs:            r.obs_inicio || r.obs || '',
     obsInicio:      r.obs_inicio || r.obs || '',
     obsFim:         r.obs_fim    || '',
