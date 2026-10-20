@@ -7,7 +7,35 @@ import { createClient } from '@supabase/supabase-js';
 const SUPABASE_URL  = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
+// Cliente de dados: continua usando a chave pública (anon), sem sessão de usuário.
+// Assim o login com Google não altera o acesso às tabelas enquanto as regras do
+// banco (RLS) não forem revistas para usuários autenticados.
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, {
+  auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+});
+
+// "Manter conectado": com a opção ligada a sessão fica no localStorage (sobrevive ao
+// fechar o navegador); desligada, fica no sessionStorage (termina ao fechar).
+const LEMBRAR = 'wm-auth-lembrar';
+export const lembrarLogin = {
+  get() { try { return localStorage.getItem(LEMBRAR) !== '0'; } catch { return true; } },
+  set(v) { try { localStorage.setItem(LEMBRAR, v ? '1' : '0'); } catch { /* sem armazenamento */ } },
+};
+const armazenamentoSessao = {
+  getItem(k) { try { return localStorage.getItem(k) ?? sessionStorage.getItem(k); } catch { return null; } },
+  setItem(k, v) {
+    try {
+      if (lembrarLogin.get()) { localStorage.setItem(k, v); sessionStorage.removeItem(k); }
+      else { sessionStorage.setItem(k, v); localStorage.removeItem(k); }
+    } catch { /* sem armazenamento */ }
+  },
+  removeItem(k) { try { localStorage.removeItem(k); sessionStorage.removeItem(k); } catch { /* sem armazenamento */ } },
+};
+
+// Cliente só para autenticação (login com Google). Sessão salva em chave própria.
+export const authClient = createClient(SUPABASE_URL, SUPABASE_ANON, {
+  auth: { storageKey: 'wm-auth', storage: armazenamentoSessao, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+});
 
 // ─── PROJETOS ──────────────────────────────────────────────────────────────────
 export const db = {

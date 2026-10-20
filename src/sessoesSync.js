@@ -54,6 +54,19 @@ export function excluir(id) {
   gravarPend(p);
   return sincronizar();
 }
+// Troca o usuário das sessões na fila e na cópia local (id provisório → id do banco)
+export function remapearUsuario(de, para) {
+  if (!de || !para || de === para) return false;
+  let mudou = false;
+  const p = lerPend();
+  Object.values(p).forEach(item => { if (item.sessao && item.sessao.usuarioId === de) { item.sessao = { ...item.sessao, usuarioId: para }; item.ts = Date.now(); mudou = true; } });
+  if (mudou) gravarPend(p);
+  const cache = lerCache();
+  if (cache.some(s => s.usuarioId === de)) { salvarCache(cache.map(s => s.usuarioId === de ? { ...s, usuarioId: para } : s)); mudou = true; }
+  if (mudou) sincronizar();
+  return mudou;
+}
+
 // Reenvia ao servidor sessões que existem localmente mas não vieram do banco.
 export function reenviar(lista) {
   const p = lerPend();
