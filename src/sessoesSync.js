@@ -115,6 +115,8 @@ export function descreverErro(e) {
     return 'O banco recusou a gravação (permissão/RLS na tabela sessoes_horas).';
   if (e.code === '23503' || /foreign key/i.test(msg))
     return 'O banco recusou a gravação (usuário ou projeto não encontrado no banco).';
+  if (e.code === '22P02' || /invalid input syntax for type (uuid|integer|bigint)/i.test(msg))
+    return 'A tabela sessoes_horas tem uma coluna com o tipo errado (' + msg + '). Rode o arquivo supabase/sessoes_horas.sql no Supabase.';
   if (/Failed to fetch|NetworkError|network/i.test(msg))
     return 'Sem conexão com o servidor.';
   return msg + (e.code ? ` (${e.code})` : '');
