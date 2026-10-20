@@ -599,6 +599,7 @@ const ACESSOS_GOOGLE = {
   "estagiario.wmengenharia@gmail.com": { id:"estagiario", nome:"Estagiário",    perfil:"colaborador", cor:"#059669" },
 };
 const normEmail = e => String(e||"").trim().toLowerCase();
+const normNome  = n => String(n||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase().replace(/\s+/g," ");
 
 // ─── TELA DE LOGIN (Google) ────────────────────────────────────────────────────
 function TelaLogin({estado,erro,onGoogle}){
@@ -6353,21 +6354,34 @@ export default function App(){
     }
     const email = authEmail;
     if (!email) return;
-    if (user && normEmail(user.email) === email) return;
     const b = ACESSOS_GOOGLE[email];
-    const idsReservados = Object.values(ACESSOS_GOOGLE).map(x => x.id);
+    const provisorios = Object.values(ACESSOS_GOOGLE).map(x => x.id);
+    // Já logado com o cadastro certo: nada a fazer. Com id provisório (ex.: "jonathan"), refaz o vínculo.
+    if (user && normEmail(user.email) === email && !(provisorios.includes(user.id) && usuarios.some(x => !provisorios.includes(x.id) && x.ativo !== false &&
+      (normEmail(x.email) === email || (b && normNome(x.nome).split(" ")[0] === normNome(b.nome).split(" ")[0]))))) return;
+    // Sempre preferir o cadastro que já existe no banco (com o id original): as horas,
+    // tarefas e projetos estão ligados a esse id. Busca por id, e-mail e, por fim, nome.
+    const todosAtivos = usuarios.filter(x => x.ativo !== false);
+    const reais = todosAtivos.filter(x => !provisorios.includes(x.id));
+    const ativos = reais.length ? reais : todosAtivos;
+    const primeiroNome = n => normNome(n).split(" ")[0];
     let u = null;
-    if (b) u = usuarios.find(x => x.id === b.id)
-      || usuarios.find(x => normEmail(x.email) === email && x.perfil === b.perfil && !idsReservados.includes(x.id));
-    else u = usuarios.find(x => normEmail(x.email) === email && !Object.keys(ACESSOS_GOOGLE).includes(email));
-    if (u && u.ativo === false) u = null;
+    // e-mail só vale se for a mesma pessoa (mesmo nome ou mesmo perfil): no cadastro antigo o
+    // e-mail da WM estava no usuário do Vinicius
+    if (b) u = ativos.find(x => normEmail(x.email) === email && (primeiroNome(x.nome) === primeiroNome(b.nome) || x.perfil === b.perfil))
+      || ativos.find(x => normNome(x.nome) === normNome(b.nome))
+      || (ativos.filter(x => primeiroNome(x.nome) === primeiroNome(b.nome)).length === 1 ? ativos.find(x => primeiroNome(x.nome) === primeiroNome(b.nome)) : null)
+      || todosAtivos.find(x => x.id === b.id);
+    else u = ativos.find(x => normEmail(x.email) === email);
     if (!u && !b) {
       setAuthErro(`A conta ${email} não tem acesso ao sistema. Peça a um administrador para cadastrar este e-mail em Configurações → Colaboradores.`);
       authClient.auth.signOut();
       return;
     }
     if (!u) {
-      u = { id: b.id, nome: b.nome, email, perfil: b.perfil, cor: b.cor,
+      // Usuário novo: id no mesmo formato do banco (uuid), senão as gravações são recusadas
+      const novoId = (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : b.id;
+      u = { id: novoId, nome: b.nome, email, perfil: b.perfil, cor: b.cor,
         iniciais: b.nome.split(" ").map(p => p[0]).join("").substring(0, 2).toUpperCase(),
         ativo: true, salario: 0, expediente: expedientePadrao(), especialidades: [] };
     } else if (normEmail(u.email) !== email) {
@@ -6377,6 +6391,11 @@ export default function App(){
     if (JSON.stringify(lista) !== JSON.stringify(usuarios)) {
       setUsuarios(lista);
       db.usuarios.salvar(u).catch(e => console.error("Erro ao vincular usuário:", e));
+    }
+    // Horas registradas com o id provisório antigo (ex.: "jonathan") passam para o id certo
+    if (b && b.id !== u.id) {
+      syncHoras.remapearUsuario(b.id, u.id);
+      setRegistros(rs => rs.some(r => r.usuarioId === b.id) ? rs.map(r => r.usuarioId === b.id ? { ...r, usuarioId: u.id } : r) : rs);
     }
     setAuthErro("");
     try { localStorage.setItem("wm-ultima-conta", JSON.stringify({ email, nome: u.nome })); } catch { /* sem armazenamento */ }
