@@ -5,11 +5,16 @@ import { SinoNotificacoes, PaginaTarefas } from "./lembretes/Central.jsx";
 import { useCentral, usePush, useAvisosAbertos } from "./lembretes/hooks.js";
 import { gerar as gerarCronograma, normalizar as normalizarCronograma, tabelaHTML as cronogramaTabelaHTML } from "./contratos/cronograma.js";
 import * as syncHoras from "./sessoesSync.js";
+import AnexarContrato from "./fluxo/AnexarContrato.jsx";
+import SeletorOrcamento from "./fluxo/SeletorOrcamento.jsx";
+import { orcamentoParaContrato } from "./fluxo/fluxo.js";
+import PaginaAjuda from "./ajuda/PaginaAjuda.jsx";
 
 // ─── CONFIG ────────────────────────────────────────────────────────────────────
 const GOOGLE_CLIENT_ID = "785068362914-9ivc6k8riad6d29dgij91f93dklgoia6.apps.googleusercontent.com";
 const DRIVE_ROOT_ID    = "1-dOGDzNpkOvQMS-NLmX5c7ZEqyj8EPZO";
-const SCOPES           = "https://www.googleapis.com/auth/drive.readonly";
+// Leitura e gravação: o sistema cria a pasta do projeto e salva o contrato assinado nela
+const SCOPES           = "https://www.googleapis.com/auth/drive";
 const CHECK_INTERVAL   = 60 * 60 * 1000; // 1 hora
 
 // Solicitar permissão de notificação ao carregar
@@ -490,6 +495,8 @@ function useGoogleDrive() {
   const [carregando,setCarregando] = useState(false);
   const [erro,setErro]             = useState(null);
   const [tokenClient,setTC]        = useState(null);
+  const tokenRef  = useRef(null);   // última resposta de token (para conferir permissões)
+  const pendRef   = useRef(null);   // promessa aguardando o login
 
   useEffect(()=>{
     const loadGapi=()=>new Promise(res=>{
@@ -508,7 +515,13 @@ function useGoogleDrive() {
     Promise.all([loadGapi(),loadGis()]).then(()=>{
       const tc=window.google.accounts.oauth2.initTokenClient({
         client_id:GOOGLE_CLIENT_ID,scope:SCOPES,
-        callback:(r)=>{ if(r.error){setErro("Erro: "+r.error);return;} setLogado(true); },
+        callback:(r)=>{
+          const pend=pendRef.current; pendRef.current=null;
+          if(r.error){ setErro("Erro: "+r.error); if(pend) pend.rej(new Error(r.error)); return; }
+          tokenRef.current=r; setLogado(true);
+          if(pend) pend.res(r);
+        },
+        error_callback:(e)=>{ const pend=pendRef.current; pendRef.current=null; if(pend) pend.rej(new Error(e?.type==="popup_closed"?"Janela do Google fechada antes de concluir":"Não foi possível conectar ao Google Drive")); },
       });
       setTC(tc);setGapiReady(true);setGisReady(true);
     });
@@ -532,7 +545,20 @@ function useGoogleDrive() {
     finally{ setCarregando(false); }
   },[logado]);
 
-  return {gapiReady,gisReady,logado,carregando,erro,login,logout,buscarProjetos};
+  // Permissão de gravação no Drive (pastas e contrato assinado)
+  const podeGravar = useCallback(()=>{
+    const t=tokenRef.current;
+    if(!t||!window.gapi?.client?.getToken()) return false;
+    try { return window.google.accounts.oauth2.hasGrantedAllScopes(t, SCOPES); } catch { return false; }
+  },[]);
+  // Precisa ser chamado direto no clique (o Google abre uma janela)
+  const conectarEscrita = useCallback(()=>new Promise((res,rej)=>{
+    if(!tokenClient){ rej(new Error("Google Drive ainda carregando, tente de novo em instantes")); return; }
+    pendRef.current={res,rej};
+    tokenClient.requestAccessToken({prompt: podeGravar()?"":"consent"});
+  }),[tokenClient,podeGravar]);
+
+  return {gapiReady,gisReady,logado,carregando,erro,login,logout,buscarProjetos,podeGravar,conectarEscrita};
 }
 
 // ─── COMPONENTES BASE ──────────────────────────────────────────────────────────
@@ -4906,8 +4932,10 @@ function SecC({titulo}) {
 }
 
 // ─── GERADOR DE CONTRATOS ──────────────────────────────────────────────────────
-function GeradorContratos({ projetos, usuarios, usuarioAtual }) {
+function GeradorContratos({ projetos, usuarios, usuarioAtual, drive, onSalvarProjeto, onAbrirProjeto, orcamentoInicial, onOrcamentoUsado }) {
   const C2 = C_CONTRATO;
+  const [seletorOrc, setSeletorOrc] = useState(false);
+  const [anexando, setAnexando] = useState(null);
   const [passo, setPasso] = useState(1);
   const [gerado, setGerado] = useState(false);
   const [lista, setLista] = useState([]);
@@ -4930,19 +4958,71 @@ function GeradorContratos({ projetos, usuarios, usuarioAtual }) {
   const salvarContrato = async () => {
     setSalvando(true);
     const titulo = `${form.nomeCompleto||"Sem nome"} — ${new Date().toLocaleDateString("pt-BR")}`;
+    let id = contratoId;
     try {
       if (contratoId) {
-        await supabase.from("contratos").update({ titulo, dados:form, updated_at: new Date().toISOString(), criado_por: usuarioAtual?.id }).eq("id", contratoId);
+        const { error } = await supabase.from("contratos").update({ titulo, dados:form, updated_at: new Date().toISOString(), criado_por: usuarioAtual?.id }).eq("id", contratoId);
+        if (error) throw error;
         setMsgSalvo("✅ Contrato atualizado!");
       } else {
-        const { data } = await supabase.from("contratos").insert({ titulo, dados:form, criado_por: usuarioAtual?.id }).select().single();
-        setContratoId(data?.id);
+        const { data, error } = await supabase.from("contratos").insert({ titulo, dados:form, criado_por: usuarioAtual?.id }).select().single();
+        if (error) throw error;
+        id = data?.id;
+        setContratoId(id);
         setMsgSalvo("✅ Contrato salvo!");
       }
+      // Contrato feito a partir de orçamento: o orçamento passa a apontar para ele
+      const orcId = form._fluxo?.orcamentoId;
+      if (orcId && id) {
+        const { error:e2 } = await supabase.from("orcamentos").update({ contrato_id:String(id), status:"fechado", updated_at:new Date().toISOString() }).eq("id", orcId);
+        if (e2) console.warn("Orçamento não vinculado:", e2);
+      }
       carregarLista();
-    } catch(e) { setMsgSalvo("❌ Erro ao salvar"); }
+    } catch(e) { console.error("Erro ao salvar contrato:", e); setMsgSalvo("❌ Erro ao salvar"); id = null; }
     setSalvando(false);
     setTimeout(()=>setMsgSalvo(""), 3000);
+    return id ? { id, titulo, dados:form } : null;
+  };
+
+  // Preenche um contrato novo com os dados de um orçamento (ou abre o contrato já gerado dele)
+  const aplicarOrcamento = async (orc) => {
+    setSeletorOrc(false);
+    if (orc.contratoId) {
+      const { data } = await supabase.from("contratos").select("id,titulo,criado_por,created_at,updated_at,dados").eq("id", orc.contratoId).maybeSingle();
+      if (data) { carregarContrato(data); setMsgSalvo("✅ Contrato deste orçamento aberto"); setTimeout(()=>setMsgSalvo(""), 3000); return; }
+    }
+    const hj = new Date().toISOString().slice(0,10);
+    const patch = orcamentoParaContrato(orc);
+    setForm({
+      tipoPessoa:"fisica", cpfCnpj:"", nomeCompleto:"", nacionalidade:"brasileiro(a)", estadoCivil:"solteiro(a)",
+      endereco:"", email:"", servicos:[], descricaoEdificacao:"", areaTotal:"", numPavimentos:"",
+      cidadeUF:"", enderecoObra:"", rodadasRevisao:"2", formatoEntrega:"PDF e DWG", adicionaisInclusos:"",
+      naoInclusos:[], valorTotal:"", percEntrada:"50", dataContrato:hj, prazoExecucao:"65", prazoDocumentos:"5",
+      cronograma:[], cidade:"Governador Valadares", dataAssinatura:hj,
+      testemunha1Nome:"", testemunha1CPF:"", testemunha2Nome:"", testemunha2CPF:"",
+      ...patch,
+    });
+    setContratoId(null); setMostrarLista(false); setGerado(false); setPasso(1);
+    setMsgSalvo("✅ Dados do orçamento aplicados — complete CPF, endereço e testemunhas");
+    setTimeout(()=>setMsgSalvo(""), 5000);
+  };
+
+  // Vindo do botão "Gerar contrato" da aba Orçamentos
+  useEffect(() => {
+    if (!orcamentoInicial) return;
+    (async () => {
+      const { data, error } = await supabase.from("orcamentos").select("*").eq("id", orcamentoInicial).maybeSingle();
+      if (!error && data) aplicarOrcamento({ ...(data.dados||{}), id:data.id, status:data.status, contratoId:data.contrato_id, total:Number(data.total)||data.dados?.total||0 });
+      else setMsgSalvo("❌ Orçamento não encontrado no banco");
+      onOrcamentoUsado?.();
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orcamentoInicial]);
+
+  const abrirAnexar = async (item) => {
+    if (item) { setAnexando(item); return; }
+    const salvo = await salvarContrato();   // garante que o contrato aberto está salvo
+    if (salvo) setAnexando(salvo);
   };
 
   // Carregar contrato salvo
@@ -4986,6 +5066,7 @@ function GeradorContratos({ projetos, usuarios, usuarioAtual }) {
     testemunha1Nome:"", testemunha1CPF:"", testemunha2Nome:"", testemunha2CPF:"",
   }));
   const set = (k,v) => setForm(f=>({...f,[k]:v}));
+  const assinado = form._fluxo?.status === "assinado";
   const fmtMoeda = v => isNaN(Number(v))||v==="" ? "R$ 0,00" : Number(v).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
   const entrada  = Number(form.valorTotal||0) * Number(form.percEntrada||0) / 100;
   const parcFinal= Number(form.valorTotal||0) - entrada;
@@ -5225,12 +5306,18 @@ body{width:210mm;margin:0 auto;padding:6mm 0;color:#1a1a1a;-webkit-print-color-a
         </div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
           {msgSalvo&&<span style={{fontSize:13,fontWeight:600,color:msgSalvo.startsWith("✅")?C2.verde:"#dc2626"}}>{msgSalvo}</span>}
+          <button onClick={()=>setSeletorOrc(true)} style={{background:"#fff",color:C2.azulM,border:`1.5px solid ${C2.azulM}`,borderRadius:8,padding:"9px 16px",fontWeight:700,cursor:"pointer",fontSize:13}}>
+            📋 A partir de orçamento
+          </button>
           <button onClick={()=>setMostrarLista(v=>!v)} style={{background:"#f1f5f9",color:C2.azul,border:`1px solid ${C2.borda}`,borderRadius:8,padding:"9px 16px",fontWeight:700,cursor:"pointer",fontSize:13}}>
             📂 Contratos Salvos {lista.length>0&&<span style={{background:C2.azulM,color:"#fff",borderRadius:10,padding:"1px 7px",fontSize:11,marginLeft:4}}>{lista.length}</span>}
           </button>
           <button onClick={salvarContrato} disabled={salvando} style={{background:C2.azulM,color:"#fff",border:"none",borderRadius:8,padding:"9px 16px",fontWeight:700,cursor:"pointer",fontSize:13,opacity:salvando?.6:1}}>
             {salvando?"⏳ Salvando...":contratoId?"💾 Atualizar":"💾 Salvar"}
           </button>
+          {(contratoId||form.nomeCompleto)&&(assinado
+            ? <span title="Contrato assinado anexado" style={{background:"#dcfce7",color:C2.verde,borderRadius:8,padding:"8px 12px",fontWeight:800,fontSize:12}}>✔ Assinado {form._fluxo?.resultado?.arquivo?.url&&<a href={form._fluxo.resultado.arquivo.url} target="_blank" rel="noreferrer" style={{color:C2.verde,marginLeft:4}}>PDF</a>}</span>
+            : <button onClick={()=>abrirAnexar(null)} disabled={salvando} style={{background:C2.verde,color:"#fff",border:"none",borderRadius:8,padding:"9px 16px",fontWeight:700,cursor:"pointer",fontSize:13}}>📎 Anexar assinado</button>)}
           {gerado&&<>
             <button onClick={imprimir} style={{background:C2.azul,color:"#fff",border:"none",borderRadius:8,padding:"9px 16px",fontWeight:700,cursor:"pointer",fontSize:13}}>🖨 Imprimir / PDF</button>
             <button onClick={baixarWord} style={{background:"#2b579a",color:"#fff",border:"none",borderRadius:8,padding:"9px 16px",fontWeight:700,cursor:"pointer",fontSize:13}}>📝 Word</button>
@@ -5238,6 +5325,12 @@ body{width:210mm;margin:0 auto;padding:6mm 0;color:#1a1a1a;-webkit-print-color-a
           </>}
         </div>
       </div>
+
+      {seletorOrc&&<SeletorOrcamento supabase={supabase} onEscolher={aplicarOrcamento} onFechar={()=>setSeletorOrc(false)}/>}
+      {anexando&&<AnexarContrato contrato={anexando} drive={drive} driveRaizId={DRIVE_ROOT_ID} projetos={projetos} usuarios={usuarios} tipos={TIPOS} supabase={supabase}
+        onSalvarProjeto={onSalvarProjeto}
+        onConcluido={r=>{ if(anexando.id===contratoId) setForm(f=>({...f,_fluxo:r.dados._fluxo})); carregarLista(); }}
+        onFechar={proj=>{ setAnexando(null); if(proj&&proj.id) onAbrirProjeto?.(proj.id); }}/>}
 
       {/* Lista de contratos salvos */}
       {mostrarLista&&<div style={{background:"#fff",borderRadius:12,border:`1px solid ${C2.borda}`,marginBottom:20,overflow:"hidden",boxShadow:"0 2px 12px rgba(0,0,0,0.08)"}}>
@@ -5263,6 +5356,10 @@ body{width:210mm;margin:0 auto;padding:6mm 0;color:#1a1a1a;-webkit-print-color-a
                 </div>
               </div>
               <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                {item.dados?._fluxo?.orcamentoId&&<span title="Gerado a partir de um orçamento" style={{fontSize:11,background:"#f1f5f9",color:C2.sub,borderRadius:6,padding:"3px 8px",fontWeight:700}}>📋 Orçamento</span>}
+                {item.dados?._fluxo?.status==="assinado"
+                  ? <span style={{fontSize:11,background:"#dcfce7",color:C2.verde,borderRadius:6,padding:"3px 8px",fontWeight:800}}>✔ Assinado</span>
+                  : <button onClick={e=>{e.stopPropagation();abrirAnexar(item);}} style={{background:"#ecfdf3",color:C2.verde,border:`1px solid #bbf7d0`,borderRadius:6,padding:"5px 10px",cursor:"pointer",fontSize:12,fontWeight:700}}>📎 Anexar assinado</button>}
                 {contratoId===item.id&&<span style={{fontSize:11,background:"#dbeafe",color:C2.azulM,borderRadius:6,padding:"3px 8px",fontWeight:700}}>Aberto</span>}
                 <button onClick={e=>excluirContrato(item.id,e)} style={{background:"#fee2e2",color:"#dc2626",border:"none",borderRadius:6,padding:"5px 10px",cursor:"pointer",fontSize:12,fontWeight:700}}>🗑</button>
               </div>
@@ -6119,6 +6216,29 @@ export default function App(){
 
   // ── Projetos ──
   const abrirP = p => setModal({projeto:p, modo:"editar"});
+
+  // ── Fluxo orçamento → contrato → projeto ──
+  const [orcParaContrato, setOrcParaContrato] = useState(null);
+  useEffect(() => {
+    const onMsg = (e) => {
+      if (e.origin !== window.location.origin || e.data?.tipo !== "wm-gerar-contrato") return;
+      setOrcParaContrato(e.data.orcamentoId); setAba("contratos");
+    };
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
+  }, []);
+  // Projeto criado/atualizado pelo contrato assinado
+  const salvarProjetoFluxo = async (proj, novo) => {
+    const n = { ...proj, status: proj.statusAuto ? calcStatusAuto(proj) : proj.status };
+    projetosRef.current = novo ? [...(projetosRef.current||[]).filter(x=>x.id!==n.id), n] : (projetosRef.current||[]).map(x => x.id===n.id ? n : x);
+    setProjetos(ps => novo ? [...ps.filter(x=>x.id!==n.id), n] : ps.map(x => x.id===n.id ? n : x));
+    await db.projetos.salvar(n);
+    return n;
+  };
+  const abrirProjetoPorId = (id) => {
+    const p = (projetosRef.current||[]).find(x => x.id===id);
+    if (p) { setAba("projetos"); setModal({projeto:p, modo:"editar"}); }
+  };
   const novoP  = () => setModal({projeto:null, modo:"novo"});
 
   const salvarP = async (f) => {
@@ -6302,6 +6422,7 @@ export default function App(){
     {id:"obras",        label:"Obras (checklist e briefing)", icone:"🏠", grupo:"principal"},
     {id:"tarefas",      label:"Tarefas",           icone:"✅", grupo:"principal"},
     {id:"config",       label:"Configurações",     icone:"⚙",  grupo:"config"},
+    {id:"ajuda",        label:"Ajuda e tutoriais", icone:"❓", grupo:"config"},
   ];
 
   const abas = abasPrincipais; // compat
@@ -6362,6 +6483,8 @@ export default function App(){
             )}
             <SinoNotificacoes central={central} push={push} user={user} usuarios={usuarios} projetos={projetos}
               onAbrir={abrirLembrete} onVerTarefas={()=>setAba("tarefas")} gestor={["admin","gestor"].includes(user.perfil)}/>
+            <button onClick={()=>setAba("ajuda")} title="Ajuda e tutoriais" aria-label="Ajuda e tutoriais"
+              style={{background:aba==="ajuda"?"rgba(255,255,255,0.18)":"rgba(255,255,255,0.08)",color:C.branco,border:"1px solid rgba(255,255,255,0.18)",borderRadius:8,width:32,height:32,cursor:"pointer",fontSize:14,fontWeight:800,fontFamily:"inherit",flexShrink:0}}>?</button>
             {sessaoAtiva&&<div style={{background:"rgba(34,197,94,0.2)",border:"1px solid rgba(34,197,94,0.4)",borderRadius:8,padding:"4px 8px",fontSize:11,color:C.verde,fontWeight:700,whiteSpace:"nowrap"}}>▶ Sessão</div>}
             {!sessaoAtiva&&<Btn onClick={()=>setModalH("checkin")} variant="ciano" small>▶ Iniciar</Btn>}
             {sessaoAtiva&&<Btn onClick={()=>setModalH("encerramento")} small style={{background:"rgba(239,68,68,0.15)",color:"#fca5a5",border:"1px solid rgba(239,68,68,0.3)"}}>⏹</Btn>}
@@ -6443,7 +6566,10 @@ export default function App(){
         {aba==="horas"     &&<AbaHoras registros={registros} setRegistros={setRegistros} usuarios={usuarios} projetos={projetos} usuarioAtual={user} calendario={calendario} onAbrirEncerramento={()=>setModalH("encerramento")}/>}
         {aba==="agenda"    &&<AbaAgenda calendario={calendario} usuarioAtual={user} registros={registros} usuarios={usuarios}/>}
         {aba==="config"    &&<Configuracoes usuarios={usuarios} onSalvarUsuarios={salvarUsuarios} usuarioAtual={user}/>}
-        {aba==="contratos"  &&<GeradorContratos projetos={projetos} usuarios={usuarios} usuarioAtual={user}/>}
+        {aba==="contratos"  &&<GeradorContratos projetos={projetos} usuarios={usuarios} usuarioAtual={user} drive={drive}
+          onSalvarProjeto={salvarProjetoFluxo} onAbrirProjeto={abrirProjetoPorId}
+          orcamentoInicial={orcParaContrato} onOrcamentoUsado={()=>setOrcParaContrato(null)}/>}
+        {aba==="ajuda" && <PaginaAjuda usuarioAtual={user} irPara={setAba}/>}
         {aba==="tarefas" && <PaginaTarefas central={central} user={user} usuarios={usuarios} projetos={projetos}
           gestor={["admin","gestor"].includes(user.perfil)} tarefaFoco={tarefaFoco} onFocoUsado={()=>setTarefaFoco(null)}/>}
         {aba==="obras" && (

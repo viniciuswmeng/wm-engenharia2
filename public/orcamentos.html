@@ -151,6 +151,19 @@
   .si-act.load:hover{background:var(--navy);color:#fff;border-color:var(--navy)}
   .si-act.del{color:#c0392b;padding:6px 10px}
   .si-act.del:hover{background:#c0392b;color:#fff;border-color:#c0392b}
+  .si-act.ctr{color:#fff;background:var(--green);border-color:var(--green)}
+  .si-act.ctr:hover{filter:brightness(.92)}
+  .si-status{border:1.5px solid var(--line);border-radius:7px;padding:5px 6px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;background:#fff}
+  .si-status.aberto{color:var(--slate)}
+  .si-status.enviado{color:#1d5fc4;border-color:#bcd3f5;background:#f1f6fe}
+  .si-status.fechado{color:var(--green);border-color:#bfe3cf;background:#f0faf4}
+  .si-status.recusado{color:#c0392b;border-color:#f1c7c1;background:#fdf3f2}
+  .si-ctr{font-size:11.5px;color:var(--green);font-weight:700;margin-top:3px}
+  .saved-filtros{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+  .saved-filtros button{border:1.5px solid var(--line);background:#fff;border-radius:20px;padding:5px 12px;font-size:12px;font-weight:700;color:var(--slate);cursor:pointer;font-family:inherit}
+  .saved-filtros button.on{background:var(--navy);border-color:var(--navy);color:#fff}
+  .sync-info{font-size:11.5px;color:var(--muted);margin:-6px 0 12px}
+  @media (max-width:640px){.saved-item{flex-wrap:wrap}.saved-item .si-btns{width:100%;justify-content:flex-end}}
 
   .toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(20px);
     background:var(--navy);color:#fff;padding:13px 24px;border-radius:10px;font-size:14px;font-weight:600;
@@ -626,6 +639,13 @@ function nomeArquivo(cliente, local){
 
 function imprimirPDF(){
   render();
+  // Gerar o PDF para o cliente salva o orçamento e marca como "Enviado"
+  const est0=coletarEstado();
+  if(est0.cliente || est0.discs.length){
+    salvarOrcamento(true);
+    const arr=lerSalvos(); const o=arr.find(x=>x.id===window._editId);
+    if(o && (!o.status || o.status==='aberto')){ o.status='enviado'; o.atualizadoEm=Date.now(); gravarSalvos(arr); }
+  }
   const cliente=document.getElementById('cliente').value;
   const local=document.getElementById('local').value;
   const tituloAntigo=document.title;
@@ -769,7 +789,7 @@ function render(){
   const prazo=document.getElementById('prazo').value||'65';
   document.getElementById('p3-prazo').textContent=prazo;
 
-  let rows='', total=0;
+  let rows='', total=0; const itensVal=[];
   // disciplinas por m²
   ['est','ele','hid','arqA','arqB'].forEach(k=>{
     if(!checked(k)) return;
@@ -777,7 +797,7 @@ function render(){
     let val = valManual(k);
     if(val==null) val=Math.max(area*p.rate, p.min);
     val=comNF(val);
-    total+=val;
+    total+=val; itensVal.push({k,nome:p.nome,valor:val});
     rows+=`<tr><td class="t-disc">${p.nome}</td><td class="t-val">R$ ${brl(val)}</td></tr>`;
   });
   // piscina
@@ -785,18 +805,19 @@ function render(){
     let pe=valManual('poolEst'); if(pe==null) pe=parseFloat(document.getElementById('poolEst').value)||0;
     let ph=valManual('poolHid'); if(ph==null) ph=parseFloat(document.getElementById('poolHid').value)||0;
     pe=comNF(pe); ph=comNF(ph);
-    if(pe>0){total+=pe;rows+=`<tr><td class="t-disc">Projeto Estrutural — Piscina</td><td class="t-val">R$ ${brl(pe)}</td></tr>`;}
-    if(ph>0){total+=ph;rows+=`<tr><td class="t-disc">Projeto Hidrossanitário — Piscina</td><td class="t-val">R$ ${brl(ph)}</td></tr>`;}
+    if(pe>0){total+=pe;itensVal.push({k:'poolEst',nome:'Projeto Estrutural — Piscina',valor:pe});rows+=`<tr><td class="t-disc">Projeto Estrutural — Piscina</td><td class="t-val">R$ ${brl(pe)}</td></tr>`;}
+    if(ph>0){total+=ph;itensVal.push({k:'poolHid',nome:'Projeto Hidrossanitário — Piscina',valor:ph});rows+=`<tr><td class="t-disc">Projeto Hidrossanitário — Piscina</td><td class="t-val">R$ ${brl(ph)}</td></tr>`;}
   }
   // muro de arrimo
   if(checked('muro')){
     let mv=valManual('muro'); if(mv==null) mv=parseFloat(document.getElementById('muroVal').value)||0;
     mv=comNF(mv);
-    if(mv>0){total+=mv;rows+=`<tr><td class="t-disc">Projeto de Muro de Arrimo / Contenção</td><td class="t-val">R$ ${brl(mv)}</td></tr>`;}
+    if(mv>0){total+=mv;itensVal.push({k:'muro',nome:'Projeto de Muro de Arrimo / Contenção',valor:mv});rows+=`<tr><td class="t-disc">Projeto de Muro de Arrimo / Contenção</td><td class="t-val">R$ ${brl(mv)}</td></tr>`;}
   }
   rows+=`<tr class="total"><td class="t-disc" style="text-align:left">TOTAL DA PROPOSTA COMPLETA</td><td class="t-val">R$ ${brl(total)}</td></tr>`;
   document.getElementById('p3-table').innerHTML=rows;
   window._totalAtual=total;
+  window._itensAtual=itensVal;
 }
 
 function cardHtml(c){
@@ -829,10 +850,75 @@ function limpar(){
 const STORE_KEY='wm_orcamentos';
 window._editId=null;
 
-function lerSalvos(){
-  try{ return JSON.parse(localStorage.getItem(STORE_KEY)||'[]'); }catch(e){ return []; }
+// Dentro do sistema WM os orçamentos ficam no banco (tabela "orcamentos"), visíveis para todos.
+// Fora dele (arquivo aberto direto) continuam só no navegador, como antes.
+const WMB=(()=>{try{return window.parent!==window&&window.parent.WMObras?window.parent.WMObras:null}catch(e){return null}})();
+const SB=WMB&&WMB.supabase;
+const STATUS_ORC={aberto:'Em aberto',enviado:'Enviado',fechado:'Fechado',recusado:'Recusado'};
+let _orcs=null, _syncMsg='', _filtro='todos', _filaBanco=Promise.resolve();
+function lerLocal(){ try{ return JSON.parse(localStorage.getItem(STORE_KEY)||'[]'); }catch(e){ return []; } }
+function lerSalvos(){ if(_orcs===null) _orcs=lerLocal(); return _orcs.map(o=>({...o})); }
+function quemSou(){ try{ return (WMB&&WMB.usuario&&WMB.usuario().nome)||''; }catch(e){ return ''; } }
+function paraLinha(o){
+  return { id:o.id, cliente:o.cliente||'', local:o.local||'', status:o.status||'aberto', total:Number(o.total)||0,
+    dados:o, contrato_id:o.contratoId||null, criado_por:o.criadoPor||quemSou()||null,
+    created_at:new Date(o.criadoEm||Date.now()).toISOString(), updated_at:new Date(o.atualizadoEm||o.criadoEm||Date.now()).toISOString() };
 }
-function gravarSalvos(arr){ localStorage.setItem(STORE_KEY, JSON.stringify(arr)); }
+function daLinha(r){ return { ...(r.dados||{}), id:r.id, status:r.status||(r.dados&&r.dados.status)||'aberto', contratoId:r.contrato_id||(r.dados&&r.dados.contratoId)||null }; }
+function gravarSalvos(arr){
+  const antes=new Map((_orcs||[]).map(o=>[o.id,JSON.stringify(o)]));
+  _orcs=arr.map(o=>({...o}));
+  try{ localStorage.setItem(STORE_KEY, JSON.stringify(_orcs)); }catch(e){}
+  if(!SB) return;
+  const mudou=_orcs.filter(o=>antes.get(o.id)!==JSON.stringify(o));
+  const ids=new Set(_orcs.map(o=>o.id));
+  const removidos=[...antes.keys()].filter(id=>!ids.has(id));
+  const linhas=mudou.map(paraLinha);
+  // gravações em fila, na ordem em que aconteceram
+  _filaBanco=_filaBanco.then(async()=>{
+    try{
+      if(linhas.length){ const {error}=await SB.from('orcamentos').upsert(linhas); if(error) throw error; }
+      for(const id of removidos){ const {error}=await SB.from('orcamentos').delete().eq('id',id); if(error) throw error; }
+    }catch(e){ console.error('Orçamentos: erro ao salvar no banco',e); toast(erroBanco(e)); }
+  });
+}
+function erroBanco(e){
+  const m=(e&&e.message)||'';
+  if(/relation|does not exist|schema cache|Could not find the table/i.test(m)) return 'Tabela de orçamentos ainda não criada no Supabase (rode supabase/fluxo_orcamento_contrato.sql). Salvo só neste navegador.';
+  return 'Não foi possível salvar no servidor: '+m;
+}
+async function carregarDoBanco(){
+  if(!SB) return;
+  try{
+    const {data,error}=await SB.from('orcamentos').select('*').order('created_at',{ascending:false});
+    if(error) throw error;
+    let lista=(data||[]).map(daLinha);
+    // Primeira vez neste navegador: envia os orçamentos que estavam salvos só aqui
+    if(localStorage.getItem('wm_orcamentos_migrado')!=='1'){
+      const noBanco=new Set(lista.map(o=>o.id));
+      const locais=lerLocal().filter(o=>o&&o.id&&!noBanco.has(o.id)).map(o=>({...o,status:o.status||'aberto'}));
+      if(locais.length){
+        const {error:e2}=await SB.from('orcamentos').upsert(locais.map(paraLinha)); if(e2) throw e2;
+        lista=lista.concat(locais); toast(locais.length+' orçamento(s) deste computador enviados para o sistema.');
+      }
+      localStorage.setItem('wm_orcamentos_migrado','1');
+    }
+    _orcs=lista; try{ localStorage.setItem(STORE_KEY, JSON.stringify(_orcs)); }catch(e){}
+    _syncMsg='';
+  }catch(e){ console.error('Orçamentos: erro ao ler do banco',e); _syncMsg=erroBanco(e); }
+  atualizarBadge();
+  if(document.getElementById('modalSalvos').classList.contains('show')) renderSalvos();
+}
+function mudarStatus(id,st){
+  const arr=lerSalvos(); const o=arr.find(x=>x.id===id); if(!o) return;
+  o.status=st; o.atualizadoEm=Date.now(); gravarSalvos(arr); renderSalvos();
+  if(st==='fechado' && !o.contratoId) toast('Orçamento fechado! Use "Gerar contrato" para preencher o contrato com estes dados.');
+}
+function gerarContrato(id){
+  if(!WMB){ toast('Abra pelo sistema WM para gerar o contrato.'); return; }
+  try{ window.parent.postMessage({tipo:'wm-gerar-contrato', orcamentoId:id}, location.origin); }catch(e){}
+}
+function filtrar(f){ _filtro=f; renderSalvos(); }
 
 function coletarEstado(){
   const discs=['est','ele','hid','arqA','arqB','pool','muro'].filter(checked);
@@ -851,6 +937,8 @@ function coletarEstado(){
     pavs:JSON.parse(JSON.stringify(pavs)),
     discs,
     total:window._totalAtual||0,
+    itens:JSON.parse(JSON.stringify(window._itensAtual||[])),
+    area:totalArea(),
   };
 }
 
@@ -879,21 +967,21 @@ function aplicarEstado(s){
   render();
 }
 
-function salvarOrcamento(){
+function salvarOrcamento(silencioso){
   render();
   const est=coletarEstado();
   if(!est.cliente && est.discs.length===0){ toast('Preencha ao menos o cliente e uma disciplina.'); return; }
   const arr=lerSalvos();
   if(window._editId){
     const i=arr.findIndex(o=>o.id===window._editId);
-    if(i>=0){ arr[i]={...arr[i], ...est, atualizadoEm:Date.now()}; gravarSalvos(arr); toast('Orçamento atualizado.'); atualizarBadge(); return; }
+    if(i>=0){ arr[i]={...arr[i], ...est, atualizadoEm:Date.now()}; gravarSalvos(arr); if(!silencioso) toast('Orçamento atualizado.'); atualizarBadge(); return; }
   }
   const id='o_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
-  arr.push({id, criadoEm:Date.now(), ...est});
+  arr.push({id, criadoEm:Date.now(), status:'aberto', criadoPor:quemSou(), ...est});
   gravarSalvos(arr);
   window._editId=id;
   atualizarBadge();
-  toast('Orçamento salvo.');
+  if(!silencioso) toast('Orçamento salvo.');
 }
 
 function atualizarBadge(){
@@ -918,16 +1006,20 @@ function abrirSalvos(){
 function fecharSalvos(){ document.getElementById('modalSalvos').classList.remove('show'); }
 
 function renderSalvos(){
-  const arr=lerSalvos().sort((a,b)=>(b.criadoEm)-(a.criadoEm));
+  const todos=lerSalvos().sort((a,b)=>(b.criadoEm)-(a.criadoEm));
   const box=document.getElementById('savedList');
-  if(!arr.length){ box.innerHTML='<div class="saved-empty">Nenhum orçamento salvo ainda.<br>Preencha os dados e clique em "Salvar orçamento".</div>'; return; }
+  const cont=k=>todos.filter(o=>k==='todos'||(o.status||'aberto')===k).length;
+  const filtros=`<div class="saved-filtros">${['todos','aberto','enviado','fechado','recusado'].map(k=>`<button class="${_filtro===k?'on':''}" onclick="filtrar('${k}')">${k==='todos'?'Todos':STATUS_ORC[k]} (${cont(k)})</button>`).join('')}</div>`
+    +(_syncMsg?`<div class="sync-info" style="color:#c0392b">${_syncMsg}</div>`:(SB?'<div class="sync-info">Salvos no sistema WM — todos da equipe veem a mesma lista.</div>':''));
+  const arr=todos.filter(o=>_filtro==='todos'||(o.status||'aberto')===_filtro);
+  if(!arr.length){ box.innerHTML=filtros+'<div class="saved-empty">'+(todos.length?'Nenhum orçamento com este status.':'Nenhum orçamento salvo ainda.<br>Preencha os dados e clique em "Salvar orçamento".')+'</div>'; return; }
   // agrupar por data
   const grupos={};
   arr.forEach(o=>{ const k=chaveData(o.criadoEm); (grupos[k]=grupos[k]||[]).push(o); });
   const chaves=Object.keys(grupos).sort((a,b)=>b-a);
   const hoje=chaveData(Date.now());
   const ontem=hoje-86400000;
-  let html='';
+  let html=filtros;
   chaves.forEach(k=>{
     let rotulo=fmtData(Number(k));
     if(Number(k)===hoje) rotulo='Hoje · '+rotulo;
@@ -940,10 +1032,13 @@ function renderSalvos(){
       html+=`<div class="saved-item">
         <div class="si-info">
           <div class="si-name">${nome}</div>
-          <div class="si-meta">${meta}</div>
+          <div class="si-meta">${meta}${o.criadoPor?' · '+o.criadoPor:''}</div>
+          ${o.contratoId?'<div class="si-ctr">✔ Contrato gerado</div>':''}
         </div>
         <div class="si-total">R$ ${brl(o.total||0)}</div>
         <div class="si-btns">
+          <select class="si-status ${o.status||'aberto'}" onchange="mudarStatus('${o.id}',this.value)" title="Situação do orçamento">${Object.entries(STATUS_ORC).map(([v,l])=>`<option value="${v}" ${(o.status||'aberto')===v?'selected':''}>${l}</option>`).join('')}</select>
+          ${(o.status==='fechado'&&WMB)?`<button class="si-act ctr" onclick="gerarContrato('${o.id}')" title="Abrir o gerador de contratos já preenchido">${o.contratoId?'Ver contrato':'Gerar contrato'}</button>`:''}
           <button class="si-act load" onclick="carregarOrcamento('${o.id}')">Abrir</button>
           <button class="si-act del" onclick="excluirOrcamento('${o.id}')" title="Excluir">🗑</button>
         </div>
@@ -984,6 +1079,8 @@ function toast(msg){
 renderPavList();
 render();
 atualizarBadge();
+carregarDoBanco();
+if(new URLSearchParams(location.search).get('salvos')) abrirSalvos();
 </script>
 </body>
 </html>

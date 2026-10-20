@@ -1307,11 +1307,45 @@ async function syncFromFolder(){
   }catch(e){console.error("Obras: erro ao ler",e);setInfo(/relation|does not exist|schema cache/i.test(e&&e.message||"")?"Tabelas de obras ainda não criadas no Supabase (rode supabase/obras.sql)":"Não foi possível ler os dados do sistema")}
   finally{syncing=false;if(syncAgain){syncAgain=false;setTimeout(syncFromFolder,300)}}
 }
+/* ---- criação automática da obra (contrato assinado no sistema WM) ----
+   O sistema abre esta página escondida com ?auto={nome,cliente,endereco,projetos,discs,due}
+   e espera a mensagem "wm-obra-auto" com o resultado. */
+async function autoCriarObra(){
+  const avisar=d=>{try{window.parent.postMessage({tipo:"wm-obra-auto",...d},location.origin)}catch(e){}};
+  let cfg;try{cfg=JSON.parse(QS.get("auto"))}catch(e){avisar({ok:false,erro:"parâmetros inválidos"});return}
+  try{
+    if(!firstSync)throw new Error("Não foi possível ler as obras do banco (rode supabase/obras.sql)");
+    const pids=(cfg.projetos||[]).filter(Boolean);
+    const due=cfg.due||{};
+    let oid=pids.map(obraDoProjeto).find(Boolean)||null,criada=false;
+    if(oid){
+      const p=projects[oid];
+      pids.forEach(pid=>{if(!wmLinks(p).includes(pid))p.wm=[...wmLinks(p),pid]});
+      (cfg.discs||[]).forEach(k=>{if(DISC.includes(k)&&discEnabled(k))p.discs[k]=true});
+      Object.keys(due).forEach(k=>{if(!p.due[k])p.due[k]=due[k]});
+      p.log.push({id:uid(),date:today(),disc:"geral",type:"Outro",text:"Contrato assinado: "+(cfg.contrato||"projetos vinculados")});
+      touchProject(oid,false);
+    }else{
+      oid=uid();criada=true;
+      const discs={};DISC.forEach(k=>discs[k]=false);
+      (cfg.discs&&cfg.discs.length?cfg.discs:["hid","san"]).forEach(k=>{if(DISC.includes(k)&&discEnabled(k))discs[k]=true});
+      projects[oid]=norm({name:cfg.nome||cfg.cliente||"Nova obra",company:"WM Engenharia Integrada",client:cfg.cliente||"",addr:cfg.endereco||"",rev:"R00",
+        discs,hidMode:"afaq",pisMode:"aq",createdAt:Date.now(),wm:pids,amb:defaultAmb(discs),due:{...due},
+        log:[{id:uid(),date:today(),disc:"geral",type:"Outro",text:"Obra criada automaticamente a partir do contrato assinado"+(cfg.contrato?" ("+cfg.contrato+")":"")}]});
+      touchProject(oid);
+    }
+    clearTimeout(flushTimer);await flush();
+    for(let i=0;i<60&&(dirty.size||flushing);i++){await new Promise(r=>setTimeout(r,250));if(dirty.size&&!flushing)await flush()}
+    if(dirty.has(oid))throw new Error("Não foi possível salvar a obra no banco");
+    avisar({ok:true,obraId:oid,criada});
+  }catch(e){console.error("Obras: criação automática",e);avisar({ok:false,erro:String(e&&e.message||e)})}
+}
 let rtTimer=null;
 async function connect(){
   renderFolder();
-  if(!SB){setInfo("Salvo só neste navegador");if(EMBED)embedOpen();return}
+  if(!SB){setInfo("Salvo só neste navegador");if(EMBED)embedOpen();if(QS.get("auto"))window.parent.postMessage({tipo:"wm-obra-auto",ok:false,erro:"sem conexão com o sistema"},location.origin);return}
   await syncFromFolder();
+  if(QS.get("auto")){await autoCriarObra();return}
   try{SB.channel("obras-"+uid()).on("postgres_changes",{event:"*",schema:"public",table:"obras"},()=>{clearTimeout(rtTimer);rtTimer=setTimeout(()=>{if(!dirty.size&&!flushing&&!formMode)syncFromFolder()},1200)}).subscribe()}catch(e){}
 }
 setInterval(()=>{if(SB&&document.visibilityState==="visible"&&!dirty.size&&!flushing&&!formMode)syncFromFolder()},60000);
