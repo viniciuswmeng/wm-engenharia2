@@ -400,6 +400,14 @@
   .saved-filtros button{border:1px solid #e6ecf4}
   .saved-filtros button.on{background:#0a2557;border-color:#0a2557}
   @media(max-width:640px){.wrap{padding:18px 14px 40px}.topo h1{font-size:24px}}
+  /* Impressão: as regras de tela acima não podem mexer no papel (o espaçamento da página
+     empurrava cada folha alguns milímetros e gerava uma folha em branco entre elas) */
+  @media print{
+    .wrap{max-width:none!important;margin:0!important;padding:0!important}
+    .topo{display:none!important}
+    .layout{display:block!important}
+    .page{height:296.5mm!important;min-height:0!important;max-height:296.5mm}
+  }
 </style>
 </head>
 <body>
