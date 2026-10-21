@@ -100,3 +100,16 @@ input:focus, select:focus, textarea:focus {
 .wm-cab-tabela th { color: #6b7a90 !important; font-size: 11.5px !important; font-weight: 700 !important; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid #e6ecf4; }
 .wm-cab-tabela th * { color: inherit !important; }
 table tbody tr:hover { background: #f8fafd; }
+
+/* ── Impressão (relatórios): só o documento ─────────────────────────────── */
+@media print {
+  @page { size: A4; margin: 12mm 12mm 14mm; }
+  html, body { background: #fff !important; }
+  .wm-shell > :not(.wm-coluna), .wm-coluna > :not(main), .wm-topo, .wm-rel-nao-imprime { display: none !important; }
+  .wm-shell, .wm-coluna { display: block !important; min-height: 0 !important; }
+  .wm-conteudo { padding: 0 !important; max-width: none !important; }
+  .wm-relatorio { border: none !important; box-shadow: none !important; border-radius: 0 !important; overflow: visible !important; }
+  .wm-relatorio-doc { padding: 0 !important; }
+  .rel-sec h2 { break-after: avoid; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

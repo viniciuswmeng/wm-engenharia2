@@ -122,6 +122,15 @@ const TOPICOS = [
       "Tarefas: crie tarefas com responsável, prazo e projeto; marque como concluídas.",
       "Ative as notificações do computador no sino para receber os avisos mesmo com o sistema fechado.",
     ]}]},
+  { id:"relatorios", icone:"📊", titulo:"Relatórios", aba:"relatorios",
+    resumo:"Relatórios gerais ou de um projeto, com as informações que você escolher, em PDF ou planilha.",
+    secoes:[{ t:"Gerar um relatório", itens:[
+      "Escolha Geral (todos os projetos, com filtros por situação, tipo e colaborador) ou Por projeto (busque e selecione o projeto).",
+      "Escolha o período: este mês, mês passado, últimos 90 dias, este ano, todo o período ou datas personalizadas.",
+      "Marque as informações que vão sair: resumo, andamento, entregas, financeiro, parcelas pendentes, horas, sessões detalhadas, tarefas, orçamentos e contratos, equipe. A escolha fica salva para a próxima vez.",
+      "A prévia mostra exatamente o que sai. Clique em Gerar PDF (na janela de impressão escolha Salvar como PDF) ou em Planilha (Excel).",
+      "Os valores financeiros vêm das parcelas de cada projeto. Horas, tarefas e entregas respeitam o período escolhido.",
+    ]}]},
   { id:"financeiro", icone:"💰", titulo:"Financeiro", aba:"financeiro",
     resumo:"Valores contratados, recebidos e pendentes por projeto.",
     secoes:[{ t:"Usar", itens:[
