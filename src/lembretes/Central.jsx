@@ -2,11 +2,12 @@
 // Central de notificações e tarefas: sino no topo, página "Tarefas", modal de
 // tarefa e ativação das notificações do computador (Web Push).
 import { useEffect, useRef, useState } from "react";
+import Icone from "../ui/Icone.jsx";
 
 const C = {
-  azulEscuro: "#0d1e35", azulMedio: "#1a4a7a", azulClaro: "#2e6da8", ciano: "#4a90c4",
-  cinzaClaro: "#8a9ab0", cinzaFundo: "#f0f4f8", cinzaCard: "#e2eaf3", branco: "#ffffff",
-  verde: "#22c55e", amarelo: "#f59e0b", vermelho: "#ef4444",
+  azulEscuro: "#0b2350", azulMedio: "#1565d8", azulClaro: "#3b82f6", ciano: "#60a5fa",
+  cinzaClaro: "#6b7a90", cinzaFundo: "#f3f6fb", cinzaCard: "#e6ecf4", branco: "#ffffff",
+  verde: "#16a34a", amarelo: "#f59e0b", vermelho: "#ef4444",
 };
 const NIVEL = {
   urgente: { cor: "#dc2626", bg: "#fef2f2", rot: "Urgente" },
@@ -112,12 +113,12 @@ export function SinoNotificacoes({ central, push, user, usuarios, projetos, onAb
   return (
     <div ref={ref} style={{ position: "relative" }}>
       <button onClick={() => setAberto(a => !a)} aria-label={`Notificações (${total})`} title="Lembretes e tarefas"
-        style={{ position: "relative", background: aberto ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 8, width: 36, height: 34, cursor: "pointer", fontSize: 16, color: "#fff" }}>
-        🔔
-        {total > 0 && <span style={{ position: "absolute", top: -6, right: -6, minWidth: 18, height: 18, padding: "0 4px", borderRadius: 9, background: urg ? "#ef4444" : C.amarelo, color: "#fff", fontSize: 10.5, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 0 2px #1a4a7a" }}>{total > 99 ? "99+" : total}</span>}
+        className="wm-icone-btn" style={aberto ? { background: "#e9f1fd", color: C.azulMedio } : undefined}>
+        <Icone nome="sino" tam={21} />
+        {total > 0 && <span style={{ position: "absolute", top: 3, right: 3, minWidth: 18, height: 18, padding: "0 4px", borderRadius: 9, background: urg ? "#ef4444" : C.amarelo, color: "#fff", fontSize: 10.5, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 0 2px #fff" }}>{total > 99 ? "99+" : total}</span>}
       </button>
       {aberto && (
-        <div style={{ position: "absolute", right: 0, top: 44, width: 400, maxWidth: "calc(100vw - 24px)", background: "#fff", borderRadius: 14, boxShadow: "0 18px 50px rgba(13,30,53,0.3)", zIndex: 500, overflow: "hidden", fontFamily: "'Segoe UI',system-ui,sans-serif", color: C.azulEscuro }}>
+        <div style={{ position: "absolute", right: 0, top: 44, width: 400, maxWidth: "calc(100vw - 24px)", background: "#fff", borderRadius: 14, boxShadow: "0 18px 50px rgba(13,30,53,0.3)", zIndex: 500, overflow: "hidden", fontFamily: "inherit", color: C.azulEscuro }}>
           <div style={{ display: "flex", borderBottom: `1px solid ${C.cinzaCard}` }}>
             {[["lembretes", `Lembretes (${total})`], ["tarefas", `Minhas tarefas (${minhas.length})`]].map(([k, r]) => (
               <button key={k} onClick={() => setAba(k)} style={{ flex: 1, background: "none", border: "none", borderBottom: `2px solid ${aba === k ? C.azulMedio : "transparent"}`, padding: "12px 8px", fontFamily: "inherit", fontWeight: aba === k ? 800 : 600, fontSize: 13, color: aba === k ? C.azulMedio : C.cinzaClaro, cursor: "pointer" }}>{r}</button>))}
@@ -247,11 +248,11 @@ export function PaginaTarefas({ central, user, usuarios, projetos, gestor, taref
   const ordem = (a, b) => (a.vence_em || "").localeCompare(b.vence_em || "") || (a.hora || "").localeCompare(b.hora || "") || ({ alta: 0, normal: 1, baixa: 2 }[a.prioridade] - { alta: 0, normal: 1, baixa: 2 }[b.prioridade]);
   const chip = at => ({ padding: "6px 12px", borderRadius: 8, border: `1.5px solid ${at ? C.azulMedio : C.cinzaCard}`, background: at ? C.azulMedio : "#fff", color: at ? "#fff" : C.cinzaClaro, fontWeight: 700, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" });
   return (
-    <div style={{ maxWidth: 980, margin: "0 auto", fontFamily: "'Segoe UI',system-ui,sans-serif" }}>
+    <div style={{ maxWidth: 1080 }}>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 18 }}>
         <div style={{ flex: 1, minWidth: 220 }}>
-          <div style={{ fontSize: 22, fontWeight: 800, color: C.azulEscuro }}>✅ Tarefas</div>
-          <div style={{ fontSize: 13, color: C.cinzaClaro, marginTop: 2 }}>Tarefas da equipe com responsável e prazo. Os lembretes automáticos ficam no sino 🔔.</div>
+          <h1 style={{ margin: 0, fontSize: 30, fontWeight: 800, color: "#0a2557", letterSpacing: -.5 }}>Tarefas</h1>
+          <div style={{ fontSize: 14.5, color: "#6b7a90", marginTop: 6 }}>Tarefas da equipe com responsável e prazo. Os lembretes automáticos ficam no sino.</div>
         </div>
         <button style={btn("pri", { padding: "9px 18px", fontSize: 13.5 })} onClick={() => setModal("nova")} disabled={central.semTabela}>+ Nova tarefa</button>
       </div>

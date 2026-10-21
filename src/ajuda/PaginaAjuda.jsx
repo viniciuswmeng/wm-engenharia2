@@ -165,10 +165,10 @@ export default function PaginaAjuda({ irPara }) {
   const atual = TOPICOS.find(t => t.id === sel) || TOPICOS[0];
 
   return (
-    <div style={{ maxWidth:1100, margin:"0 auto" }}>
+    <div style={{ maxWidth:1240 }}>
       <div style={{ marginBottom:18 }}>
-        <div style={{ fontSize:22, fontWeight:800, color:K.azul }}>❓ Ajuda e tutoriais</div>
-        <div style={{ fontSize:13, color:K.sub, marginTop:2 }}>Como usar cada parte do sistema e o fluxo de trabalho da WM</div>
+        <h1 style={{ margin:0, fontSize:30, fontWeight:800, color:"#0a2557", letterSpacing:-.5 }}>Ajuda e tutoriais</h1>
+        <div style={{ fontSize:14.5, color:K.sub, marginTop:6 }}>Como usar cada parte do sistema e o fluxo de trabalho da WM.</div>
       </div>
       <div style={{ display:"flex", gap:18, alignItems:"flex-start", flexWrap:"wrap" }}>
         <nav aria-label="Tópicos de ajuda" style={{ flex:"1 1 230px", maxWidth:300, background:"#fff", border:`1px solid ${K.borda}`, borderRadius:12, padding:10, position:"sticky", top:96 }}>
