@@ -3,6 +3,7 @@
 // tarefa e ativação das notificações do computador (Web Push).
 import { useEffect, useRef, useState } from "react";
 import Icone from "../ui/Icone.jsx";
+import { CabecalhoModal } from "../ui/ds.jsx";
 
 const C = {
   azulEscuro: "#0b2350", azulMedio: "#1565d8", azulClaro: "#3b82f6", ciano: "#60a5fa",
@@ -63,7 +64,7 @@ function ConfigPush({ push, gestor }) {
   if (e === "bloqueado") return <div style={{ fontSize: 12, color: "#b45309" }}>Notificações bloqueadas neste navegador. Libere no cadeado ao lado do endereço do site.</div>;
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: C.azulEscuro, flexWrap: "wrap" }}>
-      <span>🔔 Notificações no computador: <b style={{ color: e === "ligado" ? "#16a34a" : C.cinzaClaro }}>{e === "ligado" ? "ativas" : "desligadas"}</b></span>
+      <span>Notificações no computador: <b style={{ color: e === "ligado" ? "#16a34a" : C.cinzaClaro }}>{e === "ligado" ? "ativas" : "desligadas"}</b></span>
       {e === "ligado"
         ? <><button style={btn("link")} onClick={async () => { setMsg("Enviando…"); setMsg(await push.testar()); }}>Testar</button><button style={btn("link", { color: C.cinzaClaro })} onClick={push.desativar}>Desativar</button></>
         : <button style={btn("link")} onClick={async () => { setMsg("Ativando…"); const r = await push.ativar(); setMsg(r ? "Não ativou: " + r : "Ativado neste computador"); }}>Ativar</button>}
@@ -125,7 +126,7 @@ export function SinoNotificacoes({ central, push, user, usuarios, projetos, onAb
           </div>
           <div style={{ maxHeight: 420, overflowY: "auto" }}>
             {aba === "lembretes" ? (
-              total === 0 ? <div style={{ padding: 28, textAlign: "center", color: C.cinzaClaro, fontSize: 13 }}>✨ Nada pendente por aqui.</div>
+              total === 0 ? <div style={{ padding: 28, textAlign: "center", color: C.cinzaClaro, fontSize: 13 }}>Nada pendente por aqui.</div>
                 : central.meus.map(l => <LinhaLembrete key={l.chave} l={l} onAbrir={lk => { setAberto(false); onAbrir(lk); }} onOcultar={central.ocultar} />)
             ) : (<>
               <div style={{ display: "flex", gap: 6, padding: 10, borderBottom: `1px solid ${C.cinzaFundo}` }}>
@@ -161,10 +162,10 @@ function LinhaTarefa({ t, projetos, usuarios, onConcluir, onEditar, compacta }) 
         <div style={{ fontSize: 13.5, fontWeight: 600, color: feita ? C.cinzaClaro : C.azulEscuro, textDecoration: feita ? "line-through" : "none" }}>{t.titulo}</div>
         {!compacta && t.descricao && <div style={{ fontSize: 12, color: "#5b6b82", marginTop: 2, whiteSpace: "pre-wrap" }}>{t.descricao}</div>}
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 3, fontSize: 11.5, color: C.cinzaClaro }}>
-          {t.vence_em && <span style={{ color: atrasada ? "#dc2626" : t.vence_em === hoje ? "#d97706" : C.cinzaClaro, fontWeight: atrasada || t.vence_em === hoje ? 700 : 400 }}>📅 {t.vence_em === hoje ? "Hoje" : fmtData(t.vence_em)}{t.hora ? " " + t.hora : ""}{atrasada ? " · atrasada" : ""}</span>}
+          {t.vence_em && <span style={{ color: atrasada ? "#dc2626" : t.vence_em === hoje ? "#d97706" : C.cinzaClaro, fontWeight: atrasada || t.vence_em === hoje ? 700 : 400 }}>{t.vence_em === hoje ? "Hoje" : fmtData(t.vence_em)}{t.hora ? " " + t.hora : ""}{atrasada ? " · atrasada" : ""}</span>}
           {t.prioridade !== "normal" && <span style={{ color: pr.cor, fontWeight: 700 }}>● {pr.rot}</span>}
-          {proj && <span>📁 {proj.codigo}</span>}
-          {!compacta && resp && <span>👤 {resp.nome}</span>}
+          {proj && <span>{proj.codigo}</span>}
+          {!compacta && resp && <span>{resp.nome}</span>}
         </div>
       </div>
     </div>);
@@ -178,12 +179,9 @@ function ModalTarefa({ tarefa, usuarios, projetos, user, onSalvar, onExcluir, on
   const rot = { fontSize: 11, fontWeight: 700, color: C.cinzaClaro, textTransform: "uppercase", letterSpacing: .6, marginBottom: 4, display: "block" };
   const salvar = () => { if (!f.titulo.trim()) return; onSalvar({ ...f, titulo: f.titulo.trim() }); };
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(15,25,50,0.7)", zIndex: 2100, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onMouseDown={e => e.target === e.currentTarget && onFechar()}>
-      <div style={{ background: "#fff", borderRadius: 16, width: "100%", maxWidth: 480, boxShadow: "0 24px 64px rgba(0,0,0,0.3)", overflow: "hidden", fontFamily: "'Segoe UI',system-ui,sans-serif" }}>
-        <div style={{ background: `linear-gradient(135deg,${C.azulEscuro},${C.azulMedio})`, padding: "14px 20px", display: "flex", alignItems: "center" }}>
-          <div style={{ color: "#fff", fontWeight: 800, fontSize: 16, flex: 1 }}>{tarefa ? "Editar tarefa" : "Nova tarefa"}</div>
-          <button onClick={onFechar} aria-label="Fechar" style={{ background: "rgba(255,255,255,0.12)", border: "none", color: "#fff", width: 30, height: 30, borderRadius: 8, cursor: "pointer", fontSize: 17 }}>×</button>
-        </div>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(10,25,55,.5)", backdropFilter: "blur(2px)", zIndex: 2100, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onMouseDown={e => e.target === e.currentTarget && onFechar()}>
+      <div style={{ background: "#fff", borderRadius: 18, width: "100%", maxWidth: 480, boxShadow: "0 24px 70px rgba(10,25,55,.28)", overflow: "hidden" }}>
+        <CabecalhoModal titulo={tarefa ? "Editar tarefa" : "Nova tarefa"} icone="tarefa" onFechar={onFechar} />
         <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
           <div><label style={rot} htmlFor="tf-t">Tarefa</label>
             <input id="tf-t" autoFocus value={f.titulo} onChange={e => s("titulo", e.target.value)} onKeyDown={e => e.key === "Enter" && salvar()} placeholder="Ex.: Ligar para o cliente sobre a sondagem" style={campo} /></div>

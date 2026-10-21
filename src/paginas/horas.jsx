@@ -1,3 +1,4 @@
+import { CartaoNumero, Abas } from "../ui/ds.jsx";
 import { useState, useMemo, useCallback } from "react";
 import * as syncHoras from "../sessoesSync.js";
 import { CATS_ADMIN } from "./ModalHoras.jsx";
@@ -249,18 +250,7 @@ export function AbaHoras({ registros, setRegistros, usuarios, projetos, usuarioA
   const [subAba, setSubAba] = useState("horas");
   return (
     <div>
-      <div style={{display:"flex",gap:0,marginBottom:24,borderBottom:`2px solid ${C.cinzaCard}`}}>
-        {[{id:"horas",label:"⏱ Banco de Horas"},{id:"produtividade",label:"📈 Produtividade"}].map(t=>(
-          <button key={t.id} onClick={()=>setSubAba(t.id)}
-            style={{background:"none",border:"none",padding:"12px 20px",cursor:"pointer",fontSize:14,
-              fontFamily:"inherit",fontWeight:subAba===t.id?700:500,
-              color:subAba===t.id?C.azulMedio:C.cinzaClaro,
-              borderBottom:subAba===t.id?`2px solid ${C.azulMedio}`:"2px solid transparent",
-              marginBottom:-2,transition:"all 0.15s"}}>
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <Abas style={{marginBottom:20}} valor={subAba} onChange={setSubAba} itens={[{id:"horas",label:"Banco de horas",icone:"relogio"},{id:"produtividade",label:"Produtividade",icone:"grafico"}]}/>
       {subAba==="horas"        &&<BancoHoras registros={registros} setRegistros={setRegistros} usuarios={usuarios} projetos={projetos} usuarioAtual={usuarioAtual} onAbrirEncerramento={onAbrirEncerramento}/>}
       {subAba==="produtividade"&&<Produtividade registros={registros} usuarios={usuarios} projetos={projetos} usuarioAtual={usuarioAtual} calendario={calendario}/>}
     </div>
@@ -365,19 +355,19 @@ export function Produtividade({ registros, usuarios, projetos, usuarioAtual, cal
       <Card style={{padding:16}}>
         <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'center'}}>
           <div style={{flex:1}}>
-            <h2 style={{color:C.azulEscuro,margin:0,fontSize:16,fontWeight:700}}>📈 Produtividade & Custos</h2>
+            <h2 style={{color:C.marinho,margin:0,fontSize:16,fontWeight:700}}>Produtividade & Custos</h2>
             <p style={{color:C.cinzaClaro,fontSize:12,margin:'4px 0 0'}}>Controle de horas, eficiencia e custo de mao de obra</p>
           </div>
           {isGestor && (
             <select value={filtroUser} onChange={e=>setFU(e.target.value)}
               style={{border:`1.5px solid ${C.cinzaCard}`,borderRadius:8,padding:'8px 12px',fontSize:13,fontFamily:'inherit',cursor:'pointer'}}>
-              <option value="todos">👥 Todos os colaboradores</option>
+              <option value="todos">Todos os colaboradores</option>
               {usuarios.filter(u=>u.ativo).map(u=><option key={u.id} value={u.id}>{u.nome}</option>)}
             </select>
           )}
           <select value={filtroMes} onChange={e=>setFM(e.target.value)}
             style={{border:`1.5px solid ${C.cinzaCard}`,borderRadius:8,padding:'8px 12px',fontSize:13,fontFamily:'inherit',cursor:'pointer'}}>
-            <option value="todos">📅 Todos os meses</option>
+            <option value="todos">Todos os meses</option>
             {meses.map(m=><option key={m} value={m}>{labelMes(m)}</option>)}
           </select>
         </div>
@@ -422,18 +412,14 @@ export function Produtividade({ registros, usuarios, projetos, usuarioAtual, cal
             {/* KPIs */}
             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:12}}>
               {[
-                {label:'Horas Trabalhadas', valor:`${d.totalH}h ${d.totalM}min`, cor:C.azulMedio, icone:'⏱'},
-                {label:'Sessoes', valor:String(d.regs.length), cor:C.azulClaro, icone:'🖥'},
-                {label:'Projetos', valor:String(d.projsUnicos.size), cor:C.ciano, icone:'📂'},
-                {label:'Eficiencia', valor:`${d.eficiencia}%`,
-                  cor:d.eficiencia>=80?C.verde:d.eficiencia>=50?C.amarelo:C.vermelho, icone:'📊'},
-                ...(d.salario>0 ? [{label:'Salario Mensal', valor:fmt$(d.salario), cor:C.verde, icone:'💵'}] : []),
+                {label:'Horas trabalhadas', valor:`${d.totalH}h ${d.totalM}min`, cor:"#1565d8", icone:'relogio'},
+                {label:'Sessões', valor:String(d.regs.length), cor:"#0891b2", icone:'play'},
+                {label:'Projetos', valor:String(d.projsUnicos.size), cor:"#7c3aed", icone:'pasta'},
+                {label:'Eficiência', valor:`${d.eficiencia}%`,
+                  cor:d.eficiencia>=80?"#16a34a":d.eficiencia>=50?"#d97706":"#e11d48", icone:'tendencia'},
+                ...(d.salario>0 ? [{label:'Salário mensal', valor:fmt$(d.salario), cor:"#16a34a", icone:'dinheiro'}] : []),
               ].map(k=>(
-                <Card key={k.label} style={{textAlign:'center',borderTop:`3px solid ${k.cor}`,padding:14}}>
-                  <div style={{fontSize:22}}>{k.icone}</div>
-                  <div style={{fontSize:k.label==='Salario Mensal'?13:20,fontWeight:800,color:k.cor,lineHeight:1.2,marginTop:4}}>{k.valor}</div>
-                  <div style={{fontSize:11,color:C.cinzaClaro,marginTop:4,fontWeight:600}}>{k.label}</div>
-                </Card>
+                <CartaoNumero key={k.label} icone={k.icone} titulo={k.label} valor={k.valor} cor={k.cor}/>
               ))}
             </div>
 
@@ -463,7 +449,7 @@ export function Produtividade({ registros, usuarios, projetos, usuarioAtual, cal
             {/* Horas por projeto */}
             {Object.keys(d.porProjeto).length > 0 && (
               <Card>
-                <h3 style={{color:C.azulEscuro,margin:'0 0 16px',fontSize:14,fontWeight:700}}>⏱ Distribuicao de Horas por Projeto</h3>
+                <h3 style={{color:C.marinho,margin:'0 0 16px',fontSize:14,fontWeight:700}}>Distribuicao de Horas por Projeto</h3>
                 <div style={{display:'flex',flexDirection:'column',gap:10}}>
                   {Object.entries(d.porProjeto).sort((a,b)=>b[1].totalMin-a[1].totalMin).map(([pid,pd])=>{
                     const proj = projetos.find(p=>p.id===pid);
@@ -560,11 +546,7 @@ export function BancoHoras({registros,setRegistros,usuarios,projetos,usuarioAtua
         });
         return(
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:12,marginBottom:16}}>
-            <Card style={{textAlign:"center",borderTop:`3px solid ${C.laranja}`,padding:14}}>
-              <div style={{fontSize:22}}>⏰</div>
-              <div style={{fontSize:22,fontWeight:800,color:C.laranja}}>{fmtDuracao(totalExtraMin)}</div>
-              <div style={{fontSize:11,color:C.cinzaClaro,marginTop:4}}>Total de horas extras</div>
-            </Card>
+            <CartaoNumero icone="relogio" titulo="Total de horas extras" valor={fmtDuracao(totalExtraMin)} cor="#ea580c"/>
             {isGestor&&Object.entries(porUser).map(([uid,d])=>{
               const u=usuarios.find(x=>x.id===uid);
               return <Card key={uid} style={{borderTop:`3px solid ${C.amarelo}`,padding:14}}>
@@ -583,7 +565,7 @@ export function BancoHoras({registros,setRegistros,usuarios,projetos,usuarioAtua
               <div style={{fontSize:13,fontWeight:700,color:"#166534"}}>▶ Sessão em andamento</div>
               <div style={{fontSize:12,color:"#166534",marginTop:2}}>Projeto: <strong>{projetos.find(p=>p.id===sessaoAberta.projetoId)?.codigo||"?"}</strong> — Início: {sessaoAberta.horaInicio}</div>
             </div>
-            <Btn onClick={onAbrirEncerramento} variant="verde" small>🏁 Encerrar expediente</Btn>
+            <Btn onClick={onAbrirEncerramento} variant="verde" small>Encerrar expediente</Btn>
           </div>
         </Card>
       )}
@@ -591,11 +573,11 @@ export function BancoHoras({registros,setRegistros,usuarios,projetos,usuarioAtua
       <Card style={{padding:16}}>
         <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
           {isGestor&&<select value={filtroUser} onChange={e=>setFU(e.target.value)} style={{border:`1.5px solid ${C.cinzaCard}`,borderRadius:8,padding:"8px 12px",fontSize:13,fontFamily:"inherit",cursor:"pointer"}}>
-            <option value="todos">👤 Todos</option>
+            <option value="todos">Todos</option>
             {usuarios.filter(u=>u.ativo).map(u=><option key={u.id} value={u.id}>{u.nome}</option>)}
           </select>}
           <select value={filtroMes} onChange={e=>setFM(e.target.value)} style={{border:`1.5px solid ${C.cinzaCard}`,borderRadius:8,padding:"8px 12px",fontSize:13,fontFamily:"inherit",cursor:"pointer"}}>
-            <option value="todos">📅 Todos os meses</option>
+            <option value="todos">Todos os meses</option>
             {meses.map(m=><option key={m} value={m}>{m}</option>)}
           </select>
           <span style={{fontSize:12,color:C.cinzaClaro,marginLeft:"auto"}}>{filtrados.length} registro(s)</span>
@@ -610,7 +592,7 @@ export function BancoHoras({registros,setRegistros,usuarios,projetos,usuarioAtua
               <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}><Avatar u={u} size={36}/><div style={{fontWeight:700,color:C.cinzaEscuro,fontSize:13}}>{u.nome}</div></div>
               <div style={{fontSize:24,fontWeight:800,color:u.cor||C.azulMedio}}>{fmtDuracao(d.totalMin)}</div>
               <div style={{fontSize:11,color:C.cinzaClaro,marginTop:4}}>{d.sessoes} sessão(ões) • {d.projs.size} projeto(s)</div>
-              {d.totalExtras>0&&<div style={{fontSize:11,color:C.laranja,fontWeight:700,marginTop:2}}>⏰ +{fmtDuracao(d.totalExtras)} extras</div>}
+              {d.totalExtras>0&&<div style={{fontSize:11,color:C.laranja,fontWeight:700,marginTop:2}}>+{fmtDuracao(d.totalExtras)} extras</div>}
             </Card>);
           })}
         </div>
@@ -618,7 +600,7 @@ export function BancoHoras({registros,setRegistros,usuarios,projetos,usuarioAtua
 
       {Object.keys(resumoProj).length>0&&(
         <Card>
-          <h3 style={{color:C.azulEscuro,margin:"0 0 16px",fontSize:14,fontWeight:700}}>⏱ Horas por Projeto</h3>
+          <h3 style={{color:C.marinho,margin:"0 0 16px",fontSize:14,fontWeight:700}}>Horas por Projeto</h3>
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
             {Object.entries(resumoProj).sort((a,b)=>b[1].totalMin-a[1].totalMin).map(([pid,d])=>{
               const proj=projetos.find(p=>p.id===pid);
@@ -637,25 +619,12 @@ export function BancoHoras({registros,setRegistros,usuarios,projetos,usuarioAtua
 
       <Card style={{padding:0,overflow:"hidden"}}>
         {/* Sub-abas Histórico / Horas Extras */}
-        <div style={{padding:"0 20px",borderBottom:`1px solid ${C.cinzaCard}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-          <div style={{display:"flex",gap:0}}>
-            {[{id:"historico",label:"📋 Histórico"},{id:"extras",label:"⏰ Horas Extras"}].map(t=>(
-              <button key={t.id} onClick={()=>setAbaH(t.id)}
-                style={{background:"none",border:"none",padding:"14px 18px",cursor:"pointer",fontSize:13,
-                  fontFamily:"inherit",fontWeight:abaH===t.id?700:500,
-                  color:abaH===t.id?C.azulMedio:C.cinzaClaro,
-                  borderBottom:abaH===t.id?`2px solid ${C.azulMedio}`:"2px solid transparent",
-                  marginBottom:-1,transition:"all 0.15s"}}>
-                {t.label}
-              </button>
-            ))}
-          </div>
-          <span style={{fontSize:11,color:C.cinzaClaro}}>{filtrados.filter(r=>abaH==="extras"?(r.minutosExtras||0)>0:true).length} registro(s)</span>
-        </div>
+        <Abas variante="linha" style={{padding:"0 16px"}} valor={abaH} onChange={setAbaH} itens={[{id:"historico",label:"Histórico"},{id:"extras",label:"Horas extras"}]}
+          direita={<span style={{fontSize:12,color:C.cinzaClaro}}>{filtrados.filter(r=>abaH==="extras"?(r.minutosExtras||0)>0:true).length} registro(s)</span>}/>
         <div style={{overflowX:"auto"}}>
           <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
             <thead>
-              <tr style={{background:C.azulEscuro}}>
+              <tr className="wm-cab-tabela">
                 {(abaH==="extras"
                   ? ["Data","Colaborador","Projeto/Atividade","Entrada","Saída","Total","H.Extra","O que fez",""]
                   : ["Data","Tipo","Colaborador","Projeto/Atividade","Entrada","Saída","Duração","H.Extra","O que fez","Feedback",""]
@@ -680,8 +649,8 @@ export function BancoHoras({registros,setRegistros,usuarios,projetos,usuarioAtua
                       {abaH==="historico"&&(
                         <td style={{padding:"9px 14px"}}>
                           {r.categoriaAdmin
-                            ? <span style={{fontSize:10,background:"#f0fdf4",color:"#166534",padding:"2px 7px",borderRadius:4,fontWeight:700}}>⚙ Adm</span>
-                            : <span style={{fontSize:10,background:"#eff6ff",color:C.azulMedio,padding:"2px 7px",borderRadius:4,fontWeight:700}}>📁 Proj</span>}
+                            ? <span style={{fontSize:10,background:"#f0fdf4",color:"#166534",padding:"2px 7px",borderRadius:4,fontWeight:700}}>Adm</span>
+                            : <span style={{fontSize:10,background:"#eff6ff",color:C.azulMedio,padding:"2px 7px",borderRadius:4,fontWeight:700}}>Proj</span>}
                         </td>
                       )}
                       <td style={{padding:"9px 14px"}}>

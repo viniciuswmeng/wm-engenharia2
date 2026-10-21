@@ -1,3 +1,4 @@
+import { CartaoNumero, Abas } from "../ui/ds.jsx";
 import { useState, useEffect, useMemo } from "react";
 import { Avatar, Btn, C, Card, InpC, calcHorasDia, carregar, fmtData, labelExpediente, salvar } from "../nucleo.jsx";
 
@@ -5,18 +6,7 @@ export function AbaAgenda({ calendario, usuarioAtual, registros, usuarios }) {
   const [subAba, setSubAba] = useState("calendario");
   return (
     <div>
-      <div style={{display:"flex",gap:0,marginBottom:24,borderBottom:`2px solid ${C.cinzaCard}`}}>
-        {[{id:"calendario",label:"📅 Calendário"},{id:"escalas",label:"📋 Escalas"}].map(t=>(
-          <button key={t.id} onClick={()=>setSubAba(t.id)}
-            style={{background:"none",border:"none",padding:"12px 20px",cursor:"pointer",fontSize:14,
-              fontFamily:"inherit",fontWeight:subAba===t.id?700:500,
-              color:subAba===t.id?C.azulMedio:C.cinzaClaro,
-              borderBottom:subAba===t.id?`2px solid ${C.azulMedio}`:"2px solid transparent",
-              marginBottom:-2,transition:"all 0.15s"}}>
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <Abas style={{marginBottom:20}} valor={subAba} onChange={setSubAba} itens={[{id:"calendario",label:"Calendário",icone:"agenda"},{id:"escalas",label:"Escalas",icone:"equipe"}]}/>
       {subAba==="calendario"&&<ModuloCalendario calendario={calendario} usuarioAtual={usuarioAtual} registros={registros} usuarios={usuarios}/>}
       {subAba==="escalas"   &&<Escalas usuarioAtual={usuarioAtual} usuarios={usuarios}/>}
     </div>
@@ -177,7 +167,7 @@ export function ModuloCalendario({ calendario, usuarioAtual, registros, usuarios
       <Card style={{padding:16}}>
         <div style={{display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
           <div style={{flex:1}}>
-            <h2 style={{color:C.azulEscuro,margin:0,fontSize:16,fontWeight:700}}>📅 Calendario de Dias Uteis</h2>
+            <h2 style={{color:C.marinho,margin:0,fontSize:16,fontWeight:700}}>Calendario de Dias Uteis</h2>
             <p style={{color:C.cinzaClaro,fontSize:12,margin:"4px 0 0"}}>
               Feriados nacionais + MG + Gov. Valadares • Expediente: {labelExpediente(usuarioAtual?.expediente)} ({hdDiaUsuario}h/dia)
             </p>
@@ -189,28 +179,12 @@ export function ModuloCalendario({ calendario, usuarioAtual, registros, usuarios
             {anos.map(a=><option key={a} value={a}>{a}</option>)}
           </select>
           <Btn onClick={()=>calendario.buscarFeriados(ano)} variant="secondary" small disabled={calendario.carregando}>
-            {calendario.carregando ? "⏳ Buscando..." : "🔄 Atualizar API"}
+            {calendario.carregando ? "Buscando..." : "Atualizar API"}
           </Btn>
         </div>
-        {calendario.erro && <div style={{marginTop:10,padding:"8px 12px",background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,fontSize:12,color:C.vermelho}}>⚠ {calendario.erro}</div>}
+        {calendario.erro && <div style={{marginTop:10,padding:"8px 12px",background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,fontSize:12,color:C.vermelho}}>{calendario.erro}</div>}
 
-        {/* Sub-abas */}
-        <div style={{display:"flex",gap:4,marginTop:14,borderBottom:`2px solid ${C.cinzaCard}`,paddingBottom:0}}>
-          {[
-            {id:"calendario", label:"📆 Visualizar"},
-            {id:"feriados",   label:"🎉 Gerenciar Feriados"},
-            {id:"recessos",   label:"🏖 Recessos & Pontes"},
-          ].map(t=>(
-            <button key={t.id} onClick={()=>setAba(t.id)} style={{
-              background:"none",border:"none",padding:"8px 16px",cursor:"pointer",fontSize:13,
-              fontFamily:"inherit",fontWeight:aba===t.id?700:500,
-              color:aba===t.id?C.azulMedio:C.cinzaClaro,
-              borderBottom:aba===t.id?`2px solid ${C.azulMedio}`:"2px solid transparent",
-              marginBottom:-2,transition:"all 0.15s"}}>
-              {t.label}
-            </button>
-          ))}
-        </div>
+        <Abas variante="linha" style={{marginTop:12}} valor={aba} onChange={setAba} itens={[{id:"calendario",label:"Visualizar"},{id:"feriados",label:"Feriados"},{id:"recessos",label:"Recessos e pontes"}]}/>
       </Card>
 
       {/* ── ABA: CALENDÁRIO VISUAL ── */}
@@ -218,25 +192,20 @@ export function ModuloCalendario({ calendario, usuarioAtual, registros, usuarios
         {/* KPIs */}
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:14}}>
           {[
-            {label:"Dias Uteis",   valor:diasUteis - recessosMes.length, cor:C.azulMedio, icone:"📆", sub:`de ${diasNoMes} dias`},
-            {label:"Horas Previstas", valor:`${horasPrevistas - recessosMes.length * hdDiaUsuario}h`, cor:C.azulClaro, icone:"⏱", sub:`${hdDiaUsuario}h × ${diasUteis - recessosMes.length} dias`},
-            {label:"Feriados",    valor:feriadosMes.length,    cor:C.laranja, icone:"🎉", sub:"no mes"},
-            {label:"Recessos",    valor:recessosMes.length,    cor:C.amarelo, icone:"🏖", sub:"cadastrados"},
-            {label:"Expediente",  valor:`${hdDiaUsuario}h/dia`, cor:C.verde,  icone:"🏢", sub:labelExpediente(usuarioAtual?.expediente)},
+            {label:"Dias úteis",   valor:diasUteis - recessosMes.length, cor:"#1565d8", icone:"agenda", sub:`de ${diasNoMes} dias`},
+            {label:"Horas previstas", valor:`${horasPrevistas - recessosMes.length * hdDiaUsuario}h`, cor:"#0891b2", icone:"relogio", sub:`${hdDiaUsuario}h × ${diasUteis - recessosMes.length} dias`},
+            {label:"Feriados",    valor:feriadosMes.length,    cor:"#ea580c", icone:"alerta", sub:"no mês"},
+            {label:"Recessos",    valor:recessosMes.length,    cor:"#d97706", icone:"pausa", sub:"cadastrados"},
+            {label:"Expediente",  valor:`${hdDiaUsuario}h/dia`, cor:"#16a34a",  icone:"equipe", sub:labelExpediente(usuarioAtual?.expediente)},
           ].map(k=>(
-            <Card key={k.label} style={{textAlign:"center",borderTop:`3px solid ${k.cor}`,padding:14}}>
-              <div style={{fontSize:22}}>{k.icone}</div>
-              <div style={{fontSize:22,fontWeight:800,color:k.cor,lineHeight:1.1,marginTop:4}}>{k.valor}</div>
-              <div style={{fontSize:11,color:C.cinzaClaro,marginTop:4,fontWeight:600}}>{k.label}</div>
-              <div style={{fontSize:10,color:C.cinzaClaro}}>{k.sub}</div>
-            </Card>
+            <CartaoNumero key={k.label} icone={k.icone} titulo={k.label} valor={k.valor} legenda={k.sub} cor={k.cor}/>
           ))}
         </div>
 
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
           {/* Calendário */}
           <Card>
-            <h3 style={{color:C.azulEscuro,margin:"0 0 14px",fontSize:14,fontWeight:700}}>{nomesMeses[mes]} {ano}</h3>
+            <h3 style={{color:C.marinho,margin:"0 0 14px",fontSize:14,fontWeight:700}}>{nomesMeses[mes]} {ano}</h3>
             <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3}}>
               {(semanas||[]).map(s=>(
                 <div key={s} style={{textAlign:"center",fontSize:10,fontWeight:700,color:C.cinzaClaro,padding:"4px 0",background:C.cinzaFundo,borderRadius:4}}>{s}</div>
@@ -278,7 +247,7 @@ export function ModuloCalendario({ calendario, usuarioAtual, registros, usuarios
           {/* Feriados do mês + horas colaboradores */}
           <div style={{display:"flex",flexDirection:"column",gap:14}}>
             <Card style={{padding:16}}>
-              <h3 style={{color:C.azulEscuro,margin:"0 0 12px",fontSize:13,fontWeight:700}}>🎉 Feriados em {nomesMeses[mes]}</h3>
+              <h3 style={{color:C.marinho,margin:"0 0 12px",fontSize:13,fontWeight:700}}>Feriados em {nomesMeses[mes]}</h3>
               {feriadosMes.length===0
                 ?<p style={{color:C.cinzaClaro,fontSize:12,margin:0}}>Nenhum feriado neste mes.</p>
                 :<div style={{display:"flex",flexDirection:"column",gap:5}}>
@@ -293,7 +262,7 @@ export function ModuloCalendario({ calendario, usuarioAtual, registros, usuarios
             </Card>
 
             <Card>
-              <h3 style={{color:C.azulEscuro,margin:"0 0 12px",fontSize:13,fontWeight:700}}>👥 Horas — {nomesMeses[mes]}</h3>
+              <h3 style={{color:C.marinho,margin:"0 0 12px",fontSize:13,fontWeight:700}}>Horas — {nomesMeses[mes]}</h3>
               <div style={{display:"flex",flexDirection:"column",gap:8}}>
                 {(resumoHoras||[]).map(d=>(
                   <div key={d.usuario.id} style={{padding:"10px 12px",background:C.cinzaFundo,borderRadius:8}}>
@@ -323,7 +292,7 @@ export function ModuloCalendario({ calendario, usuarioAtual, registros, usuarios
         <Card>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
             <div>
-              <h3 style={{color:C.azulEscuro,margin:0,fontSize:15,fontWeight:700}}>🎉 Gerenciar Feriados — {ano}</h3>
+              <h3 style={{color:C.marinho,margin:0,fontSize:15,fontWeight:700}}>Gerenciar Feriados — {ano}</h3>
               <p style={{color:C.cinzaClaro,fontSize:12,margin:"4px 0 0"}}>
                 Edite ou exclua feriados carregados da API. Adicione feriados locais manualmente.
               </p>
@@ -385,13 +354,13 @@ export function ModuloCalendario({ calendario, usuarioAtual, registros, usuarios
                   <>
                     {editando === iso ? (
                       <>
-                        <Btn onClick={salvarEdicao} variant="verde" small>✓ Salvar</Btn>
+                        <Btn onClick={salvarEdicao} variant="verde" small>Salvar</Btn>
                         <Btn onClick={()=>setEditando(null)} variant="ghost" small>Cancelar</Btn>
                       </>
                     ) : (
                       <>
-                        <Btn onClick={()=>iniciarEdicao(iso)} variant="ghost" small>✏ Editar</Btn>
-                        <Btn onClick={()=>excluirFeriado(iso)} variant="danger" small>🗑 Excluir</Btn>
+                        <Btn onClick={()=>iniciarEdicao(iso)} variant="ghost" small>Editar</Btn>
+                        <Btn onClick={()=>excluirFeriado(iso)} variant="danger" small>Excluir</Btn>
                       </>
                     )}
                   </>
@@ -408,7 +377,7 @@ export function ModuloCalendario({ calendario, usuarioAtual, registros, usuarios
       {/* ── ABA: RECESSOS ── */}
       {aba === "recessos" && (
         <Card>
-          <h3 style={{color:C.azulEscuro,margin:"0 0 16px",fontSize:15,fontWeight:700}}>🏖 Recessos, Pontes & Dias Nao Trabalhados</h3>
+          <h3 style={{color:C.marinho,margin:"0 0 16px",fontSize:15,fontWeight:700}}>Recessos, Pontes & Dias Nao Trabalhados</h3>
           {isGestor && (
             <div style={{display:"flex",gap:8,marginBottom:16,padding:"12px 14px",background:C.cinzaFundo,borderRadius:10,flexWrap:"wrap",alignItems:"flex-end"}}>
               <div style={{display:"flex",flexDirection:"column",gap:4}}>
@@ -431,7 +400,7 @@ export function ModuloCalendario({ calendario, usuarioAtual, registros, usuarios
                 <div key={r.data} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",background:"#fffbeb",borderRadius:10,border:"1px solid #fde68a"}}>
                   <span style={{fontWeight:700,color:"#92400e",minWidth:80,fontSize:12}}>{r.data.slice(8)}/{r.data.slice(5,7)}/{r.data.slice(0,4)}</span>
                   <span style={{flex:1,fontSize:13,color:C.cinzaEscuro}}>{r.motivo}</span>
-                  {isGestor && <Btn onClick={()=>removerRecesso(r.data)} variant="danger" small>🗑 Remover</Btn>}
+                  {isGestor && <Btn onClick={()=>removerRecesso(r.data)} variant="danger" small>Remover</Btn>}
                 </div>
               ))}
             </div>}
@@ -560,20 +529,14 @@ export function Escalas({ usuarioAtual, usuarios }) {
       <Card style={{padding:16}}>
         <div style={{display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
           <div style={{flex:1}}>
-            <h2 style={{color:C.azulEscuro,margin:0,fontSize:16,fontWeight:700}}>📋 Escalas Semanais</h2>
+            <h2 style={{color:C.marinho,margin:0,fontSize:16,fontWeight:700}}>Escalas Semanais</h2>
             <p style={{color:C.cinzaClaro,fontSize:12,margin:"4px 0 0"}}>Rotatividade semanal de responsabilidades da equipe</p>
           </div>
           {isGestor&&<Btn onClick={()=>setEditando(!editando)} variant={editando?"verde":"secondary"} small>
-            {editando?"✓ Concluir edição":"✏ Editar escalas"}
+            {editando?"Concluir edição":"Editar escalas"}
           </Btn>}
         </div>
-        <div style={{display:"flex",gap:4,marginTop:14,borderBottom:`2px solid ${C.cinzaCard}`,paddingBottom:0}}>
-          {[{id:"revisao",label:"🔍 Revisão de Projetos"},{id:"lixo",label:"🗑 Coleta de Lixo"}].map(t=>(
-            <button key={t.id} onClick={()=>setAbaE(t.id)} style={{background:"none",border:"none",padding:"8px 16px",cursor:"pointer",fontSize:13,fontFamily:"inherit",fontWeight:abaE===t.id?700:500,color:abaE===t.id?C.azulMedio:C.cinzaClaro,borderBottom:abaE===t.id?`2px solid ${C.azulMedio}`:"2px solid transparent",marginBottom:-2,transition:"all 0.15s"}}>
-              {t.label}
-            </button>
-          ))}
-        </div>
+        <Abas variante="linha" style={{marginTop:12}} valor={abaE} onChange={setAbaE} itens={[{id:"revisao",label:"Revisão de projetos"},{id:"lixo",label:"Coleta de lixo"}]}/>
       </Card>
 
       {/* Card da semana atual */}
@@ -607,7 +570,7 @@ export function Escalas({ usuarioAtual, usuarios }) {
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
         {/* Calendário das próximas semanas */}
         <Card>
-          <h3 style={{color:C.azulEscuro,margin:"0 0 14px",fontSize:14,fontWeight:700}}>📅 Próximas Semanas</h3>
+          <h3 style={{color:C.marinho,margin:"0 0 14px",fontSize:14,fontWeight:700}}>Próximas Semanas</h3>
           <div style={{display:"flex",flexDirection:"column",gap:6}}>
             {(semanas||[]).map((s,i)=>{
               const passada  = s.data < hoje;
@@ -621,7 +584,7 @@ export function Escalas({ usuarioAtual, usuarios }) {
                   <div style={{minWidth:80,fontSize:12,fontWeight:atual?700:400,color:atual?C.azulMedio:C.cinzaClaro}}>
                     {fmtData(s.data)}
                     {atual&&<span style={{marginLeft:6,fontSize:10,background:C.azulMedio,color:"#fff",padding:"1px 5px",borderRadius:3,fontWeight:700}}>ESTA SEMANA</span>}
-                    {passada&&!atual&&<span style={{marginLeft:6,fontSize:9,color:C.cinzaClaro}}>✓ passou</span>}
+                    {passada&&!atual&&<span style={{marginLeft:6,fontSize:9,color:C.cinzaClaro}}>passou</span>}
                   </div>
                   <div style={{width:28,height:28,borderRadius:"50%",background:cor,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:"#fff",flexShrink:0}}>
                     {s.membro.slice(0,2).toUpperCase()}
@@ -637,7 +600,7 @@ export function Escalas({ usuarioAtual, usuarios }) {
         <div style={{display:"flex",flexDirection:"column",gap:14}}>
           <Card>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-              <h3 style={{color:C.azulEscuro,margin:0,fontSize:14,fontWeight:700}}>👥 Ordem da Escala</h3>
+              <h3 style={{color:C.marinho,margin:0,fontSize:14,fontWeight:700}}>Ordem da Escala</h3>
               <span style={{fontSize:11,color:C.cinzaClaro}}>{escala.membros.length} membro(s)</span>
             </div>
             <div style={{display:"flex",flexDirection:"column",gap:6}}>
@@ -678,7 +641,7 @@ export function Escalas({ usuarioAtual, usuarios }) {
           {/* Data de início */}
           {editando&&isGestor&&(
             <Card>
-              <h3 style={{color:C.azulEscuro,margin:"0 0 12px",fontSize:13,fontWeight:700}}>📅 Data de início da escala</h3>
+              <h3 style={{color:C.marinho,margin:"0 0 12px",fontSize:13,fontWeight:700}}>Data de início da escala</h3>
               <InpC label="Primeira sexta-feira da escala" type="date" value={escala.dataInicio}
                 onChange={v=>setEscala(e=>({...e,dataInicio:v}))}/>
               <p style={{fontSize:11,color:C.cinzaClaro,marginTop:6}}>

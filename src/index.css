@@ -94,3 +94,9 @@ input:focus, select:focus, textarea:focus {
 
 .wm-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; }
 @media (min-width: 1360px) { .wm-kpis { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+
+/* Tabelas: cabeçalho claro em todas as telas */
+.wm-cab-tabela { background: #f6f8fc !important; }
+.wm-cab-tabela th { color: #6b7a90 !important; font-size: 11.5px !important; font-weight: 700 !important; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid #e6ecf4; }
+.wm-cab-tabela th * { color: inherit !important; }
+table tbody tr:hover { background: #f8fafd; }

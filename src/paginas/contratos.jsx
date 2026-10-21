@@ -5,7 +5,8 @@ import { gerar as gerarCronograma, normalizar as normalizarCronograma, tabelaHTM
 import AnexarContrato from "../fluxo/AnexarContrato.jsx";
 import SeletorOrcamento from "../fluxo/SeletorOrcamento.jsx";
 import { orcamentoParaContrato } from "../fluxo/fluxo.js";
-import { C_CONTRATO, DRIVE_ROOT_ID, InpC, SecC, SelC, TIPOS } from "../nucleo.jsx";
+import { Btn, C_CONTRATO, Card, DRIVE_ROOT_ID, InpC, SecC, SelC, TIPOS } from "../nucleo.jsx";
+import Icone from "../ui/Icone.jsx";
 
 export function GeradorContratos({ projetos, usuarios, usuarioAtual, drive, onSalvarProjeto, onAbrirProjeto, orcamentoInicial, onOrcamentoUsado }) {
   const C2 = C_CONTRATO;
@@ -370,34 +371,25 @@ body{width:210mm;margin:0 auto;padding:6mm 0;color:#1a1a1a;-webkit-print-color-a
 
 
 
-  const passos = [{n:1,label:"Cliente",icone:"👤"},{n:2,label:"Projeto",icone:"🏗"},{n:3,label:"Valores",icone:"💰"},{n:4,label:"Finalizar",icone:"✅"}];
+  const passos = [{n:1,label:"Cliente",sub:"Dados do contratante"},{n:2,label:"Projeto",sub:"Serviços e escopo"},{n:3,label:"Valores",sub:"Pagamento e prazos"},{n:4,label:"Finalizar",sub:"Assinatura"}];
+  const [buscaLista, setBuscaLista] = useState("");
+  const novoContrato = () => {setContratoId(null);setForm(f=>({...f,nomeCompleto:"",cpfCnpj:"",endereco:"",email:"",servicos:[],descricaoEdificacao:"",areaTotal:"",numPavimentos:"",cidadeUF:"",enderecoObra:"",valorTotal:"",dataContrato:hoje,dataAssinatura:hoje,_fluxo:undefined}));setMostrarLista(false);setPasso(1);setGerado(false);};
+  const listaFiltrada = lista.filter(i=>!buscaLista.trim()||String(i.titulo||"").toLowerCase().includes(buscaLista.trim().toLowerCase()));
+  const nAssinados = lista.filter(i=>i.dados?._fluxo?.status==="assinado").length;
+  const chip = (txt,bg,cor) => <span style={{fontSize:11.5,fontWeight:700,background:bg,color:cor,borderRadius:20,padding:"3px 9px",whiteSpace:"nowrap",display:"inline-flex",alignItems:"center",gap:4}}>{txt}</span>;
 
   return (
-    <div style={{maxWidth:1080,padding:"0 0 48px"}}>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:24,flexWrap:"wrap",gap:12}}>
+    <div style={{display:"flex",flexDirection:"column",gap:20,paddingBottom:48}}>
+      <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",flexWrap:"wrap",gap:14}}>
         <div>
           <h1 style={{margin:0,fontSize:30,fontWeight:800,color:"#0a2557",letterSpacing:-.5,lineHeight:1.15}}>Contratos</h1>
           <div style={{fontSize:14.5,color:"#6b7a90",marginTop:6}}>Gere contratos de prestação de serviços, a partir de um orçamento ou do zero.</div>
         </div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
-          {msgSalvo&&<span style={{fontSize:13,fontWeight:600,color:msgSalvo.startsWith("✅")?C2.verde:"#dc2626"}}>{msgSalvo}</span>}
-          <button onClick={()=>setSeletorOrc(true)} style={{background:"#fff",color:C2.azulM,border:`1.5px solid ${C2.azulM}`,borderRadius:8,padding:"9px 16px",fontWeight:700,cursor:"pointer",fontSize:13}}>
-            📋 A partir de orçamento
-          </button>
-          <button onClick={()=>setMostrarLista(v=>!v)} style={{background:"#f1f5f9",color:C2.azul,border:`1px solid ${C2.borda}`,borderRadius:8,padding:"9px 16px",fontWeight:700,cursor:"pointer",fontSize:13}}>
-            📂 Contratos Salvos {lista.length>0&&<span style={{background:C2.azulM,color:"#fff",borderRadius:10,padding:"1px 7px",fontSize:11,marginLeft:4}}>{lista.length}</span>}
-          </button>
-          <button onClick={salvarContrato} disabled={salvando} style={{background:C2.azulM,color:"#fff",border:"none",borderRadius:8,padding:"9px 16px",fontWeight:700,cursor:"pointer",fontSize:13,opacity:salvando?.6:1}}>
-            {salvando?"⏳ Salvando...":contratoId?"💾 Atualizar":"💾 Salvar"}
-          </button>
-          {(contratoId||form.nomeCompleto)&&(assinado
-            ? <span title="Contrato assinado anexado" style={{background:"#dcfce7",color:C2.verde,borderRadius:8,padding:"8px 12px",fontWeight:800,fontSize:12}}>✔ Assinado {form._fluxo?.resultado?.arquivo?.url&&<a href={form._fluxo.resultado.arquivo.url} target="_blank" rel="noreferrer" style={{color:C2.verde,marginLeft:4}}>PDF</a>}</span>
-            : <button onClick={()=>abrirAnexar(null)} disabled={salvando} style={{background:C2.verde,color:"#fff",border:"none",borderRadius:8,padding:"9px 16px",fontWeight:700,cursor:"pointer",fontSize:13}}>📎 Anexar assinado</button>)}
-          {gerado&&<>
-            <button onClick={imprimir} style={{background:C2.azul,color:"#fff",border:"none",borderRadius:8,padding:"9px 16px",fontWeight:700,cursor:"pointer",fontSize:13}}>🖨 Imprimir / PDF</button>
-            <button onClick={baixarWord} style={{background:"#2b579a",color:"#fff",border:"none",borderRadius:8,padding:"9px 16px",fontWeight:700,cursor:"pointer",fontSize:13}}>📝 Word</button>
-            <button onClick={()=>{setGerado(false);setPasso(1);}} style={{background:"#f1f5f9",color:C2.azul,border:`1px solid ${C2.borda}`,borderRadius:8,padding:"9px 16px",fontWeight:700,cursor:"pointer",fontSize:13}}>✏ Editar</button>
-          </>}
+          {msgSalvo&&<span role="status" style={{fontSize:13,fontWeight:600,color:msgSalvo.startsWith("✅")?C2.verde:"#dc2626"}}>{msgSalvo.replace(/^[✅❌]\s*/,"")}</span>}
+          <Btn variant="ghost" onClick={()=>setMostrarLista(v=>!v)}><Icone nome="pasta" tam={17}/>Contratos salvos<span style={{background:"#eef1f6",color:C2.sub,borderRadius:10,padding:"0 7px",fontSize:12}}>{lista.length}</span></Btn>
+          <Btn variant="secondary" onClick={()=>setSeletorOrc(true)}><Icone nome="calculadora" tam={17}/>A partir de orçamento</Btn>
+          <Btn onClick={novoContrato}><Icone nome="mais" tam={17}/>Novo contrato</Btn>
         </div>
       </div>
 
@@ -408,53 +400,67 @@ body{width:210mm;margin:0 auto;padding:6mm 0;color:#1a1a1a;-webkit-print-color-a
         onFechar={proj=>{ setAnexando(null); if(proj&&proj.id) onAbrirProjeto?.(proj.id); }}/>}
 
       {/* Lista de contratos salvos */}
-      {mostrarLista&&<div style={{background:"#fff",borderRadius:12,border:`1px solid ${C2.borda}`,marginBottom:20,overflow:"hidden",boxShadow:"0 2px 12px rgba(0,0,0,0.08)"}}>
-        <div style={{background:C2.azul,padding:"12px 20px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-          <div style={{color:"#fff",fontWeight:700,fontSize:14}}>📂 Contratos Salvos</div>
-          <button onClick={()=>{setContratoId(null);setForm(f=>({...f,nomeCompleto:"",cpfCnpj:"",endereco:"",email:"",servicos:[],descricaoEdificacao:"",areaTotal:"",numPavimentos:"",cidadeUF:"",enderecoObra:"",valorTotal:"",dataContrato:hoje,dataAssinatura:hoje}));setMostrarLista(false);setPasso(1);setGerado(false);}}
-            style={{background:"rgba(255,255,255,.2)",color:"#fff",border:"none",borderRadius:7,padding:"6px 14px",fontWeight:700,cursor:"pointer",fontSize:12}}>+ Novo Contrato</button>
+      {mostrarLista&&<Card style={{padding:0,overflow:"hidden"}}>
+        <div style={{display:"flex",alignItems:"center",gap:12,padding:"14px 18px",borderBottom:`1px solid ${C2.borda}`,flexWrap:"wrap"}}>
+          <div style={{flex:"1 1 200px"}}>
+            <div style={{fontWeight:700,fontSize:15.5,color:"#0a2557"}}>Contratos salvos</div>
+            <div style={{fontSize:12.5,color:C2.sub}}>{lista.length} contrato(s) · {nAssinados} assinado(s)</div>
+          </div>
+          <input value={buscaLista} onChange={e=>setBuscaLista(e.target.value)} placeholder="Buscar cliente…" aria-label="Buscar contrato"
+            style={{border:`1px solid #d9e2ee`,borderRadius:10,padding:"8px 12px",fontSize:13.5,minWidth:200}}/>
+          <button onClick={()=>setMostrarLista(false)} aria-label="Fechar lista" style={{border:"none",background:"#f1f4f9",borderRadius:10,width:34,height:34,cursor:"pointer",color:C2.sub,display:"flex",alignItems:"center",justifyContent:"center"}}><Icone nome="fechar" tam={17}/></button>
         </div>
-        {lista.length===0
-          ? <div style={{padding:"24px",textAlign:"center",color:C2.sub,fontSize:13}}>Nenhum contrato salvo ainda</div>
-          : lista.map(item=>(
-            <div key={item.id} onClick={()=>carregarContrato(item)} style={{
-              display:"flex",alignItems:"center",justifyContent:"space-between",
-              padding:"14px 20px",borderBottom:`1px solid ${C2.borda}`,cursor:"pointer",
-              background:contratoId===item.id?"#f0f7ff":"#fff",
-              transition:"background .15s"
-            }}>
-              <div>
-                <div style={{fontWeight:700,fontSize:14,color:C2.azul}}>{item.titulo}</div>
-                <div style={{fontSize:11,color:C2.sub,marginTop:3}}>
-                  Criado por: {(usuarios||[]).find(u=>u.id===item.criado_por)?.nome||"—"} · 
-                  Atualizado: {new Date(item.updated_at).toLocaleDateString("pt-BR")} às {new Date(item.updated_at).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}
+        <div style={{maxHeight:420,overflowY:"auto"}}>
+        {listaFiltrada.length===0
+          ? <div style={{padding:"24px",textAlign:"center",color:C2.sub,fontSize:13.5}}>{lista.length?"Nenhum contrato encontrado.":"Nenhum contrato salvo ainda."}</div>
+          : listaFiltrada.map(item=>{
+            const fl=item.dados?._fluxo||{};
+            return (
+            <div key={item.id} role="button" tabIndex={0} onClick={()=>carregarContrato(item)} onKeyDown={e=>{if(e.key==="Enter")carregarContrato(item);}} style={{
+              display:"flex",alignItems:"center",gap:14,padding:"12px 18px",borderBottom:`1px solid ${C2.borda}`,cursor:"pointer",
+              background:contratoId===item.id?"#f2f7fe":"#fff"}}>
+              <span style={{width:38,height:38,borderRadius:10,background:fl.status==="assinado"?"#e7f7ee":"#eef3fb",color:fl.status==="assinado"?C2.verde:C2.azulM,display:"flex",alignItems:"center",justifyContent:"center",flex:"none"}}><Icone nome={fl.status==="assinado"?"check":"documento"} tam={19}/></span>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontWeight:700,fontSize:14,color:"#0f1f3d",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.titulo}</div>
+                <div style={{fontSize:12,color:C2.sub,marginTop:2}}>
+                  {(usuarios||[]).find(u=>u.id===item.criado_por)?.nome||"—"} · atualizado em {new Date(item.updated_at).toLocaleDateString("pt-BR")}
                 </div>
               </div>
-              <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                {item.dados?._fluxo?.orcamentoId&&<span title="Gerado a partir de um orçamento" style={{fontSize:11,background:"#f1f5f9",color:C2.sub,borderRadius:6,padding:"3px 8px",fontWeight:700}}>📋 Orçamento</span>}
-                {item.dados?._fluxo?.status==="assinado"
-                  ? <span style={{fontSize:11,background:"#dcfce7",color:C2.verde,borderRadius:6,padding:"3px 8px",fontWeight:800}}>✔ Assinado</span>
-                  : <button onClick={e=>{e.stopPropagation();abrirAnexar(item);}} style={{background:"#ecfdf3",color:C2.verde,border:`1px solid #bbf7d0`,borderRadius:6,padding:"5px 10px",cursor:"pointer",fontSize:12,fontWeight:700}}>📎 Anexar assinado</button>}
-                {contratoId===item.id&&<span style={{fontSize:11,background:"#dbeafe",color:C2.azulM,borderRadius:6,padding:"3px 8px",fontWeight:700}}>Aberto</span>}
-                <button onClick={e=>excluirContrato(item.id,e)} style={{background:"#fee2e2",color:"#dc2626",border:"none",borderRadius:6,padding:"5px 10px",cursor:"pointer",fontSize:12,fontWeight:700}}>🗑</button>
+              <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
+                {fl.orcamentoId&&chip("Orçamento","#f1f4f9",C2.sub)}
+                {contratoId===item.id&&chip("Aberto","#e9f1fd",C2.azulM)}
+                {fl.status==="assinado"
+                  ? chip("Assinado","#e7f7ee",C2.verde)
+                  : <button onClick={e=>{e.stopPropagation();abrirAnexar(item);}} style={{background:"#fff",color:C2.verde,border:`1px solid #bfe3cf`,borderRadius:8,padding:"5px 10px",cursor:"pointer",fontSize:12.5,fontWeight:600}}>Anexar assinado</button>}
+                <button onClick={e=>excluirContrato(item.id,e)} aria-label="Excluir contrato" title="Excluir" style={{background:"none",color:"#c0392b",border:"none",borderRadius:8,padding:6,cursor:"pointer"}}><Icone nome="lixeira" tam={17}/></button>
               </div>
-            </div>
-          ))
-        }
-      </div>}
+            </div>);
+          })}
+        </div>
+      </Card>}
 
-      {!gerado&&<div style={{display:"flex",gap:0,marginBottom:28,background:"#fff",borderRadius:12,border:`1px solid ${C2.borda}`,overflow:"hidden"}}>
-        {passos.map((p,i)=>{
-          const ativo=passo===p.n, feito=passo>p.n;
-          return <div key={p.n} onClick={()=>p.n<passo&&setPasso(p.n)} style={{flex:1,padding:"14px 0",textAlign:"center",cursor:p.n<passo?"pointer":"default",
-            background:ativo?C2.azul:feito?"#f0f7ff":"#fff",borderRight:i<3?`1px solid ${C2.borda}`:"none"}}>
-            <div style={{fontSize:18}}>{feito?"✅":p.icone}</div>
-            <div style={{fontSize:11,fontWeight:700,marginTop:4,color:ativo?"#fff":feito?C2.azulC:C2.sub}}>{p.label}</div>
-          </div>;
-        })}
-      </div>}
+      <div style={{display:"flex",gap:20,alignItems:"flex-start",flexWrap:"wrap"}}>
+        <div style={{flex:"3 1 560px",minWidth:0,display:"flex",flexDirection:"column",gap:16}}>
+          {!gerado&&<Card style={{padding:"16px 20px"}}>
+            <ol aria-label="Etapas do contrato" style={{listStyle:"none",margin:0,padding:0,display:"flex",alignItems:"center",gap:8}}>
+              {passos.map((p,i)=>{
+                const ativo=passo===p.n, feito=passo>p.n;
+                return <li key={p.n} style={{display:"flex",alignItems:"center",gap:8,flex:i<3?1:"none",minWidth:0}}>
+                  <button onClick={()=>setPasso(p.n)} aria-current={ativo?"step":undefined} style={{display:"flex",alignItems:"center",gap:10,border:"none",background:"none",cursor:"pointer",padding:0,textAlign:"left",fontFamily:"inherit",minWidth:0}}>
+                    <span style={{width:32,height:32,borderRadius:16,flex:"none",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13.5,
+                      background:ativo?C2.azulM:feito?"#e7f7ee":"#eef1f6",color:ativo?"#fff":feito?C2.verde:C2.sub,boxShadow:ativo?"0 0 0 4px #dce9fc":"none"}}>{feito?<Icone nome="check" tam={15} traco={2.6}/>:p.n}</span>
+                    <span className="wm-esconde-celular" style={{minWidth:0}}>
+                      <span style={{display:"block",fontSize:13.5,fontWeight:ativo?700:600,color:ativo?"#0a2557":feito?"#0f1f3d":C2.sub}}>{p.label}</span>
+                      <span style={{display:"block",fontSize:11.5,color:C2.sub,whiteSpace:"nowrap"}}>{p.sub}</span>
+                    </span>
+                  </button>
+                  {i<3&&<span aria-hidden="true" style={{flex:1,height:2,background:feito?"#bfe3cf":"#e6ecf4",borderRadius:2,minWidth:12}}/>}
+                </li>;
+              })}
+            </ol>
+          </Card>}
 
-      {!gerado&&<div style={{background:"#fff",borderRadius:14,border:`1px solid ${C2.borda}`,padding:28,boxShadow:"0 2px 12px rgba(0,0,0,0.06)"}}>
+          {!gerado&&<Card style={{padding:"22px 24px"}}>
         {passo===1&&<>
           <SecC titulo="Dados do Contratante"/>
           <div style={{display:"flex",flexWrap:"wrap",gap:16}}>
@@ -479,9 +485,9 @@ body{width:210mm;margin:0 auto;padding:6mm 0;color:#1a1a1a;-webkit-print-color-a
         {passo===2&&<>
           <SecC titulo="Tipo de Serviço"/>
           <div style={{display:"flex",flexWrap:"wrap",gap:10,marginBottom:4}}>
-            {SERVICOS.map(s=><button key={s} onClick={()=>toggleServico(s)} style={{padding:"8px 16px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",
-              border:`2px solid ${form.servicos.includes(s)?C2.azulM:C2.borda}`,background:form.servicos.includes(s)?`${C2.azulM}18`:"#fff",color:form.servicos.includes(s)?C2.azulM:C2.sub}}>
-              {form.servicos.includes(s)?"☑":"☐"} {s}</button>)}
+            {SERVICOS.map(s=><button key={s} onClick={()=>toggleServico(s)} className="wm-chip" aria-pressed={form.servicos.includes(s)} style={{padding:"9px 14px",borderRadius:10,fontSize:13.5,fontWeight:600,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:7,
+              border:`1px solid ${form.servicos.includes(s)?"#9cc0f3":C2.borda}`,background:form.servicos.includes(s)?"#e9f1fd":"#fff",color:form.servicos.includes(s)?C2.azulM:C2.texto}}>
+              <span style={{width:16,height:16,borderRadius:5,border:`1.5px solid ${form.servicos.includes(s)?C2.azulM:"#c3cedd"}`,background:form.servicos.includes(s)?C2.azulM:"#fff",color:"#fff",display:"inline-flex",alignItems:"center",justifyContent:"center"}}>{form.servicos.includes(s)&&<Icone nome="check" tam={11} traco={3}/>}</span>{s}</button>)}
           </div>
           <SecC titulo="Dados da Edificação"/>
           <div style={{display:"flex",flexWrap:"wrap",gap:16}}>
@@ -503,9 +509,9 @@ body{width:210mm;margin:0 auto;padding:6mm 0;color:#1a1a1a;-webkit-print-color-a
           </div>
           <SecC titulo="O Que Não Está Incluso"/>
           <div style={{display:"flex",flexWrap:"wrap",gap:10}}>
-            {NAO_INCLUSO.map(s=><button key={s} onClick={()=>toggleNaoIncluso(s)} style={{padding:"8px 14px",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",
-              border:`2px solid ${form.naoInclusos.includes(s)?"#dc2626":C2.borda}`,background:form.naoInclusos.includes(s)?"#fee2e2":"#fff",color:form.naoInclusos.includes(s)?"#dc2626":C2.sub}}>
-              {form.naoInclusos.includes(s)?"✖":"○"} {s}</button>)}
+            {NAO_INCLUSO.map(s=><button key={s} onClick={()=>toggleNaoIncluso(s)} aria-pressed={form.naoInclusos.includes(s)} style={{padding:"8px 13px",borderRadius:10,fontSize:13,fontWeight:600,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:6,
+              border:`1px solid ${form.naoInclusos.includes(s)?"#f5c2c0":C2.borda}`,background:form.naoInclusos.includes(s)?"#fdf1f0":"#fff",color:form.naoInclusos.includes(s)?"#c0392b":C2.sub}}>
+              {form.naoInclusos.includes(s)?<Icone nome="fechar" tam={13} traco={2.6}/>:<Icone nome="mais" tam={13}/>}{s}</button>)}
           </div>
         </>}
 
@@ -515,11 +521,11 @@ body{width:210mm;margin:0 auto;padding:6mm 0;color:#1a1a1a;-webkit-print-color-a
             <InpC label="Valor Total do Contrato (R$)" val={form.valorTotal} onChange={v=>set("valorTotal",v)} type="number" placeholder="0,00"/>
             <SelC label="Percentual de Entrada" val={form.percEntrada} onChange={v=>set("percEntrada",v)} opts={["10","20","30","40","50","60","70"].map(v=>({v,l:v+"%"}))}/>
           </div>
-          <div style={{display:"flex",gap:16,marginTop:20,background:C2.cinza,borderRadius:12,padding:20}}>
-            {[["ENTRADA",fmtMoeda(entrada)],["PARCELA FINAL",fmtMoeda(parcFinal)],["TOTAL",fmtMoeda(form.valorTotal)]].map(([l,v])=>(
-              <div key={l} style={{flex:1,textAlign:"center"}}>
-                <div style={{fontSize:10,fontWeight:700,color:C2.sub,textTransform:"uppercase",letterSpacing:1}}>{l}</div>
-                <div style={{fontSize:18,fontWeight:800,color:C2.azul,marginTop:4}}>{v}</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12,marginTop:18}}>
+            {[["Entrada",fmtMoeda(entrada),"#e9f1fd",C2.azulM],["Parcela final",fmtMoeda(parcFinal),"#f3f6fb",C2.texto],["Total",fmtMoeda(form.valorTotal),"#effaf3",C2.verde]].map(([l,v,bg,cor])=>(
+              <div key={l} style={{background:bg,borderRadius:12,padding:"14px 16px"}}>
+                <div style={{fontSize:12.5,fontWeight:600,color:C2.sub}}>{l}</div>
+                <div style={{fontSize:20,fontWeight:800,color:cor,marginTop:4}}>{v}</div>
               </div>
             ))}
           </div>
@@ -549,7 +555,7 @@ body{width:210mm;margin:0 auto;padding:6mm 0;color:#1a1a1a;-webkit-print-color-a
             <InpC label="Testemunha 2 — CPF"  val={form.testemunha2CPF}  onChange={v=>set("testemunha2CPF",v)}  placeholder="XXX.XXX.XXX-XX"/>
           </div>
           <SecC titulo="Resumo do Contrato"/>
-          <div style={{background:C2.cinza,borderRadius:12,padding:20,fontSize:13,color:C2.texto,lineHeight:1.9}}>
+          <div style={{background:C2.cinza,borderRadius:12,padding:"16px 18px",fontSize:13.5,color:C2.texto,lineHeight:1.9}}>
             <div><strong>Cliente:</strong> {form.nomeCompleto||"—"} · {form.tipoPessoa==="fisica"?"CPF":"CNPJ"}: {form.cpfCnpj||"—"}</div>
             <div><strong>Serviços:</strong> {form.servicos.join(", ")||"—"}</div>
             <div><strong>Obra:</strong> {form.descricaoEdificacao||"—"} · {form.areaTotal||"—"} · {form.cidadeUF||"—"}</div>
@@ -559,28 +565,54 @@ body{width:210mm;margin:0 auto;padding:6mm 0;color:#1a1a1a;-webkit-print-color-a
           </div>
         </>}
 
-        <div style={{display:"flex",justifyContent:"space-between",marginTop:28,paddingTop:20,borderTop:`1px solid ${C2.borda}`}}>
-          <button onClick={()=>setPasso(p=>Math.max(1,p-1))} disabled={passo===1}
-            style={{background:passo===1?"#f1f5f9":"#fff",border:`1px solid ${C2.borda}`,borderRadius:8,padding:"10px 24px",fontWeight:700,cursor:passo===1?"not-allowed":"pointer",fontSize:13,color:C2.sub}}>
-            ← Anterior
-          </button>
-          {passo<4
-            ?<button onClick={()=>setPasso(p=>Math.min(4,p+1))} style={{background:C2.azul,color:"#fff",border:"none",borderRadius:8,padding:"10px 28px",fontWeight:700,cursor:"pointer",fontSize:13}}>Próximo →</button>
-            :<button onClick={()=>setGerado(true)} style={{background:C2.verde,color:"#fff",border:"none",borderRadius:8,padding:"10px 28px",fontWeight:800,cursor:"pointer",fontSize:14}}>✅ Gerar Contrato</button>
-          }
-        </div>
-      </div>}
+            <div style={{display:"flex",justifyContent:"space-between",gap:10,marginTop:26,paddingTop:18,borderTop:`1px solid ${C2.borda}`}}>
+              <Btn variant="ghost" onClick={()=>setPasso(p=>Math.max(1,p-1))} disabled={passo===1}>Anterior</Btn>
+              {passo<4
+                ?<Btn onClick={()=>setPasso(p=>Math.min(4,p+1))}>Próximo<Icone nome="setaDir" tam={16}/></Btn>
+                :<Btn variant="verde" onClick={()=>setGerado(true)}><Icone nome="documento" tam={16}/>Gerar contrato</Btn>}
+            </div>
+          </Card>}
 
-      {gerado&&<div style={{background:"#fff",borderRadius:14,border:`1px solid ${C2.borda}`,overflow:"hidden",boxShadow:"0 4px 24px rgba(0,0,0,0.10)"}}>
-        <div style={{background:C2.azul,padding:"16px 24px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-          <div style={{color:"#fff",fontWeight:700,fontSize:15}}>📄 Contrato — {form.nomeCompleto}</div>
-          <div style={{display:"flex",gap:8}}>
-            <button onClick={imprimir} style={{background:"rgba(255,255,255,.2)",color:"#fff",border:"none",borderRadius:7,padding:"7px 16px",fontWeight:700,cursor:"pointer",fontSize:12}}>🖨 Imprimir / Salvar PDF</button>
-            <button onClick={baixar}   style={{background:"rgba(255,255,255,.2)",color:"#fff",border:"none",borderRadius:7,padding:"7px 16px",fontWeight:700,cursor:"pointer",fontSize:12}}>⬇ Baixar</button>
-          </div>
+          {gerado&&<Card style={{padding:0,overflow:"hidden"}}>
+            <div style={{padding:"14px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap",borderBottom:`1px solid ${C2.borda}`}}>
+              <div style={{fontWeight:700,fontSize:15.5,color:"#0a2557"}}>Prévia do contrato</div>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                <Btn variant="ghost" small onClick={()=>{setGerado(false);setPasso(1);}}>Editar</Btn>
+                <Btn variant="ghost" small onClick={baixarWord}>Word</Btn>
+                <Btn small onClick={imprimir}>Imprimir / PDF</Btn>
+              </div>
+            </div>
+            <iframe srcDoc={gerarHTML()} style={{width:"100%",height:"80vh",border:"none",display:"block",background:"#e5e9ef"}} title="Prévia do contrato"/>
+          </Card>}
         </div>
-        <iframe srcDoc={gerarHTML()} style={{width:"100%",height:"80vh",border:"none"}} title="Contrato"/>
-      </div>}
+
+        {/* Resumo lateral */}
+        <aside style={{flex:"1 1 280px",maxWidth:380,position:"sticky",top:88,display:"flex",flexDirection:"column",gap:12}}>
+          <Card style={{padding:"18px 20px"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:12}}>
+              <span style={{fontSize:12,fontWeight:700,color:C2.sub,textTransform:"uppercase",letterSpacing:.5}}>Resumo</span>
+              {assinado?chip("Assinado","#e7f7ee",C2.verde):contratoId?chip("Salvo","#e9f1fd",C2.azulM):chip("Rascunho","#f1f4f9",C2.sub)}
+            </div>
+            <div style={{fontSize:17,fontWeight:800,color:"#0a2557",lineHeight:1.3}}>{form.nomeCompleto||"Cliente não informado"}</div>
+            <div style={{fontSize:13,color:C2.sub,marginTop:3}}>{[form.descricaoEdificacao,form.cidadeUF].filter(Boolean).join(" · ")||"Obra não informada"}</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:12}}>
+              {(form.servicos||[]).length?form.servicos.map(sv=>chip(sv.replace("Projeto ",""),"#eef3fb",C2.azulM)):<span style={{fontSize:12.5,color:C2.sub}}>Nenhum serviço escolhido</span>}
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:14}}>
+              <div style={{background:"#f6f8fc",borderRadius:10,padding:"10px 12px"}}><div style={{fontSize:11.5,color:C2.sub}}>Valor total</div><div style={{fontWeight:800,color:"#0f1f3d",fontSize:15}}>{fmtMoeda(form.valorTotal)}</div></div>
+              <div style={{background:"#f6f8fc",borderRadius:10,padding:"10px 12px"}}><div style={{fontSize:11.5,color:C2.sub}}>Prazo</div><div style={{fontWeight:800,color:"#0f1f3d",fontSize:15}}>{form.prazoExecucao||"—"} dias</div></div>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:8,marginTop:16}}>
+              <Btn onClick={salvarContrato} disabled={salvando} style={{justifyContent:"center"}}><Icone nome="check" tam={16}/>{salvando?"Salvando…":contratoId?"Salvar alterações":"Salvar contrato"}</Btn>
+              {!gerado&&<Btn variant="ghost" onClick={()=>setGerado(true)} style={{justifyContent:"center"}}><Icone nome="documento" tam={16}/>Ver prévia do contrato</Btn>}
+              {(contratoId||form.nomeCompleto)&&(assinado
+                ? <a href={form._fluxo?.resultado?.arquivo?.url||"#"} target="_blank" rel="noreferrer" style={{display:"flex",justifyContent:"center",alignItems:"center",gap:6,background:"#e7f7ee",color:C2.verde,borderRadius:10,padding:"9px 14px",fontWeight:600,fontSize:14,textDecoration:"none"}}><Icone nome="check" tam={16}/>Ver contrato assinado</a>
+                : <Btn variant="verde" onClick={()=>abrirAnexar(null)} disabled={salvando} style={{justifyContent:"center"}}><Icone nome="link" tam={16}/>Anexar assinado</Btn>)}
+            </div>
+          </Card>
+          <div style={{fontSize:12.5,color:C2.sub,lineHeight:1.5,padding:"0 4px"}}>Ao anexar o contrato assinado, o sistema cria a pasta no Drive, o projeto e o checklist automaticamente.</div>
+        </aside>
+      </div>
     </div>
   );
 }

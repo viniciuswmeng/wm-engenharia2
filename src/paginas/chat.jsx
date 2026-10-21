@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import {  chat } from "../supabase.js";
-import { Btn, C } from "../nucleo.jsx";
+import { Avatar, Btn, C } from "../nucleo.jsx";
+import Icone from "../ui/Icone.jsx";
 
 export function Chat({
   usuario, usuarios,
@@ -172,13 +173,13 @@ export function Chat({
     });
   };
   return(
-    <div style={{display:"flex",height:480,background:C.branco,borderRadius:14,overflow:"hidden",border:`1px solid ${C.cinzaCard}`,boxShadow:"0 8px 32px rgba(0,0,0,0.2)",position:"relative"}}>
+    <div style={{display:"flex",height:480,background:C.branco,borderRadius:18,overflow:"hidden",border:`1px solid ${C.cinzaCard}`,boxShadow:"0 24px 70px rgba(10,25,55,.28)",position:"relative"}}>
 
       {/* ── SIDEBAR ── */}
-      <div style={{width:220,background:C.cinzaEscuro,display:"flex",flexDirection:"column",flexShrink:0}}>
+      <div style={{width:220,background:"linear-gradient(180deg,#0c2b62 0%,#0a2252 60%,#081c45 100%)",display:"flex",flexDirection:"column",flexShrink:0}}>
         <div style={{padding:"14px 12px 10px",borderBottom:"1px solid rgba(255,255,255,0.1)"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-            <span style={{color:C.branco,fontWeight:800,fontSize:14}}>💬 Chat INTEC</span>
+            <span style={{color:C.branco,fontWeight:700,fontSize:15}}>Chat WM</span>
             <button onClick={onFechar} style={{background:"none",border:"none",color:"rgba(255,255,255,0.5)",cursor:"pointer",fontSize:16,padding:0}}>✕</button>
           </div>
           <div style={{color:C.ciano,fontSize:10,marginTop:3}}>● {usuario?.nome}</div>
@@ -221,9 +222,7 @@ export function Chat({
                 onClick={()=>onSelecionarCanal(c)}
                 onMouseEnter={e=>{if(!ativo)e.currentTarget.style.background="rgba(255,255,255,0.07)";}}
                 onMouseLeave={e=>{if(!ativo)e.currentTarget.style.background=ativo?"rgba(255,255,255,0.15)":"transparent";}}>
-                <div style={{width:26,height:26,borderRadius:"50%",background:outroU?.cor||"#8a9ab0",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:"#fff",flexShrink:0}}>
-                  {nomeOutro.slice(0,2).toUpperCase()}
-                </div>
+                <Avatar u={outroU||{nome:nomeOutro,cor:"#8a9ab0"}} size={26}/>
                 <span style={{fontSize:12,color:ativo?C.branco:"rgba(255,255,255,0.7)",fontWeight:ativo||nl>0?700:400,flex:1}}>{nomeOutro}</span>
                 {nl>0&&<span style={{background:C.vermelho,color:"#fff",borderRadius:10,fontSize:10,fontWeight:800,padding:"1px 5px",minWidth:18,textAlign:"center"}}>{nl}</span>}
                 <button onClick={e=>{e.stopPropagation();setConfirmDelDM(c.id);}}
@@ -281,9 +280,7 @@ export function Chat({
                 <div style={{display:"flex",gap:8,padding:"2px 4px",borderRadius:6,
                   background:mencionaMe?"#fef9c3":"transparent",opacity:isTemp?0.6:1}}>
                   {!mesmoAut?(
-                    <div style={{width:32,height:32,borderRadius:"50%",background:msg.autor_cor||C.azulMedio,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:"#fff",flexShrink:0,marginTop:2}}>
-                      {msg.autor_nome.slice(0,2).toUpperCase()}
-                    </div>
+                    <Avatar u={(usuarios||[]).find(x=>x.id===msg.autor_id)||{nome:msg.autor_nome,cor:msg.autor_cor}} size={32} style={{marginTop:2}}/>
                   ):<div style={{width:32,flexShrink:0}}/>}
                   <div style={{flex:1}}>
                     {!mesmoAut&&(
@@ -431,9 +428,7 @@ export function Chat({
                       style={{padding:"7px 12px",cursor:"pointer",display:"flex",alignItems:"center",gap:8,
                         background:i===sugestaoIdx?C.azulMedio:"white",
                         color:i===sugestaoIdx?C.branco:C.cinzaEscuro}}>
-                      <div style={{width:22,height:22,borderRadius:"50%",background:u.cor||C.azulMedio,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:800,color:"#fff",flexShrink:0}}>
-                        {u.nome.slice(0,2).toUpperCase()}
-                      </div>
+                      <Avatar u={u} size={22}/>
                       <span style={{fontSize:12,fontWeight:600}}>@{u.nome}</span>
                     </div>
                   ))}
@@ -486,13 +481,13 @@ export function Chat({
       {mostrarDM&&(
         <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.5)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setMostrarDM(false)}>
           <div onClick={e=>e.stopPropagation()} style={{background:C.branco,borderRadius:12,padding:20,width:260,maxHeight:380,overflowY:"auto",boxShadow:"0 8px 32px rgba(0,0,0,0.2)"}}>
-            <h3 style={{color:C.azulEscuro,margin:"0 0 12px",fontSize:14}}>💬 Nova conversa</h3>
+            <h3 style={{color:C.marinho,margin:"0 0 12px",fontSize:14}}>Nova conversa</h3>
             {usuarios.filter(u=>u.ativo&&u.id!==usuario?.id).map(u=>(
               <div key={u.id} onClick={()=>iniciarDM(u)}
                 style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:8,cursor:"pointer",marginBottom:4}}
                 onMouseEnter={e=>e.currentTarget.style.background=C.cinzaFundo}
                 onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                <div style={{width:32,height:32,borderRadius:"50%",background:u.cor||C.azulMedio,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:"#fff"}}>{u.nome.slice(0,2).toUpperCase()}</div>
+                <Avatar u={u} size={32}/>
                 <div><div style={{fontSize:13,fontWeight:600,color:C.cinzaEscuro}}>{u.nome}</div><div style={{fontSize:11,color:C.cinzaClaro}}>{u.perfil}</div></div>
               </div>
             ))}
@@ -504,7 +499,7 @@ export function Chat({
       {criandoCanal&&(
         <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.5)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setCriando(false)}>
           <div onClick={e=>e.stopPropagation()} style={{background:C.branco,borderRadius:12,padding:24,width:300,boxShadow:"0 8px 32px rgba(0,0,0,0.2)"}}>
-            <h3 style={{color:C.azulEscuro,margin:"0 0 14px",fontSize:14}}>➕ Criar canal</h3>
+            <h3 style={{color:C.marinho,margin:"0 0 14px",fontSize:14}}>Criar canal</h3>
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
               <div style={{display:"flex",gap:8}}>
                 <input value={novoCanal.icone} onChange={e=>setNovoCanal(n=>({...n,icone:e.target.value}))} style={{width:44,border:`1.5px solid ${C.cinzaCard}`,borderRadius:8,padding:"8px",fontSize:18,textAlign:"center",fontFamily:"inherit"}}/>
@@ -567,13 +562,13 @@ export function ChatFlutuante({ usuario, usuarios, aberto, onToggle, pulsando, t
       )}
       <button onClick={onToggle}
         style={{width:54,height:54,borderRadius:"50%",
-          background:aberto?C.azulEscuro:`linear-gradient(135deg,${C.azulMedio},${C.ciano})`,
+          background:aberto?"#0a2557":C.azulMedio,
           border:"none",cursor:"pointer",
-          boxShadow:pulsando?"0 0 0 8px rgba(37,99,168,0.3)":"0 4px 16px rgba(26,58,107,0.4)",
+          boxShadow:pulsando?"0 0 0 8px rgba(21,101,216,0.25)":"0 8px 22px rgba(21,101,216,0.4)",
           display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,
           transition:"all 0.3s",color:C.branco,position:"relative",
           animation:pulsando?"chatPulse 0.5s ease-in-out":"none"}}>
-        {aberto?"✕":"💬"}
+        {aberto?<Icone nome="fechar" tam={22}/>:<Icone nome="mensagem" tam={23}/>}
         {badge>0&&(
           <div style={{position:"absolute",top:-6,right:-6,
             background:temMencao?"#f97316":C.vermelho,

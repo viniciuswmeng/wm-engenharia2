@@ -346,10 +346,71 @@
     .integ,.recv-list,.prazo-box,table.invest,.ref-band,.pay-item,.quote,.proj-grid,.cta-band{
       break-inside:avoid;page-break-inside:avoid}
   }
+
+  /* ===== Linguagem visual do sistema WM (só a parte de edição; a proposta impressa não muda) ===== */
+  .topo,.panel,.modal,.toast{font-family:"Inter","Segoe UI",system-ui,-apple-system,sans-serif}
+  .wrap{max-width:1480px;padding:28px 28px 48px}
+  .topo{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:20px}
+  .topo h1{font-size:30px;font-weight:800;color:#0a2557;letter-spacing:-.5px;line-height:1.15}
+  .topo p{font-size:14.5px;color:#6b7a90;margin-top:6px}
+  .topo-acoes{display:flex;gap:8px;flex-wrap:wrap}
+  .topo-btn{display:inline-flex;align-items:center;gap:7px;border-radius:10px;padding:9px 16px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid #e6ecf4;background:#fff;color:#334866}
+  .topo-btn:hover{border-color:#bcd3f5}
+  .topo-btn.pri{background:#1565d8;color:#fff;border-color:transparent;box-shadow:0 1px 2px rgba(21,101,216,.25)}
+  .topo-btn.pri:hover{filter:brightness(.95)}
+  .topo-btn .badge{background:#eef1f6;color:#6b7a90;border-radius:10px;padding:0 7px;font-size:12px;font-weight:700}
+  .layout{grid-template-columns:420px 1fr}
+  .panel{border:1px solid #e6ecf4;border-radius:16px;padding:22px;box-shadow:0 1px 2px rgba(15,31,61,.04),0 6px 20px rgba(15,31,61,.05);top:16px;max-height:calc(100vh - 32px)}
+  .panel .brand{display:none}
+  .panel .sec-tit{font-size:15px;font-weight:700;color:#0a2557;margin:0 0 14px}
+  .panel .divider{margin:18px 0;background:#e6ecf4}
+  .panel .field .lbl,.panel .disc-title,.panel .pool-extra .lbl{text-transform:none;letter-spacing:0;font-size:12.5px;font-weight:600;color:#334866}
+  .panel .disc-title{font-size:15px;font-weight:700;color:#0a2557;margin:2px 0 12px}
+  .panel input[type=text],.panel input[type=number],.panel textarea{border:1px solid #d9e2ee;border-radius:10px;font-size:14px;padding:10px 12px;color:#0f1f3d}
+  .panel input:focus,.panel textarea:focus{border-color:#1565d8;box-shadow:0 0 0 3px rgba(21,101,216,.14)}
+  .panel .sub{color:#6b7a90;font-size:12px}
+  .panel .disc,.panel .opt-toggle{border:1px solid #e6ecf4;border-radius:12px;padding:11px 13px}
+  .panel .disc:hover,.panel .opt-toggle:hover{border-color:#bcd3f5}
+  .panel .disc.on{border-color:#9cc0f3;background:#f2f7fe}
+  .panel .disc input{accent-color:#1565d8}
+  .panel .disc .d-name,.panel .opt-toggle .ot-name{font-size:14px;font-weight:600;color:#0f1f3d}
+  .panel .disc.on .d-price{color:#1565d8}
+  .panel .opt-toggle.on{border-color:#bfe3cf;background:#f1fbf5}
+  .panel .opt-toggle input{accent-color:#16a34a}
+  .panel .pool-extra{background:#f6f8fc;border:1px dashed #c9d6e8;border-radius:12px}
+  .panel .manual-box{border-radius:12px}
+  .panel .pav-del{border-radius:9px;border-color:#e6ecf4;background:#f6f8fc}
+  .panel .btn-add{border:1px dashed #bcd3f5;background:#f6f9fe;color:#1565d8;border-radius:10px}
+  .panel .btn{border-radius:10px;font-size:14.5px;font-weight:600;padding:12px}
+  .panel .btn-print{background:#1565d8;box-shadow:0 1px 2px rgba(21,101,216,.25)}
+  .panel .btn-print:hover{background:#1257be}
+  .panel .btn-save{background:#16a34a}
+  .panel .btn-ghost,.panel .btn-saved{border:1px solid #e6ecf4;color:#334866}
+  .panel .btn-saved .badge{background:#eef1f6;color:#6b7a90}
+  .modal-bg{background:rgba(10,25,55,.5);backdrop-filter:blur(2px)}
+  .modal{border-radius:18px;box-shadow:0 24px 70px rgba(10,25,55,.28)}
+  .modal-head{background:#fff;color:#0a2557;border-bottom:1px solid #e6ecf4;padding:18px 22px}
+  .modal-head h3{font-size:18px;font-weight:700}
+  .modal-head .m-close{background:#f1f4f9;color:#6b7a90;border-radius:10px;width:34px;height:34px}
+  .modal-head .m-close:hover{background:#e6ecf4}
+  .saved-item{border:1px solid #e6ecf4;border-radius:12px}
+  .saved-item:hover{border-color:#bcd3f5}
+  .si-act{border:1px solid #e6ecf4;border-radius:9px}
+  .si-act.load:hover{background:#1565d8;border-color:#1565d8}
+  .saved-filtros button{border:1px solid #e6ecf4}
+  .saved-filtros button.on{background:#0a2557;border-color:#0a2557}
+  @media(max-width:640px){.wrap{padding:18px 14px 40px}.topo h1{font-size:24px}}
 </style>
 </head>
 <body>
 <div class="wrap">
+  <div class="topo no-print">
+    <div><h1>Orçamentos</h1><p>Monte a proposta, gere o PDF para o cliente e acompanhe a situação de cada orçamento.</p></div>
+    <div class="topo-acoes">
+      <button class="topo-btn" onclick="abrirSalvos()">Orçamentos salvos <span class="badge" id="savedBadgeTopo">0</span></button>
+      <button class="topo-btn pri" onclick="limpar()">+ Novo orçamento</button>
+    </div>
+  </div>
   <div class="layout">
 
     <!-- ============ FORM ============ -->
@@ -358,7 +419,7 @@
         <div class="brand-mark">WM</div>
         <div><h1>WM Engenharia</h1><p>Gerador de Orçamentos</p></div>
       </div>
-      <div class="divider"></div>
+      <div class="disc-title">Dados do cliente</div>
 
       <label class="field"><span class="lbl">Nome do cliente</span>
         <input type="text" id="cliente" placeholder="Ex: Gladstone" oninput="render()"></label>
@@ -986,6 +1047,7 @@ function salvarOrcamento(silencioso){
 
 function atualizarBadge(){
   document.getElementById('savedBadge').textContent=lerSalvos().length;
+  const bt=document.getElementById('savedBadgeTopo'); if(bt) bt.textContent=lerSalvos().length;
 }
 
 function fmtData(ts){

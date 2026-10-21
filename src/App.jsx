@@ -3,7 +3,7 @@ import { db, supabase, authClient, iniciarRealtime, enviarEmail, chat } from "./
 import { SinoNotificacoes, PaginaTarefas } from "./lembretes/Central.jsx";
 import { useCentral, usePush, useAvisosAbertos } from "./lembretes/hooks.js";
 import * as syncHoras from "./sessoesSync.js";
-import { ACESSOS_GOOGLE, C, CHECK_INTERVAL, TelaLogin, USUARIOS_PADRAO, calcStatusAuto, expedientePadrao, expedienteParaDiaSemana, fimExpediente, horaMin, normEmail, normNome, normalizarExpediente, notificarSistema, notificarUmaVez, obrasProgressoListeners, pedirPermissaoNotificacao, piscarTitulo, statusN, tocarSomChat, useGoogleDrive, verificarForaExpediente, verificarHoraExtra } from "./nucleo.jsx";
+import { ACESSOS_GOOGLE, C, prepararFoto, CHECK_INTERVAL, TelaLogin, USUARIOS_PADRAO, calcStatusAuto, expedientePadrao, expedienteParaDiaSemana, fimExpediente, horaMin, normEmail, normNome, normalizarExpediente, notificarSistema, notificarUmaVez, obrasProgressoListeners, pedirPermissaoNotificacao, piscarTitulo, statusN, tocarSomChat, useGoogleDrive, verificarForaExpediente, verificarHoraExtra } from "./nucleo.jsx";
 import { ModalHoras } from "./paginas/ModalHoras.jsx";
 import Icone from "./ui/Icone.jsx";
 import { BuscaGlobal, MenuUsuario, CarregandoPagina, CabecalhoPagina } from "./ui/Topo.jsx";
@@ -493,7 +493,7 @@ export default function App(){
             const chave = `lixo-${hojeISO}`;
             notificarUmaVez(
               chave,
-              "🗑 INTEC — Coleta de Lixo",
+              "🗑 WM — Coleta de Lixo",
               `Esta semana é a vez de ${responsavel} tirar o lixo!`,
               "intec-lixo"
             );
@@ -518,7 +518,7 @@ export default function App(){
           const nomes = criticos.map(p=>p.codigo).join(", ");
           notificarUmaVez(
             chave,
-            `⚠️ INTEC — ${criticos.length} projeto(s) vencendo esta semana`,
+            `⚠️ WM — ${criticos.length} projeto(s) vencendo esta semana`,
             `Prazo próximo: ${nomes}. Acesse o sistema para verificar.`,
             "intec-prazo"
           );
@@ -537,7 +537,7 @@ export default function App(){
             const chave = `revisao-${hojeISO}`;
             notificarUmaVez(
               chave,
-              "🔍 INTEC — Revisão de Projetos",
+              "🔍 WM — Revisão de Projetos",
               `Esta semana a revisão de projetos é responsabilidade de ${responsavel}.`,
               "intec-revisao"
             );
@@ -545,7 +545,7 @@ export default function App(){
             if (responsavel === u.nome) {
               notificarUmaVez(
                 `revisao-voce-${hojeISO}`,
-                "🔍 INTEC — É a sua vez de revisar!",
+                "🔍 WM — É a sua vez de revisar!",
                 `${u.nome}, hoje é sexta e esta semana a revisão de projetos é sua. Não esqueça!`,
                 "intec-revisao-voce"
               );
@@ -592,7 +592,7 @@ export default function App(){
           const uAtual = registrosRef.current.find(r => r.usuarioId === user.id && !r.horaFim);
           encerrarRef.current(fim, "Encerrado automaticamente pelo sistema");
           notificarSistema(
-            "⏹ INTEC — Sessão Encerrada",
+            "⏹ WM — Sessão Encerrada",
             `Sua sessão foi encerrada automaticamente às ${fim}. Expediente finalizado!`,
           );
           if(uAtual) {
@@ -743,6 +743,16 @@ export default function App(){
 
   // ── Projetos ──
   const abrirP = p => setModal({projeto:p, modo:"editar"});
+
+  // Foto do usuário logado (menu do usuário e Configurações)
+  const alterarFoto = async (arquivo) => {
+    const foto = arquivo ? await prepararFoto(arquivo) : "";
+    await db.usuarios.salvarFoto(user.id, foto);
+    const u = { ...user, foto };
+    setUser(u);
+    try { localStorage.setItem("intec_user_logado", JSON.stringify(u)); } catch { /* sem espaço */ }
+    setUsuarios(us => us.map(x => x.id === u.id ? { ...x, foto } : x));
+  };
 
   // ── Fluxo orçamento → contrato → projeto ──
   const [orcParaContrato, setOrcParaContrato] = useState(null);
@@ -1011,7 +1021,7 @@ export default function App(){
             <button className="wm-icone-btn" onClick={()=>setAba("ajuda")} aria-label="Ajuda e tutoriais" style={aba==="ajuda"?{background:"#e9f1fd",color:C.azulMedio}:undefined}>
               <Icone nome="ajuda" tam={21}/><span className="wm-esconde-celular">Ajuda</span>
             </button>
-            <MenuUsuario user={user} onConfig={()=>setAba("config")} onSair={()=>{if(window.confirm("Sair do sistema?"))fazerLogout();}}/>
+            <MenuUsuario user={user} onConfig={()=>setAba("config")} onFoto={alterarFoto} onSair={()=>{if(window.confirm("Sair do sistema?"))fazerLogout();}}/>
           </div>
         </header>
       {statusHoras.pendentes>0 && statusHoras.erro && (
@@ -1031,7 +1041,7 @@ export default function App(){
         {aba==="financeiro"&&<Financeiro projetos={projetos}/>}
         {aba==="horas"     &&<AbaHoras registros={registros} setRegistros={setRegistros} usuarios={usuarios} projetos={projetos} usuarioAtual={user} calendario={calendario} onAbrirEncerramento={()=>setModalH("encerramento")}/>}
         {aba==="agenda"    &&<AbaAgenda calendario={calendario} usuarioAtual={user} registros={registros} usuarios={usuarios}/>}
-        {aba==="config"    &&<Configuracoes usuarios={usuarios} onSalvarUsuarios={salvarUsuarios} usuarioAtual={user}/>}
+        {aba==="config"    &&<Configuracoes usuarios={usuarios} onSalvarUsuarios={salvarUsuarios} usuarioAtual={user} onFoto={alterarFoto}/>}
         {aba==="contratos"  &&<GeradorContratos projetos={projetos} usuarios={usuarios} usuarioAtual={user} drive={drive}
           onSalvarProjeto={salvarProjetoFluxo} onAbrirProjeto={abrirProjetoPorId}
           orcamentoInicial={orcParaContrato} onOrcamentoUsado={()=>setOrcParaContrato(null)}/>}

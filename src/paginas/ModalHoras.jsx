@@ -1,3 +1,4 @@
+import { CabecalhoModal } from "../ui/ds.jsx";
 import { useState, useMemo } from "react";
 import { Btn, C, InpC, SelC, TipoBadge, statusN, verificarForaExpediente } from "../nucleo.jsx";
 
@@ -35,12 +36,9 @@ export function ModalHoras({tipo,projetos,usuarioAtual,sessaoAtiva,onIniciar,onE
   const opts=[{value:"",label:"Selecione o projeto..."},...ativosFiltrados.map(p=>({value:p.id,label:`${p.codigo} — ${p.cliente.substring(0,50)}`}))];
 
   const wrap=(children,titulo,sub,gradFrom,gradTo)=>(
-    <div style={{position:"fixed",inset:0,background:"rgba(15,25,50,0.8)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-      <div style={{background:C.branco,borderRadius:20,width:"100%",maxWidth:500,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 64px rgba(0,0,0,0.3)"}}>
-        <div style={{background:`linear-gradient(135deg,${gradFrom},${gradTo})`,padding:"20px 24px",borderRadius:"20px 20px 0 0"}}>
-          <h2 style={{color:C.branco,margin:0,fontSize:18}}>{titulo}</h2>
-          <p style={{color:"rgba(255,255,255,0.85)",margin:"4px 0 0",fontSize:13}}>{sub}</p>
-        </div>
+    <div style={{position:"fixed",inset:0,background:"rgba(10,25,55,.5)",backdropFilter:"blur(2px)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+      <div style={{background:C.branco,borderRadius:18,width:"100%",maxWidth:500,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 70px rgba(10,25,55,.28)"}}>
+        <CabecalhoModal titulo={titulo} subtitulo={sub} icone="relogio"/>
         <div style={{padding:24,display:"flex",flexDirection:"column",gap:14}}>{children}</div>
       </div>
     </div>
@@ -58,22 +56,14 @@ export function ModalHoras({tipo,projetos,usuarioAtual,sessaoAtiva,onIniciar,onE
     const campo = {border:`1.5px solid ${C.cinzaCard}`,borderRadius:10,padding:"9px 12px",fontSize:14,fontFamily:"inherit",color:C.cinzaEscuro,outline:"none",background:C.branco,boxSizing:"border-box"};
     const avisoCor = { antes:["#dbeafe","#1e40af","🌅"], intervalo:["#fef3c7","#92400e","🍽"], depois:["#fef3c7","#92400e","🌙"], folga:["#fce7f3","#9d174d","🏖"] };
     return (
-      <div style={{position:"fixed",inset:0,background:"rgba(15,25,50,0.75)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-        <div style={{background:C.branco,borderRadius:18,width:"100%",maxWidth:520,maxHeight:"92vh",display:"flex",flexDirection:"column",boxShadow:"0 24px 64px rgba(0,0,0,0.3)",overflow:"hidden",fontFamily:"'Segoe UI',system-ui,sans-serif"}}>
-          {/* Cabeçalho */}
-          <div style={{background:`linear-gradient(135deg,${C.azulEscuro},${C.azulMedio})`,padding:"16px 20px",display:"flex",alignItems:"center",gap:14}}>
-            <div style={{width:40,height:40,borderRadius:12,background:"rgba(255,255,255,0.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>⏱</div>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{color:C.branco,fontSize:17,fontWeight:800}}>Iniciar sessão</div>
-              <div style={{color:"rgba(255,255,255,0.75)",fontSize:12.5}}>Olá, {usuarioAtual.nome}! No que você vai trabalhar?</div>
-            </div>
-            <button onClick={onFechar} aria-label="Fechar" style={{background:"rgba(255,255,255,0.12)",border:"none",color:C.branco,width:32,height:32,borderRadius:8,cursor:"pointer",fontSize:18,lineHeight:1}}>×</button>
-          </div>
+      <div style={{position:"fixed",inset:0,background:"rgba(10,25,55,.5)",backdropFilter:"blur(2px)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+        <div style={{background:C.branco,borderRadius:18,width:"100%",maxWidth:520,maxHeight:"92vh",display:"flex",flexDirection:"column",boxShadow:"0 24px 70px rgba(10,25,55,.28)",overflow:"hidden"}}>
+          <CabecalhoModal titulo="Iniciar sessão" subtitulo={`Olá, ${usuarioAtual.nome}! No que você vai trabalhar?`} icone="relogio" onFechar={onFechar}/>
 
           <div style={{padding:"16px 20px",display:"flex",flexDirection:"column",gap:14,overflowY:"auto"}}>
             {/* Tipo de sessão */}
             <div style={{display:"flex",background:C.cinzaFundo,borderRadius:12,padding:4,gap:4}}>
-              {[{id:"projeto",label:"📁 Projeto"},{id:"admin",label:"⚙ Administrativa"}].map(t=>{
+              {[{id:"projeto",label:"Projeto"},{id:"admin",label:"Administrativa"}].map(t=>{
                 const at=tipoSessao===t.id;
                 return <button key={t.id} onClick={()=>{setTipoSessao(t.id);setProjSel("");setCatSel("");}}
                   style={{flex:1,border:"none",borderRadius:9,padding:"9px 10px",cursor:"pointer",fontFamily:"inherit",fontSize:13.5,fontWeight:700,
@@ -185,7 +175,7 @@ export function ModalHoras({tipo,projetos,usuarioAtual,sessaoAtiva,onIniciar,onE
     <SelC label="" value={projSel} onChange={setProjSel} options={opts}/>
     {projSel&&projSel!==sessaoAtiva?.projetoId&&<Btn variant="secondary" onClick={()=>onMudar(projSel)} style={{justifyContent:"center"}}>🔄 Mudar para este projeto</Btn>}
     <Btn variant="danger" onClick={()=>onFechar("encerrar")} style={{justifyContent:"center"}}>⏹ Parei de trabalhar</Btn>
-  </>, "⏰ Verificação de Atividade", "Já faz 30 minutos — você ainda está trabalhando?", C.amarelo, C.laranja);
+  </>, "Verificação de atividade", "Já faz 30 minutos — você ainda está trabalhando?", C.amarelo, C.laranja);
 
   if(tipo==="encerramento") {
     const horaMaxima = new Date().toTimeString().slice(0,5);
@@ -217,7 +207,7 @@ export function ModalHoras({tipo,projetos,usuarioAtual,sessaoAtiva,onIniciar,onE
           <Btn variant="verde" onClick={()=>onEncerrar(hf,obs)} disabled={!horaValida}>✔ Encerrar</Btn>
         </div>
       </div>
-    </>, "🏁 Encerrar Expediente", "Registre o horário de saída para finalizar o dia", C.azulEscuro, C.azulMedio);
+    </>, "Encerrar expediente", "Registre o horário de saída para finalizar o dia", C.azulEscuro, C.azulMedio);
   }
   return null;
 }

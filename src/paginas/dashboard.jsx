@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { C, COR_TIPO, TIPOS, diasAte, fmt, statusN } from "../nucleo.jsx";
 import { CardProjeto, PainelAlertas, PainelDrive, PainelEntregas } from "./projetos.jsx";
 import Icone from "../ui/Icone.jsx";
+import { Abas } from "../ui/ds.jsx";
 
 const MESES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 const somaParcelas = (p, soPagas) => (p.parcelas || []).reduce((a, x) => a + ((!soPagas || x.pago) ? (Number(x.valor) || 0) : 0), 0);
@@ -169,13 +170,7 @@ export function Dashboard({ projetos, onAbrirProjeto, drive, onImportar, usuario
     <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
       <TituloPagina titulo="Visão Geral" subtitulo={isColab ? `Projetos atribuídos a ${usuarioAtual?.nome}` : "Acompanhe o desempenho dos seus projetos e da sua empresa em um só lugar."} direita={<CartaoData />} />
 
-      <div role="tablist" aria-label="Seções do painel" style={{ display:"flex", gap:6, background:"#e9eef6", padding:4, borderRadius:12, alignSelf:"flex-start" }}>
-        {[{ id:"visao", r:"Visão geral" }, { id:"alertas", r:`Alertas${totalAlertas ? ` (${totalAlertas})` : ""}` }, { id:"entregas", r:"Entregas" }].map(t => (
-          <button key={t.id} role="tab" aria-selected={abaD === t.id} onClick={() => setAbaD(t.id)}
-            style={{ border:"none", borderRadius:9, padding:"7px 16px", fontSize:13.5, fontWeight:600, cursor:"pointer", fontFamily:"inherit",
-              background:abaD === t.id ? "#fff" : "transparent", color:abaD === t.id ? C.marinho : C.sub, boxShadow:abaD === t.id ? "0 1px 3px rgba(15,31,61,.12)" : "none" }}>{t.r}</button>
-        ))}
-      </div>
+      <Abas style={{alignSelf:"flex-start"}} valor={abaD} onChange={setAbaD} itens={[{ id:"visao", label:"Visão geral" }, { id:"alertas", label:"Alertas", badge:totalAlertas || null }, { id:"entregas", label:"Entregas" }]} />
 
       {abaD === "alertas" && <PainelAlertas projetos={visiveis} onAbrirProjeto={onAbrirProjeto} />}
       {abaD === "entregas" && <PainelEntregas projetos={visiveis} onAbrirProjeto={onAbrirProjeto} />}

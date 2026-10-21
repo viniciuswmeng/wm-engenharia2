@@ -98,7 +98,7 @@ export function notificarUmaVez(chave, titulo, corpo, tag) {
   notificarSistema(titulo, corpo, tag, 12000);
 }
 
-// ─── CORES INTEC ───────────────────────────────────────────────────────────────
+// ─── CORES WM ───────────────────────────────────────────────────────────────
 // Paleta do sistema (redesign 2026): marinho no menu, azul vivo para ações, fundo claro
 export const C = {
   azulEscuro:"#0b2350", azulMedio:"#1565d8", azulClaro:"#3b82f6",
@@ -586,7 +586,22 @@ export const Sel=({label,value,onChange,options,required})=>(
     </select>
   </div>
 );
-export const Avatar=({u,size=36})=><div style={{width:size,height:size,borderRadius:"50%",background:u?.cor||C.azulMedio,display:"flex",alignItems:"center",justifyContent:"center",color:C.branco,fontWeight:800,fontSize:size*0.35,flexShrink:0}}>{u?.iniciais||"?"}</div>;
+export const Avatar=({u,size=36,style})=>u?.foto
+  ?<img src={u.foto} alt={u?.nome||""} width={size} height={size} style={{width:size,height:size,borderRadius:"50%",objectFit:"cover",flexShrink:0,display:"block",background:C.cinzaCard,...style}}/>
+  :<div aria-hidden="true" style={{width:size,height:size,borderRadius:"50%",background:u?.cor||C.azulMedio,display:"flex",alignItems:"center",justifyContent:"center",color:C.branco,fontWeight:700,fontSize:size*0.36,flexShrink:0,...style}}>{u?.iniciais||String(u?.nome||"?").split(" ").map(p=>p[0]).join("").slice(0,2).toUpperCase()}</div>;
+
+// Reduz a foto escolhida para um quadrado de 192 px (JPEG), pronta para salvar
+export function prepararFoto(arquivo, lado=192){
+  return new Promise((res,rej)=>{
+    if(!arquivo||!/^image\//.test(arquivo.type)){rej(new Error("Escolha um arquivo de imagem (JPG ou PNG)."));return;}
+    const url=URL.createObjectURL(arquivo); const img=new Image();
+    img.onload=()=>{const m=Math.min(img.width,img.height);const cv=document.createElement("canvas");cv.width=cv.height=lado;
+      const cx=cv.getContext("2d");cx.imageSmoothingQuality="high";cx.drawImage(img,(img.width-m)/2,(img.height-m)/2,m,m,0,0,lado,lado);
+      URL.revokeObjectURL(url);res(cv.toDataURL("image/jpeg",0.86));};
+    img.onerror=()=>{URL.revokeObjectURL(url);rej(new Error("Não foi possível ler esta imagem."));};
+    img.src=url;
+  });
+}
 
 // ─── TELA DE LOGIN ─────────────────────────────────────────────────────────────
 // Contas Google com acesso garantido (primeiro acesso cria/vincula o usuário).
@@ -610,7 +625,7 @@ export function TelaLogin({estado,erro,onGoogle}){
   const ocupado = indo||estado==="verificando";
   const botao = {width:"100%",display:"flex",alignItems:"center",justifyContent:"center",gap:12,padding:"12px 16px",borderRadius:10,border:`1.5px solid ${C.cinzaCard}`,background:C.branco,cursor:ocupado?"wait":"pointer",fontSize:15,fontWeight:600,color:C.cinzaEscuro,fontFamily:"inherit",boxShadow:"0 1px 3px rgba(13,30,53,0.08)",opacity:ocupado?0.7:1};
   return(
-    <div style={{minHeight:"100vh",background:`linear-gradient(160deg,${C.cinzaEscuro} 0%,${C.azulMedio} 55%,${C.azulClaro} 100%)`,display:"flex",alignItems:"center",justifyContent:"center",padding:20,fontFamily:"'Segoe UI',system-ui,sans-serif"}}>
+    <div style={{minHeight:"100vh",background:`radial-gradient(1200px 600px at 85% 110%,#1565d8 0%,transparent 60%),linear-gradient(160deg,#0c2b62 0%,#0a2252 55%,#081c45 100%)`,display:"flex",alignItems:"center",justifyContent:"center",padding:20,fontFamily:"'Segoe UI',system-ui,sans-serif"}}>
       <div style={{background:C.branco,borderRadius:20,padding:"36px 36px 28px",width:"100%",maxWidth:420,boxShadow:"0 24px 64px rgba(0,0,0,0.25)",textAlign:"center"}}>
         <img src="/Logo_Sem_Fundo.png" alt="WM Engenharia" style={{height:110,objectFit:"contain",margin:"0 auto 20px",display:"block"}}/>
         <h2 style={{color:C.cinzaEscuro,fontSize:18,fontWeight:700,margin:"0 0 6px"}}>Acesse o sistema</h2>
@@ -648,7 +663,7 @@ export function InpC({label,val,value,onChange,type="text",placeholder="",full=f
   const v = val !== undefined ? val : (value !== undefined ? value : "");
   return (
     <div style={{display:"flex",flexDirection:"column",gap:4,flex:full?"1 1 100%":"1 1 200px"}}>
-      <label style={{fontSize:10,fontWeight:700,color:C_CONTRATO.sub,textTransform:"uppercase",letterSpacing:.5}}>{label}</label>
+      <label style={{fontSize:12.5,fontWeight:600,color:C.cinzaMedio}}>{label}</label>
       <input type={type} value={v} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
         required={required} readOnly={readOnly}
         style={{border:`1px solid #d9e2ee`,borderRadius:10,padding:"9px 12px",fontSize:13.5,fontFamily:"inherit",color:C_CONTRATO.texto,background:readOnly?"#f8fafc":"#fff",...style}}/>
@@ -661,7 +676,7 @@ export function SelC({label,val,value,onChange,opts,options,full=false}) {
   const o = opts || options || [];
   return (
     <div style={{display:"flex",flexDirection:"column",gap:4,flex:full?"1 1 100%":"1 1 200px"}}>
-      <label style={{fontSize:10,fontWeight:700,color:C_CONTRATO.sub,textTransform:"uppercase",letterSpacing:.5}}>{label}</label>
+      <label style={{fontSize:12.5,fontWeight:600,color:C.cinzaMedio}}>{label}</label>
       <select value={v} onChange={e=>onChange(e.target.value)}
         style={{border:`1px solid #d9e2ee`,borderRadius:10,padding:"9px 12px",fontSize:13.5,fontFamily:"inherit",color:C_CONTRATO.texto,background:"#fff"}}>
         {o.map(op=><option key={op.v||op.value||op} value={op.v||op.value||op}>{op.l||op.label||op}</option>)}
@@ -672,8 +687,7 @@ export function SelC({label,val,value,onChange,opts,options,full=false}) {
 
 export function SecC({titulo}) {
   return (
-    <div style={{fontSize:10,fontWeight:800,color:C_CONTRATO.azulC,textTransform:"uppercase",letterSpacing:1.5,
-      borderLeft:`3px solid ${C_CONTRATO.azulC}`,paddingLeft:10,marginBottom:16,marginTop:20}}>{titulo}</div>
+    <h3 style={{fontSize:15,fontWeight:700,color:C.marinho,margin:"24px 0 14px",paddingBottom:8,borderBottom:`1px solid ${C.borda}`}}>{titulo}</h3>
   );
 }
 

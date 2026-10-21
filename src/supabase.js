@@ -101,13 +101,17 @@ export const db = {
     },
     async salvar(usuario) {
       const row = toUsuarioBack(usuario);
-      const { data, error } = await supabase
-        .from('usuarios')
-        .upsert(row, { onConflict: 'id' })
-        .select()
-        .single();
-      if (error) throw error;
-      return toUsuarioFront(data);
+      // A foto é gravada à parte (salvarFoto); aqui não se envia para não depender da coluna
+      const salvo = await upsertTolerante('usuarios', row);
+      return salvo ? toUsuarioFront(salvo) : usuario;
+    },
+    // Foto do usuário (imagem pequena em data URL). Exige a coluna "foto" (supabase/usuarios_foto.sql)
+    async salvarFoto(id, foto) {
+      const { error } = await supabase.from('usuarios').update({ foto: foto || null }).eq('id', id);
+      if (error) {
+        if (/foto/.test(error.message || '')) throw new Error('Falta a coluna "foto" na tabela usuarios. Rode supabase/usuarios_foto.sql no Supabase.');
+        throw error;
+      }
     },
   },
 
@@ -340,6 +344,7 @@ function toUsuarioFront(r) {
     salario:        r.salario || 0,
     especialidades: r.especialidades || [],
     expediente:     normalizarExpediente(r.expediente),
+    foto:           r.foto || '',
   };
 }
 

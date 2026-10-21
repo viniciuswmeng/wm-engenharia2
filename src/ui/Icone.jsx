@@ -35,6 +35,8 @@ const P = {
   mensagem: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z",
   instalar: "M12 3v12M7 10l5 5 5-5M5 21h14",
   pontos: "M12 6h.01M12 12h.01M12 18h.01",
+  lixeira: "M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6M10 11v6M14 11v6",
+  camera: "M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
 };
 
 export default function Icone({ nome, tam = 20, cor = "currentColor", traco = 2, style }) {

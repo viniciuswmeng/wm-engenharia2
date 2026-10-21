@@ -1,4 +1,5 @@
 import Icone from "../ui/Icone.jsx";
+import { CartaoNumero, Abas, CabecalhoModal } from "../ui/ds.jsx";
 import { useState, useEffect, useMemo } from "react";
 import { db, portal } from "../supabase.js";
 import { Badge, Btn, C, Card, DISCIPLINAS_CB, InpC, STATUS_CONFIG, SelC, TIPOS, TipoBadge, calcStatusAuto, diasAte, fmt, fmtData, obrasProgressoListeners, statusN } from "../nucleo.jsx";
@@ -39,18 +40,18 @@ export function PainelDrive({drive,projetosExistentes,onImportar}){
             :<><Btn onClick={sincronizar} disabled={drive.carregando}>{drive.carregando?"Sincronizando…":"Sincronizar pastas"}</Btn><Btn onClick={drive.logout} variant="ghost">Desconectar</Btn></>}
         </div>
       </div>
-      {drive.erro&&<div style={{padding:"10px 14px",background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,fontSize:13,color:C.vermelho,marginBottom:12}}>⚠ {drive.erro}</div>}
+      {drive.erro&&<div style={{padding:"10px 14px",background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,fontSize:13,color:C.vermelho,marginBottom:12}}>{drive.erro}</div>}
       {sync&&!drive.carregando&&(
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
           {jaExistem>0&&<div style={{padding:"10px 14px",background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:8,fontSize:13,color:"#1d4ed8"}}>ℹ️ <strong>{jaExistem}</strong> pasta(s) já cadastrada(s) foram ignoradas.</div>}
-          {pastasNovo.length===0&&<div style={{padding:"10px 14px",background:"#f0fdf4",border:"1px solid #86efac",borderRadius:8,fontSize:13,color:"#166534"}}>✅ Tudo sincronizado! Nenhuma pasta nova.</div>}
+          {pastasNovo.length===0&&<div style={{padding:"10px 14px",background:"#f0fdf4",border:"1px solid #86efac",borderRadius:8,fontSize:13,color:"#166534"}}>Tudo sincronizado! Nenhuma pasta nova.</div>}
         </div>
       )}
       {pastasNovo.length>0&&(
         <div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
             <span style={{fontSize:13,fontWeight:600,color:C.cinzaEscuro}}>{pastasNovo.length} pasta(s) nova(s):</span>
-            <Btn onClick={()=>{onImportar(pastasNovo.filter(p=>sel[p.id]));setPN([]);setSync(false);}} variant="verde" small disabled={qtd===0}>⬇ Importar {qtd}</Btn>
+            <Btn onClick={()=>{onImportar(pastasNovo.filter(p=>sel[p.id]));setPN([]);setSync(false);}} variant="verde" small disabled={qtd===0}>Importar {qtd}</Btn>
           </div>
           <div style={{display:"flex",flexDirection:"column",gap:6,maxHeight:280,overflowY:"auto"}}>
             {(pastasNovo||[]).map(p=>(
@@ -249,26 +250,17 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}
   const rec=(form.parcelas||[]).reduce((a,p)=>a+(p.pago?p.valor:0),0);
   const pend=(form.parcelas||[]).reduce((a,p)=>a+(!p.pago?p.valor:0),0);
   return(
-    <div style={{position:"fixed",inset:0,background:"rgba(15,25,50,0.7)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-      <div style={{background:C.branco,borderRadius:16,width:"100%",maxWidth:abaModal==="checklist"?1180:700,maxHeight:"90vh",overflow:"auto",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}} onClick={e=>e.stopPropagation()}>
-        <div style={{background:`linear-gradient(135deg,${C.azulEscuro},${C.azulMedio})`,padding:"20px 24px",borderRadius:"16px 16px 0 0",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div><div style={{color:C.ciano,fontSize:11,fontWeight:700,letterSpacing:1,marginBottom:4}}>WM ENGENHARIA</div><h2 style={{color:C.branco,margin:0,fontSize:18}}>{modo==="novo"?"Novo Projeto":"Editar Projeto"}</h2></div>
-          <button onClick={onClose} style={{background:"rgba(255,255,255,0.15)",border:"none",color:C.branco,borderRadius:8,width:32,height:32,cursor:"pointer",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
-        </div>
-        {/* Sub-abas do modal */}
-        <div style={{display:"flex",gap:0,borderBottom:`2px solid ${C.cinzaCard}`}}>
-          {[{id:"info",label:"📋 Projeto"},{id:"checklist",label:"✅ Checklist"},{id:"execucao",label:"🔍 Revisões"},{id:"financeiro",label:"💰 Financeiro"},{id:"portal",label:"🔗 Portal Cliente"}].map(t=>(
-            <button key={t.id} onClick={()=>setAbaModal(t.id)} style={{background:"none",border:"none",padding:"12px 18px",cursor:"pointer",fontSize:13,fontFamily:"inherit",fontWeight:abaModal===t.id?700:500,color:abaModal===t.id?C.azulMedio:C.cinzaClaro,borderBottom:abaModal===t.id?`2px solid ${C.azulMedio}`:"2px solid transparent",marginBottom:-2,transition:"all 0.15s"}}>
-              {t.label}
-            </button>
-          ))}
-        </div>
+    <div style={{position:"fixed",inset:0,background:"rgba(10,25,55,.5)",backdropFilter:"blur(2px)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+      <div style={{background:C.branco,borderRadius:18,width:"100%",maxWidth:abaModal==="checklist"?1180:760,maxHeight:"90vh",overflow:"auto",boxShadow:"0 24px 70px rgba(10,25,55,.28)"}} onClick={e=>e.stopPropagation()}>
+        <CabecalhoModal rotulo={form.codigo||"WM Engenharia"} titulo={modo==="novo"?"Novo projeto":(form.cliente||"Editar projeto")} icone="pasta" onFechar={onClose}/>
+        <Abas variante="linha" style={{padding:"0 16px",position:"sticky",top:0,background:"#fff",zIndex:2}} valor={abaModal} onChange={setAbaModal}
+          itens={[{id:"info",label:"Projeto"},{id:"checklist",label:"Checklist"},{id:"execucao",label:"Revisões"},{id:"financeiro",label:"Financeiro"},{id:"portal",label:"Portal do cliente"}]}/>
 
         <div style={{padding:24,display:"flex",flexDirection:"column",gap:20}}>
         {/* ─── ABA INFO ─── */}
         {abaModal==="info" && <>
           <div>
-            <h3 style={{color:C.azulEscuro,fontSize:13,fontWeight:700,margin:"0 0 12px",textTransform:"uppercase",letterSpacing:1}}>📁 Identificação</h3>
+            <h3 style={{color:C.marinho,fontSize:15,fontWeight:700,margin:"0 0 12px"}}>Identificação</h3>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
               <InpC label={`Código *${form._doDrive?" (não editável)":""}`} value={form.codigo} onChange={v=>s("codigo",v)} required readOnly={!!form._doDrive}/>
               <SelC label="Tipo" value={form.tipo} onChange={v=>s("tipo",v)} options={Object.entries(TIPOS).map(([k,v])=>({value:k,label:`${k} – ${v}`}))}/>
@@ -280,7 +272,7 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}
                   <div style={{display:"flex",alignItems:"center",gap:5,marginLeft:"auto"}}>
                     <input type="checkbox" id="statusAuto" checked={!!form.statusAuto} onChange={e=>{ const v=e.target.checked; s("statusAuto",v); if(v) s("status",calcStatusAuto(form)); }} style={{cursor:"pointer"}}/>
                     <label htmlFor="statusAuto" style={{fontSize:11,color:form.statusAuto?C.verde:C.cinzaClaro,cursor:"pointer",fontWeight:600}}>
-                      {form.statusAuto?"⚡ Automático":"✋ Manual"}
+                      {form.statusAuto?"Automático":"Manual"}
                     </label>
                   </div>
                 </div>
@@ -299,10 +291,10 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}
             </div>
           </div>
           <div>
-            <h3 style={{color:C.azulEscuro,fontSize:13,fontWeight:700,margin:"0 0 12px",textTransform:"uppercase",letterSpacing:1}}>📋 Contrato & Prazo</h3>
+            <h3 style={{color:C.marinho,fontSize:15,fontWeight:700,margin:"0 0 12px"}}>Contrato & Prazo</h3>
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12,padding:"10px 14px",background:form.temContrato?"#f0fdf4":"#fef9f0",borderRadius:8,border:`1px solid ${form.temContrato?"#86efac":"#fde68a"}`}}>
               <input type="checkbox" checked={form.temContrato} onChange={e=>s("temContrato",e.target.checked)} id="tc" style={{width:16,height:16,cursor:"pointer"}}/>
-              <label htmlFor="tc" style={{fontSize:13,fontWeight:600,color:form.temContrato?"#166534":"#92400e",cursor:"pointer"}}>{form.temContrato?"✓ Contrato assinado":"⚠ Sem contrato formalizado"}</label>
+              <label htmlFor="tc" style={{fontSize:13,fontWeight:600,color:form.temContrato?"#166534":"#92400e",cursor:"pointer"}}>{form.temContrato?"Contrato assinado":"Sem contrato formalizado"}</label>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
               <InpC label="Data do Contrato" value={form.dataContrato} onChange={setContrato} type="date"/>
@@ -310,7 +302,7 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}
               <div style={{display:"flex",flexDirection:"column",gap:4}}>
                 <label style={{fontSize:12,fontWeight:600,color:C.cinzaEscuro}}>
                   Entrega Prevista
-                  {form.dataContrato&&form.prazo>0&&<span style={{fontSize:10,color:C.verde,marginLeft:6}}>✓ calculada automaticamente</span>}
+                  {form.dataContrato&&form.prazo>0&&<span style={{fontSize:10,color:C.verde,marginLeft:6}}>calculada automaticamente</span>}
                 </label>
                 <input type="date" value={form.dataEntregaPrevista} onChange={e=>s("dataEntregaPrevista",e.target.value)}
                   style={{border:`1.5px solid ${form.dataContrato&&form.prazo>0?C.verde:C.cinzaCard}`,borderRadius:8,padding:"8px 12px",fontSize:14,fontFamily:"inherit",color:C.cinzaEscuro,outline:"none",background:form.dataContrato&&form.prazo>0?"#f0fdf4":C.branco,width:"100%",boxSizing:"border-box"}}/>
@@ -320,7 +312,7 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}
                   Entrega Real
                   {form.dataEntregaReal&&form.dataEntregaPrevista&&(
                     <span style={{fontSize:10,marginLeft:6,color:form.dataEntregaReal<=form.dataEntregaPrevista?C.verde:C.vermelho,fontWeight:700}}>
-                      {form.dataEntregaReal<=form.dataEntregaPrevista?"✓ No prazo":"⚠ Atrasado"}
+                      {form.dataEntregaReal<=form.dataEntregaPrevista?"No prazo":"Atrasado"}
                     </span>
                   )}
                 </label>
@@ -332,8 +324,7 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}
 
           {/* ── EQUIPE DO PROJETO ── */}
           <div>
-            <h3 style={{color:C.azulEscuro,fontSize:13,fontWeight:700,margin:"0 0 12px",textTransform:"uppercase",letterSpacing:1}}>
-              👥 Equipe & Responsabilidades
+            <h3 style={{color:C.marinho,fontSize:15,fontWeight:700,margin:"0 0 12px"}}>Equipe & Responsabilidades
             </h3>
 
             {/* Equipe: selecionar pessoa → atribuir disciplinas (funciona para todos os tipos) */}
@@ -505,7 +496,7 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}
                           {Object.keys(m.discPausadas||{}).filter(k=>(m.disciplinas||[]).includes(k)).length>0&&(
                             <div style={{fontSize:11,color:"#92400e",background:"#fef3c7",
                               padding:"4px 10px",borderRadius:6,border:"1px solid #fde68a"}}>
-                              ⏸ {Object.keys(m.discPausadas||{}).filter(k=>(m.disciplinas||[]).includes(k)).map(k=>{
+                              {Object.keys(m.discPausadas||{}).filter(k=>(m.disciplinas||[]).includes(k)).map(k=>{
                                 const d=DISCIPLINAS_CB.find(x=>x.id===k);
                                 return d?`${d.icone} ${d.id}`:k;
                               }).join(", ")} pausada(s)
@@ -531,7 +522,7 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}
           {/* Pausas do projeto */}
           <div>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
-              <h3 style={{color:C.azulEscuro,fontSize:13,fontWeight:700,margin:0,textTransform:"uppercase",letterSpacing:1}}>⏸ Pausas do Projeto</h3>
+              <h3 style={{color:C.marinho,fontSize:15,fontWeight:700,margin:0}}>Pausas do Projeto</h3>
               {(form.pausas||[]).length>0&&<span style={{fontSize:11,color:C.laranja,fontWeight:700}}>+{calcDiasPausados(form.pausas)} dias corridos adicionados ao prazo</span>}
             </div>
             {(form.pausas||[]).length>0&&(
@@ -546,7 +537,7 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}
                     {ativa&&(retornandoIdx===i?(
                       <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
                         <input type="date" value={dataRetorno} onChange={e=>setDataRetorno(e.target.value)} min={form.pausas[i]?.inicio} max={new Date().toISOString().slice(0,10)} style={{border:`1.5px solid ${C.verde}`,borderRadius:6,padding:"4px 8px",fontSize:12,fontFamily:"inherit"}}/>
-                        <Btn onClick={()=>confirmarRetorno(i)} variant="verde" small disabled={!dataRetorno}>✓ Ok</Btn>
+                        <Btn onClick={()=>confirmarRetorno(i)} variant="verde" small disabled={!dataRetorno}>Ok</Btn>
                         <Btn onClick={()=>{setRetornandoIdx(null);setDataRetorno("");}} variant="ghost" small>✕</Btn>
                       </div>
                     ):(
@@ -567,30 +558,30 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}
                   <label style={{fontSize:11,fontWeight:600,color:C.cinzaEscuro}}>Motivo da pausa</label>
                   <input value={novaPausa.motivo} onChange={e=>setNovaPausa(n=>({...n,motivo:e.target.value}))} placeholder="Ex: Aguardando aprovação do cliente..." style={{border:`1.5px solid ${C.cinzaCard}`,borderRadius:8,padding:"7px 10px",fontSize:13,fontFamily:"inherit",width:"100%",boxSizing:"border-box"}}/>
                 </div>
-                <Btn onClick={()=>{if(!novaPausa.inicio||!novaPausa.motivo)return; adicionarPausa({inicio:novaPausa.inicio,motivo:novaPausa.motivo,fim:null}); setNovaPausa({inicio:"",motivo:""}); if(form.statusAuto)s("status","PAUSADO");}} small disabled={!novaPausa.inicio||!novaPausa.motivo}>⏸ Pausar</Btn>
+                <Btn onClick={()=>{if(!novaPausa.inicio||!novaPausa.motivo)return; adicionarPausa({inicio:novaPausa.inicio,motivo:novaPausa.motivo,fim:null}); setNovaPausa({inicio:"",motivo:""}); if(form.statusAuto)s("status","PAUSADO");}} small disabled={!novaPausa.inicio||!novaPausa.motivo}>Pausar</Btn>
               </div>
             ):(
-              <div style={{padding:"8px 12px",background:"#fff7ed",borderRadius:8,fontSize:12,color:"#92400e",border:"1px solid #fde68a"}}>⏸ Projeto em pausa. Clique em "▶ Retornar" para registrar o retorno.</div>
+              <div style={{padding:"8px 12px",background:"#fff7ed",borderRadius:8,fontSize:12,color:"#92400e",border:"1px solid #fde68a"}}>Projeto em pausa. Clique em "▶ Retornar" para registrar o retorno.</div>
             )}
           </div>
 
           {/* Drive & Obs */}
           <div>
-            <h3 style={{color:C.azulEscuro,fontSize:13,fontWeight:700,margin:"0 0 12px",textTransform:"uppercase",letterSpacing:1}}>🔗 Drive & Observações</h3>
+            <h3 style={{color:C.marinho,fontSize:15,fontWeight:700,margin:"0 0 12px"}}>Drive & Observações</h3>
             <div style={{display:"flex",flexDirection:"column",gap:12}}>
-              {form._doDrive ? <div style={{display:"flex",flexDirection:"column",gap:4}}><label style={{fontSize:12,fontWeight:600,color:C.cinzaEscuro}}>Link do Drive <span style={{fontSize:10,color:C.cinzaClaro}}>(gerenciado automaticamente)</span></label><div style={{display:"flex",gap:8,alignItems:"center"}}><input value={form.driveUrl} readOnly style={{flex:1,border:`1.5px solid ${C.cinzaCard}`,borderRadius:8,padding:"8px 12px",fontSize:12,background:"#f8fafc",cursor:"not-allowed",color:C.cinzaClaro}}/>{form.driveUrl&&<a href={form.driveUrl} target="_blank" rel="noreferrer" style={{color:C.azulClaro,fontSize:12,whiteSpace:"nowrap"}}>📂 Abrir</a>}</div></div> : <InpC label="Link da pasta no Google Drive" value={form.driveUrl} onChange={v=>s("driveUrl",v)} placeholder="https://drive.google.com/..."/>}
+              {form._doDrive ? <div style={{display:"flex",flexDirection:"column",gap:4}}><label style={{fontSize:12,fontWeight:600,color:C.cinzaEscuro}}>Link do Drive <span style={{fontSize:10,color:C.cinzaClaro}}>(gerenciado automaticamente)</span></label><div style={{display:"flex",gap:8,alignItems:"center"}}><input value={form.driveUrl} readOnly style={{flex:1,border:`1.5px solid ${C.cinzaCard}`,borderRadius:8,padding:"8px 12px",fontSize:12,background:"#f8fafc",cursor:"not-allowed",color:C.cinzaClaro}}/>{form.driveUrl&&<a href={form.driveUrl} target="_blank" rel="noreferrer" style={{color:C.azulClaro,fontSize:12,whiteSpace:"nowrap"}}>Abrir</a>}</div></div> : <InpC label="Link da pasta no Google Drive" value={form.driveUrl} onChange={v=>s("driveUrl",v)} placeholder="https://drive.google.com/..."/>}
               <div style={{display:"flex",gap:8,alignItems:"center"}}>
                 <input value={form.driveEntregaveis||""} onChange={e=>s("driveEntregaveis",e.target.value)}
-                  placeholder="📦 Link Entregáveis (cliente vê ao 100%)..."
+                  placeholder="Link Entregáveis (cliente vê ao 100%)..."
                   style={{flex:1,border:`1.5px solid ${form.driveEntregaveis?C.verde:C.cinzaCard}`,borderRadius:8,padding:"8px 12px",fontSize:12,fontFamily:"inherit",color:C.cinzaEscuro}}/>
-                {form.driveEntregaveis&&<a href={form.driveEntregaveis} target="_blank" rel="noreferrer" style={{color:C.verde,fontSize:12,whiteSpace:"nowrap",fontWeight:700}}>📂 Testar</a>}
+                {form.driveEntregaveis&&<a href={form.driveEntregaveis} target="_blank" rel="noreferrer" style={{color:C.verde,fontSize:12,whiteSpace:"nowrap",fontWeight:700}}>Testar</a>}
               </div>
               <textarea value={form.obs} onChange={e=>s("obs",e.target.value)} rows={2} placeholder="Observações..."
                 style={{border:`1.5px solid ${C.cinzaCard}`,borderRadius:8,padding:"8px 12px",fontSize:13,fontFamily:"inherit",color:C.cinzaEscuro,outline:"none",resize:"vertical",width:"100%",boxSizing:"border-box"}}/>
             </div>
           </div>
           <div style={{display:"flex",gap:10,justifyContent:"space-between",paddingTop:8,borderTop:`1px solid ${C.cinzaCard}`}}>
-            {modo==="editar"&&<Btn variant="danger" small onClick={()=>onExcluir(projeto.id)}>🗑 Excluir</Btn>}
+            {modo==="editar"&&<Btn variant="danger" small onClick={()=>onExcluir(projeto.id)}>Excluir</Btn>}
             <div style={{display:"flex",gap:10,marginLeft:"auto"}}><Btn variant="ghost" onClick={onClose}>Cancelar</Btn><Btn onClick={()=>{
               // Converter disciplinas para formato novo se ainda estiver no antigo
               let disciplinasFinais = form.disciplinas||[];
@@ -617,7 +608,7 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}
                 coresponsavel3: nomes[3]||"",
               };
               onSave(formFinal);
-            }}>💾 Salvar</Btn></div>
+            }}>Salvar</Btn></div>
           </div>
         </>}
 
@@ -635,7 +626,7 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}
           )}
           <div style={{display:"flex",gap:10,justifyContent:"space-between",alignItems:"center",paddingTop:8}}>
             <span style={{fontSize:12,color:C.cinzaClaro}}>Progresso calculado pelas etapas: <strong style={{color:C.azulMedio}}>{form.progresso||0}%</strong> · as marcações são salvas na hora</span>
-            <div style={{display:"flex",gap:10}}><Btn variant="ghost" onClick={onClose}>Fechar</Btn><Btn onClick={()=>onSave(form)}>💾 Salvar Projeto</Btn></div>
+            <div style={{display:"flex",gap:10}}><Btn variant="ghost" onClick={onClose}>Fechar</Btn><Btn onClick={()=>onSave(form)}>Salvar Projeto</Btn></div>
           </div>
         </>}
 
@@ -644,7 +635,7 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}
 
           {/* Revisão do projeto */}
           <div>
-            <h3 style={{color:C.azulEscuro,fontSize:13,fontWeight:700,margin:"0 0 12px",textTransform:"uppercase",letterSpacing:1}}>🔍 Revisão do Projeto</h3>
+            <h3 style={{color:C.marinho,fontSize:15,fontWeight:700,margin:"0 0 12px"}}>Revisão do Projeto</h3>
             <div style={{background:C.cinzaFundo,borderRadius:10,padding:14,marginBottom:12}}>
               <div style={{fontSize:12,color:C.cinzaClaro,marginBottom:8}}>Responsável pela revisão desta semana (da escala):</div>
               <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -669,9 +660,9 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}
             {/* Checklist de revisão */}
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
               {[
-                {campo:"revisaoMandado",   label:"📤 Mandado para revisão",           cor:"#1a4a7a"},
-                {campo:"revisaoFeita",     label:"✅ Revisão realizada pelo revisor",  cor:"#22c55e"},
-                {campo:"revisaoCorrigida", label:"🔧 Correções feitas pelo responsável", cor:"#f59e0b"},
+                {campo:"revisaoMandado",   label:"Mandado para revisão",           cor:"#1a4a7a"},
+                {campo:"revisaoFeita",     label:"Revisão realizada pelo revisor",  cor:"#22c55e"},
+                {campo:"revisaoCorrigida", label:"Correções feitas pelo responsável", cor:"#f59e0b"},
               ].map(item=>(
                 <label key={item.campo} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",borderRadius:8,
                   background:form[item.campo]?item.cor+"10":C.cinzaFundo,
@@ -686,14 +677,14 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}
           </div>
 
           <div style={{display:"flex",gap:10,justifyContent:"flex-end",paddingTop:8,borderTop:`1px solid ${C.cinzaCard}`}}>
-            <Btn variant="ghost" onClick={onClose}>Cancelar</Btn><Btn onClick={()=>onSave(form)}>💾 Salvar</Btn>
+            <Btn variant="ghost" onClick={onClose}>Cancelar</Btn><Btn onClick={()=>onSave(form)}>Salvar</Btn>
           </div>
         </>}
 
         {/* ─── ABA FINANCEIRO ─── */}
         {abaModal==="financeiro" && <>
           <div>
-            <h3 style={{color:C.azulEscuro,fontSize:13,fontWeight:700,margin:"0 0 12px",textTransform:"uppercase",letterSpacing:1}}>💰 Financeiro — Parcelas</h3>
+            <h3 style={{color:C.marinho,fontSize:15,fontWeight:700,margin:"0 0 12px"}}>Financeiro — Parcelas</h3>
             {(form.parcelas||[]).length>0&&(
               <div style={{marginBottom:12,display:"flex",flexDirection:"column",gap:6}}>
                 {(form.parcelas||[]).map((p,i)=>(
@@ -722,14 +713,14 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}
             </div>
           </div>
           <div style={{display:"flex",gap:10,justifyContent:"flex-end",paddingTop:8,borderTop:`1px solid ${C.cinzaCard}`}}>
-            <Btn variant="ghost" onClick={onClose}>Cancelar</Btn><Btn onClick={()=>onSave(form)}>💾 Salvar</Btn>
+            <Btn variant="ghost" onClick={onClose}>Cancelar</Btn><Btn onClick={()=>onSave(form)}>Salvar</Btn>
           </div>
         </>}
 
         {/* ─── ABA PORTAL CLIENTE ─── */}
         {abaModal==="portal" && <>
           <div>
-            <h3 style={{color:C.azulEscuro,fontSize:13,fontWeight:700,margin:"0 0 4px",textTransform:"uppercase",letterSpacing:1}}>🔗 Portal do Cliente</h3>
+            <h3 style={{color:C.marinho,fontSize:15,fontWeight:700,margin:"0 0 4px"}}>Portal do Cliente</h3>
             <p style={{color:C.cinzaClaro,fontSize:12,margin:"0 0 16px"}}>Gere um link exclusivo para o cliente acompanhar o projeto em tempo real, sem precisar de login.</p>
 
             {/* Gerar/copiar link */}
@@ -739,7 +730,7 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}
                 <div style={{fontSize:14,fontWeight:600,color:C.cinzaEscuro,marginBottom:4}}>Link não gerado</div>
                 <div style={{fontSize:12,color:C.cinzaClaro,marginBottom:16}}>Clique para gerar um link exclusivo para este projeto</div>
                 <Btn onClick={gerarLink} disabled={gerandoLink||modo==="novo"}>
-                  {gerandoLink?"⏳ Gerando...":"🔑 Gerar Link do Cliente"}
+                  {gerandoLink?"Gerando...":"Gerar Link do Cliente"}
                 </Btn>
                 {modo==="novo"&&<div style={{fontSize:11,color:C.cinzaClaro,marginTop:8}}>Salve o projeto primeiro para gerar o link</div>}
               </div>
@@ -760,7 +751,7 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}
                   <input readOnly value={`${window.location.origin}/cliente/${form.tokenCliente||form.token_cliente}`}
                     style={{flex:1,border:`1.5px solid ${C.cinzaCard}`,borderRadius:8,padding:"8px 12px",fontSize:12,fontFamily:"monospace",color:C.azulMedio,background:"#f8fafc"}}/>
                   <Btn onClick={copiarLink} variant={copiado?"verde":"secondary"} small>
-                    {copiado?"✓ Copiado!":"📋 Copiar"}
+                    {copiado?"Copiado!":"Copiar"}
                   </Btn>
                   <a href={`${window.location.origin}/cliente/${form.tokenCliente||form.token_cliente}`} target="_blank" rel="noreferrer">
                     <Btn variant="ghost" small>↗ Abrir</Btn>
@@ -771,7 +762,7 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}
 
             {/* Progresso e obs do cliente */}
             <div style={{marginTop:20,display:"flex",flexDirection:"column",gap:12}}>
-              <h3 style={{color:C.azulEscuro,fontSize:13,fontWeight:700,margin:0,textTransform:"uppercase",letterSpacing:1}}>📊 Progresso & Mensagem ao Cliente</h3>
+              <h3 style={{color:C.marinho,fontSize:15,fontWeight:700,margin:0}}>Progresso & Mensagem ao Cliente</h3>
               <div>
                 <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
                   <label style={{fontSize:12,fontWeight:600,color:C.cinzaEscuro}}>Progresso do projeto</label>
@@ -793,7 +784,7 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}
 
             {/* Atualizações */}
             <div style={{marginTop:20}}>
-              <h3 style={{color:C.azulEscuro,fontSize:13,fontWeight:700,margin:"0 0 12px",textTransform:"uppercase",letterSpacing:1}}>🕐 Linha do Tempo</h3>
+              <h3 style={{color:C.marinho,fontSize:15,fontWeight:700,margin:"0 0 12px"}}>Linha do Tempo</h3>
               {/* Nova atualização */}
               <div style={{background:C.cinzaFundo,borderRadius:10,padding:14,marginBottom:14}}>
                 <div style={{display:"grid",gridTemplateColumns:"auto 1fr",gap:8,marginBottom:8}}>
@@ -816,7 +807,7 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}
               </div>
 
               {/* Lista de atualizações */}
-              {carregandoAtu && <div style={{textAlign:"center",color:C.cinzaClaro,padding:16}}>⏳ Carregando...</div>}
+              {carregandoAtu && <div style={{textAlign:"center",color:C.cinzaClaro,padding:16}}>Carregando...</div>}
               {!carregandoAtu && atualizacoes.length===0 && <div style={{textAlign:"center",color:C.cinzaClaro,padding:16,fontSize:12}}>Nenhuma atualização ainda. Adicione a primeira acima!</div>}
               <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:360,overflowY:"auto"}}>
                 {(atualizacoes||[]).map(a=>{
@@ -831,14 +822,14 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}
                       <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
                         <span style={{fontSize:13,fontWeight:700,color:C.cinzaEscuro}}>{a.titulo}</span>
                         {isSessao
-                          ? <span style={{fontSize:10,background:"#f0fdf4",color:"#166534",padding:"1px 7px",borderRadius:10,fontWeight:700,border:"1px solid #86efac"}}>⚙ Execução</span>
-                          : <span style={{fontSize:10,background:"#eff6ff",color:C.azulMedio,padding:"1px 7px",borderRadius:10,fontWeight:700,border:`1px solid #bfdbfe`}}>📝 Manual</span>}
+                          ? <span style={{fontSize:10,background:"#f0fdf4",color:"#166534",padding:"1px 7px",borderRadius:10,fontWeight:700,border:"1px solid #86efac"}}>Execução</span>
+                          : <span style={{fontSize:10,background:"#eff6ff",color:C.azulMedio,padding:"1px 7px",borderRadius:10,fontWeight:700,border:`1px solid #bfdbfe`}}>Manual</span>}
                       </div>
                       {a.descricao&&<div style={{fontSize:12,color:C.cinzaClaro,marginTop:2}}>{a.descricao}</div>}
                       <div style={{fontSize:11,color:C.cinzaClaro,marginTop:4}}>
-                        {a.autor_nome&&<span>👤 {a.autor_nome} · </span>}
+                        {a.autor_nome&&<span>{a.autor_nome} · </span>}
                         {new Date(a.created_at).toLocaleDateString("pt-BR")}
-                        {!isSessao&&!a.visivel_cliente&&<span style={{marginLeft:8,color:C.amarelo}}>👁 Oculto ao cliente</span>}
+                        {!isSessao&&!a.visivel_cliente&&<span style={{marginLeft:8,color:C.amarelo}}>Oculto ao cliente</span>}
                         {isSessao&&<span style={{marginLeft:6,color:"#8a9ab0"}}>(gerado automaticamente)</span>}
                       </div>
                     </div>
@@ -865,7 +856,7 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}
             </div>
           </div>
           <div style={{display:"flex",gap:10,justifyContent:"flex-end",paddingTop:8,borderTop:`1px solid ${C.cinzaCard}`}}>
-            <Btn variant="ghost" onClick={onClose}>Fechar</Btn><Btn onClick={()=>onSave(form)}>💾 Salvar Projeto</Btn>
+            <Btn variant="ghost" onClick={onClose}>Fechar</Btn><Btn onClick={()=>onSave(form)}>Salvar Projeto</Btn>
           </div>
         </>}
         </div>
@@ -956,7 +947,7 @@ export function TabelaProjetos({projetos,onAbrirProjeto}){
       <Card style={{padding:0,overflow:"hidden"}}>
         <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
           <thead>
-            <tr style={{background:C.azulEscuro}}>
+            <tr className="wm-cab-tabela">
               <Th col="codigo"               label="Código"/>
               <Th col="tipo"                 label="Tipo"/>
               <Th col="cliente"              label="Cliente"/>
@@ -1161,12 +1152,12 @@ export function ListaProjetos({projetos,onAbrirProjeto,onNovoProjeto,usuarios=[]
               <button onClick={()=>selecionarTodos(col)}
                 style={{flex:1,fontSize:11,background:C.cinzaFundo,border:`1px solid ${C.cinzaCard}`,
                   borderRadius:6,padding:"4px 6px",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>
-                ✓ Todos
+                Todos
               </button>
               <button onClick={()=>desmarcarTodos(col)}
                 style={{flex:1,fontSize:11,background:"#fff5f5",border:`1px solid #fecaca`,
                   borderRadius:6,padding:"4px 6px",cursor:"pointer",fontFamily:"inherit",fontWeight:600,color:C.vermelho}}>
-                ✕ Nenhum
+                Nenhum
               </button>
             </div>
             {/* Lista de valores */}
@@ -1221,7 +1212,7 @@ export function ListaProjetos({projetos,onAbrirProjeto,onNovoProjeto,usuarios=[]
     <Card style={{padding:16}}>
       {/* Linha 1: busca + toggle view + novo */}
       <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
-        <input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="🔍 Buscar por nome, código ou responsável..."
+        <input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar por nome, código ou responsável..."
           style={{flex:1,minWidth:200,border:`1.5px solid ${C.cinzaCard}`,borderRadius:8,
             padding:"8px 14px",fontSize:13,fontFamily:"inherit",outline:"none"}}/>
         <div style={{display:"flex",gap:4}}>
@@ -1246,19 +1237,19 @@ export function ListaProjetos({projetos,onAbrirProjeto,onNovoProjeto,usuarios=[]
         <select value={ordem} onChange={e=>setOrdem(e.target.value)}
           style={{border:`1.5px solid ${C.cinzaCard}`,borderRadius:8,padding:"7px 12px",
             fontSize:13,fontFamily:"inherit",cursor:"pointer",background:"white",color:C.cinzaEscuro}}>
-          <option value="codigo_asc">🔢 Código ↑</option>
-          <option value="codigo_desc">🔢 Código ↓</option>
-          <option value="cliente_asc">🔤 Nome A→Z</option>
-          <option value="cliente_desc">🔤 Nome Z→A</option>
-          <option value="ano_desc">📅 Mais recente</option>
-          <option value="ano_asc">📅 Mais antigo</option>
-          <option value="status_asc">📊 Status A→Z</option>
+          <option value="codigo_asc">Código ↑</option>
+          <option value="codigo_desc">Código ↓</option>
+          <option value="cliente_asc">Nome A→Z</option>
+          <option value="cliente_desc">Nome Z→A</option>
+          <option value="ano_desc">Mais recente</option>
+          <option value="ano_asc">Mais antigo</option>
+          <option value="status_asc">Status A→Z</option>
         </select>
         {temFiltroAtivo&&(
           <button onClick={()=>{limparTudo();setBusca("");}}
             style={{fontSize:12,background:"#fef2f2",border:`1px solid #fecaca`,color:C.vermelho,
               borderRadius:8,padding:"7px 12px",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>
-            ✕ Limpar filtros
+            Limpar filtros
           </button>
         )}
         <span style={{fontSize:12,color:C.cinzaClaro,marginLeft:"auto",fontWeight:600}}>
@@ -1277,7 +1268,7 @@ export function ListaProjetos({projetos,onAbrirProjeto,onNovoProjeto,usuarios=[]
               <span key={col} style={{display:"flex",alignItems:"center",gap:4,fontSize:11,
                 background:"#fff5f5",color:C.vermelho,border:`1px solid #fecaca`,
                 borderRadius:20,padding:"2px 10px",fontWeight:600}}>
-                {ocultos.length===vals.length?"⊘ nenhum":"✕ ocult:"} {ocultos.length===vals.length?col:ocultos.join(", ")}
+                {ocultos.length===vals.length?"⊘ nenhum":"ocult:"} {ocultos.length===vals.length?col:ocultos.join(", ")}
                 <button onClick={()=>selecionarTodos(col)}
                   style={{background:"none",border:"none",cursor:"pointer",color:C.vermelho,
                     fontSize:13,padding:"0 0 0 4px",lineHeight:1}}>×</button>
@@ -1288,7 +1279,7 @@ export function ListaProjetos({projetos,onAbrirProjeto,onNovoProjeto,usuarios=[]
             <span style={{display:"flex",alignItems:"center",gap:4,fontSize:11,
               background:"#eff6ff",color:C.azulMedio,border:`1px solid ${C.azulMedio}40`,
               borderRadius:20,padding:"2px 10px",fontWeight:600}}>
-              🔍 "{busca}"
+              "{busca}"
               <button onClick={()=>setBusca("")}
                 style={{background:"none",border:"none",cursor:"pointer",color:C.azulMedio,
                   fontSize:13,padding:"0 0 0 4px",lineHeight:1}}>×</button>
@@ -1351,12 +1342,12 @@ export function PainelAlertas({projetos, onAbrirProjeto}) {
       {/* Lista */}
       <Card>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-          <h3 style={{color:C.azulEscuro,margin:0,fontSize:14,fontWeight:700}}>
+          <h3 style={{color:C.marinho,margin:0,fontSize:14,fontWeight:700}}>
             {filtro==="todos"?"Todos os Alertas":grupos.find(g=>g.id===filtro)?.label} ({listaDedup.length})
           </h3>
         </div>
         {listaDedup.length===0
-          ? <p style={{textAlign:"center",color:C.verde,padding:20,fontWeight:600}}>✅ Nenhum alerta nesta categoria!</p>
+          ? <p style={{textAlign:"center",color:C.verde,padding:20,fontWeight:600}}>Nenhum alerta nesta categoria!</p>
           : <div style={{display:"flex",flexDirection:"column",gap:6}}>
             {listaDedup.map(p=>{
               const d = diasAte(p.dataEntregaPrevista);
@@ -1373,7 +1364,7 @@ export function PainelAlertas({projetos, onAbrirProjeto}) {
                       <span style={{fontSize:11,background:p._alertaCor,color:"white",padding:"1px 7px",borderRadius:10,fontWeight:700}}>{p._alertaLabel}</span>
                     </div>
                     <div style={{fontSize:12,color:C.cinzaEscuro,marginTop:3}}>{p.cliente.substring(0,55)}</div>
-                    {p.responsavel&&<div style={{fontSize:11,color:C.cinzaClaro,marginTop:2}}>👤 {p.responsavel}</div>}
+                    {p.responsavel&&<div style={{fontSize:11,color:C.cinzaClaro,marginTop:2}}>{p.responsavel}</div>}
                   </div>
                   <div style={{textAlign:"right",flexShrink:0,marginLeft:12}}>
                     {d!==null&&<div style={{fontSize:12,fontWeight:700,color:d<0?C.vermelho:d<=7?C.laranja:C.amarelo}}>
@@ -1430,12 +1421,12 @@ export function PainelEntregas({ projetos, onAbrirProjeto }) {
 
   const resumos = [
     { id:"todos",      label:"Todos",         valor:projetosMes.length,           cor:C.azulMedio },
-    { id:"concluidos", label:"✓ Concluídos",  valor:porStatus.concluidos.length,  cor:C.verde },
+    { id:"concluidos", label:"Concluídos",  valor:porStatus.concluidos.length,  cor:C.verde },
     { id:"andamento",  label:"▶ Em Andamento",valor:porStatus.andamento.length,   cor:C.azulMedio },
-    { id:"atrasados",  label:"⚠ Atrasados",   valor:porStatus.atrasados.length,   cor:C.vermelho },
-    { id:"pausados",   label:"⏸ Pausados",    valor:porStatus.pausados.length,    cor:C.amarelo },
+    { id:"atrasados",  label:"Atrasados",   valor:porStatus.atrasados.length,   cor:C.vermelho },
+    { id:"pausados",   label:"Pausados",    valor:porStatus.pausados.length,    cor:C.amarelo },
     { id:"novos",      label:"○ Novo/Definir", valor:porStatus.novos.length,      cor:C.cinzaClaro },
-    { id:"cancelados", label:"✕ Cancelados",  valor:porStatus.cancelados.length,  cor:"#9333ea" },
+    { id:"cancelados", label:"Cancelados",  valor:porStatus.cancelados.length,  cor:"#9333ea" },
   ];
 
   const listaFiltrada = filtroStatus==="todos" ? projetosMes : (porStatus[filtroStatus]||[]);
@@ -1449,7 +1440,7 @@ export function PainelEntregas({ projetos, onAbrirProjeto }) {
     <div style={{display:"flex",flexDirection:"column",gap:16}}>
       {/* Seletor de mês */}
       <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
-        <label style={{fontSize:12,fontWeight:700,color:C.cinzaEscuro}}>📅 Período:</label>
+        <label style={{fontSize:12,fontWeight:700,color:C.cinzaEscuro}}>Período:</label>
         <select value={filtroMes} onChange={e=>setFiltroMes(e.target.value)}
           style={{border:`1.5px solid ${C.cinzaCard}`,borderRadius:8,padding:"6px 12px",fontSize:13,fontFamily:"inherit",color:C.cinzaEscuro,cursor:"pointer",background:"white"}}>
           {meses.map(m=><option key={m.value} value={m.value}>{m.label}</option>)}
@@ -1475,14 +1466,13 @@ export function PainelEntregas({ projetos, onAbrirProjeto }) {
       {/* Tabela */}
       <Card style={{padding:0,overflow:"hidden"}}>
         <div style={{padding:"14px 20px",borderBottom:`1px solid ${C.cinzaCard}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <h3 style={{color:C.azulEscuro,margin:0,fontSize:14,fontWeight:700}}>
-            📦 Projetos do período ({listaFiltrada.length})
+          <h3 style={{color:C.marinho,margin:0,fontSize:14,fontWeight:700}}>Projetos do período ({listaFiltrada.length})
           </h3>
         </div>
         <div style={{overflowX:"auto"}}>
           <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
             <thead>
-              <tr style={{background:C.azulEscuro}}>
+              <tr className="wm-cab-tabela">
                 {["Código","Projeto","Responsável","Entrega Prevista","Entrega Real","Resultado","Dias"].map(h=>(
                   <th key={h} style={{padding:"10px 14px",color:C.ciano,textAlign:"left",fontWeight:700,fontSize:11,whiteSpace:"nowrap"}}>{h}</th>
                 ))}
@@ -1497,12 +1487,12 @@ export function PainelEntregas({ projetos, onAbrirProjeto }) {
                 const dias = p.dataEntregaPrevista ? Math.ceil((new Date(p.dataEntregaPrevista)-new Date())/86400000) : null;
                 let resultado, resCor, resBg;
                 if (p.dataEntregaReal) {
-                  if (atr <= 0)       { resultado="✓ No Prazo";    resCor=C.verde;    resBg="#f0fdf4"; }
+                  if (atr <= 0)       { resultado="No Prazo";    resCor=C.verde;    resBg="#f0fdf4"; }
                   else                { resultado=`⚠ ${atr}d atraso`; resCor=C.vermelho; resBg="#fff5f5"; }
                 } else if (dias!==null && dias < 0) {
-                  resultado="🔴 Vencido"; resCor="#9333ea"; resBg="#faf5ff";
+                  resultado="Vencido"; resCor="#9333ea"; resBg="#faf5ff";
                 } else {
-                  resultado="⏳ Aguardando"; resCor=C.amarelo; resBg="#fffbeb";
+                  resultado="Aguardando"; resCor=C.amarelo; resBg="#fffbeb";
                 }
                 return (
                   <tr key={p.id} onClick={()=>onAbrirProjeto(p)}
@@ -1537,13 +1527,13 @@ export function Financeiro({projetos}){
   const rec=com.reduce((a,p)=>a+(p.parcelas||[]).reduce((b,x)=>b+(x.pago?x.valor:0),0),0);
   return(<div style={{display:"flex",flexDirection:"column",gap:20}}>
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:16}}>
-      <Card style={{borderTop:`3px solid ${C.azulMedio}`,textAlign:"center"}}><div style={{fontSize:11,color:C.cinzaClaro,fontWeight:700,marginBottom:4}}>TOTAL CONTRATADO</div><div style={{fontSize:26,fontWeight:800,color:C.azulMedio}}>{fmt(tot)}</div></Card>
-      <Card style={{borderTop:`3px solid ${C.verde}`,textAlign:"center"}}><div style={{fontSize:11,color:C.cinzaClaro,fontWeight:700,marginBottom:4}}>RECEBIDO</div><div style={{fontSize:26,fontWeight:800,color:C.verde}}>{fmt(rec)}</div><div style={{fontSize:11,color:C.cinzaClaro}}>{tot>0?((rec/tot)*100).toFixed(0):0}%</div></Card>
-      <Card style={{borderTop:`3px solid ${C.amarelo}`,textAlign:"center"}}><div style={{fontSize:11,color:C.cinzaClaro,fontWeight:700,marginBottom:4}}>A RECEBER</div><div style={{fontSize:26,fontWeight:800,color:C.amarelo}}>{fmt(tot-rec)}</div></Card>
+      <CartaoNumero icone="documento" titulo="Total contratado" valor={fmt(tot)} cor="#1565d8"/>
+      <CartaoNumero icone="dinheiro" titulo="Recebido" valor={fmt(rec)} legenda={`${tot>0?((rec/tot)*100).toFixed(0):0}% do contratado`} cor="#16a34a"/>
+      <CartaoNumero icone="relogio" titulo="A receber" valor={fmt(tot-rec)} cor="#d97706"/>
     </div>
     <Card style={{padding:0,overflow:"hidden"}}>
-      <div style={{padding:"14px 20px",borderBottom:`1px solid ${C.cinzaCard}`}}><h3 style={{color:C.azulEscuro,margin:0,fontSize:14,fontWeight:700}}>💰 Extrato por Projeto</h3></div>
-      <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}><thead><tr style={{background:C.cinzaFundo}}>{["Projeto","Status","Total","Recebido","Pendente","Progresso"].map(h=><th key={h} style={{padding:"8px 12px",color:C.cinzaEscuro,textAlign:"left",fontWeight:700,fontSize:11,borderBottom:`2px solid ${C.cinzaCard}`}}>{h}</th>)}</tr></thead><tbody>{com.map((p,i)=>{const t=(p.parcelas||[]).reduce((a,x)=>a+x.valor,0);const r=(p.parcelas||[]).reduce((a,x)=>a+(x.pago?x.valor:0),0);return <tr key={p.id} style={{borderBottom:`1px solid ${C.cinzaFundo}`,background:i%2===0?C.branco:"#fafbfc"}}><td style={{padding:"9px 12px"}}><div style={{fontWeight:600,color:C.azulMedio,fontSize:12}}>{p.codigo}</div><div style={{fontSize:11,color:C.cinzaClaro}}>{p.cliente.substring(0,35)}...</div></td><td style={{padding:"9px 12px"}}><Badge status={p.status}/></td><td style={{padding:"9px 12px",fontWeight:700}}>{fmt(t)}</td><td style={{padding:"9px 12px",color:C.verde,fontWeight:600}}>{fmt(r)}</td><td style={{padding:"9px 12px",color:(t-r)>0?C.amarelo:C.cinzaClaro,fontWeight:(t-r)>0?700:400}}>{fmt(t-r)}</td><td style={{padding:"9px 12px"}}><div style={{background:C.cinzaFundo,borderRadius:4,height:6,width:80}}><div style={{background:r===t?C.verde:C.azulClaro,height:6,borderRadius:4,width:`${t>0?(r/t)*100:0}%`}}/></div></td></tr>;})} </tbody></table></div>
+      <div style={{padding:"14px 20px",borderBottom:`1px solid ${C.cinzaCard}`}}><h3 style={{color:C.marinho,margin:0,fontSize:14,fontWeight:700}}>Extrato por Projeto</h3></div>
+      <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}><thead><tr className="wm-cab-tabela">{["Projeto","Status","Total","Recebido","Pendente","Progresso"].map(h=><th key={h} style={{padding:"8px 12px",color:C.cinzaEscuro,textAlign:"left",fontWeight:700,fontSize:11,borderBottom:`2px solid ${C.cinzaCard}`}}>{h}</th>)}</tr></thead><tbody>{com.map((p,i)=>{const t=(p.parcelas||[]).reduce((a,x)=>a+x.valor,0);const r=(p.parcelas||[]).reduce((a,x)=>a+(x.pago?x.valor:0),0);return <tr key={p.id} style={{borderBottom:`1px solid ${C.cinzaFundo}`,background:i%2===0?C.branco:"#fafbfc"}}><td style={{padding:"9px 12px"}}><div style={{fontWeight:600,color:C.azulMedio,fontSize:12}}>{p.codigo}</div><div style={{fontSize:11,color:C.cinzaClaro}}>{p.cliente.substring(0,35)}...</div></td><td style={{padding:"9px 12px"}}><Badge status={p.status}/></td><td style={{padding:"9px 12px",fontWeight:700}}>{fmt(t)}</td><td style={{padding:"9px 12px",color:C.verde,fontWeight:600}}>{fmt(r)}</td><td style={{padding:"9px 12px",color:(t-r)>0?C.amarelo:C.cinzaClaro,fontWeight:(t-r)>0?700:400}}>{fmt(t-r)}</td><td style={{padding:"9px 12px"}}><div style={{background:C.cinzaFundo,borderRadius:4,height:6,width:80}}><div style={{background:r===t?C.verde:C.azulClaro,height:6,borderRadius:4,width:`${t>0?(r/t)*100:0}%`}}/></div></td></tr>;})} </tbody></table></div>
     </Card>
   </div>);
 }
@@ -1551,9 +1541,9 @@ export function Financeiro({projetos}){
 // ─── APP ───────────────────────────────────────────────────────────────────────
 
 // ══════════════════════════════════════════════════════════════════════════════
-// CHAT INTEC
+// CHAT WM
 // ══════════════════════════════════════════════════════════════════════════════
 // ══════════════════════════════════════════════════════════════════════════════
-// CHAT INTEC — reescrito com realtime correto
+// CHAT WM — reescrito com realtime correto
 // ══════════════════════════════════════════════════════════════════════════════
 // ─── CHAT UI (estado vive no App) ────────────────────────────────────────────

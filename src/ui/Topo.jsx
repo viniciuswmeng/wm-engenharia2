@@ -72,9 +72,17 @@ export function BuscaGlobal({ projetos = [], tarefas = [], abas = [], onAbrirPro
   );
 }
 
-export function MenuUsuario({ user, onConfig, onSair }) {
+export function MenuUsuario({ user, onConfig, onSair, onFoto }) {
   const [aberto, setAberto] = useState(false);
+  const [msg, setMsg] = useState("");
   const ref = useRef(null);
+  const arq = useRef(null);
+  const escolher = async e => {
+    const f = e.target.files?.[0]; e.target.value = "";
+    if (!f) return;
+    setMsg("Salvando foto…");
+    try { await onFoto(f); setMsg(""); setAberto(false); } catch (er) { setMsg(er.message || "Não foi possível salvar a foto."); }
+  };
   useEffect(() => {
     const fora = e => { if (ref.current && !ref.current.contains(e.target)) setAberto(false); };
     document.addEventListener("mousedown", fora); return () => document.removeEventListener("mousedown", fora);
@@ -86,7 +94,9 @@ export function MenuUsuario({ user, onConfig, onSair }) {
     <div ref={ref} style={{ position:"relative", paddingLeft:10, marginLeft:4, borderLeft:`1px solid ${K.borda}` }}>
       <button onClick={() => setAberto(a => !a)} aria-haspopup="menu" aria-expanded={aberto}
         style={{ display:"flex", alignItems:"center", gap:10, border:"none", background:"none", cursor:"pointer", padding:"4px 6px", borderRadius:12, fontFamily:"inherit" }}>
-        <span style={{ width:40, height:40, borderRadius:20, background:user.cor || K.azul, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:700, fontSize:14 }}>{iniciais}</span>
+        {user.foto
+          ? <img src={user.foto} alt="" style={{ width:40, height:40, borderRadius:20, objectFit:"cover", display:"block" }} />
+          : <span style={{ width:40, height:40, borderRadius:20, background:user.cor || K.azul, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:700, fontSize:14 }}>{iniciais}</span>}
         <span className="wm-esconde-celular" style={{ textAlign:"left", lineHeight:1.25 }}>
           <span style={{ display:"block", fontSize:14, fontWeight:700, color:K.texto }}>{String(user.nome || "").split(" ")[0]}</span>
           <span style={{ display:"block", fontSize:12, color:K.sub }}>{papel}</span>
@@ -95,10 +105,23 @@ export function MenuUsuario({ user, onConfig, onSair }) {
       </button>
       {aberto && (
         <div role="menu" style={{ position:"absolute", right:0, top:52, width:240, background:"#fff", border:`1px solid ${K.borda}`, borderRadius:14, boxShadow:"0 18px 50px rgba(15,31,61,.16)", overflow:"hidden", zIndex:600 }}>
-          <div style={{ padding:"12px 14px", borderBottom:`1px solid ${K.borda}` }}>
-            <div style={{ fontWeight:700, fontSize:14, color:K.texto }}>{user.nome}</div>
-            <div style={{ fontSize:12, color:K.sub, overflow:"hidden", textOverflow:"ellipsis" }}>{user.email}</div>
+          <div style={{ padding:"14px", borderBottom:`1px solid ${K.borda}`, display:"flex", gap:12, alignItems:"center" }}>
+            <button onClick={() => arq.current?.click()} title="Alterar foto" aria-label="Alterar foto"
+              style={{ position:"relative", border:"none", padding:0, background:"none", cursor:"pointer", borderRadius:26, flex:"none" }}>
+              {user.foto
+                ? <img src={user.foto} alt="" style={{ width:52, height:52, borderRadius:26, objectFit:"cover", display:"block" }} />
+                : <span style={{ width:52, height:52, borderRadius:26, background:user.cor || K.azul, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:700, fontSize:17 }}>{iniciais}</span>}
+              <span style={{ position:"absolute", right:-2, bottom:-2, width:22, height:22, borderRadius:11, background:K.azul, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", border:"2px solid #fff" }}><Icone nome="camera" tam={12} traco={2.4} /></span>
+            </button>
+            <div style={{ minWidth:0 }}>
+              <div style={{ fontWeight:700, fontSize:14, color:K.texto }}>{user.nome}</div>
+              <div style={{ fontSize:12, color:K.sub, overflow:"hidden", textOverflow:"ellipsis" }}>{user.email}</div>
+            </div>
+            <input ref={arq} type="file" accept="image/*" onChange={escolher} style={{ display:"none" }} />
           </div>
+          {msg && <div role="status" style={{ padding:"8px 14px", fontSize:12.5, color:/Salvando/.test(msg) ? K.sub : "#dc2626", borderBottom:`1px solid ${K.borda}` }}>{msg}</div>}
+          <button role="menuitem" style={item} onClick={() => arq.current?.click()}><Icone nome="camera" tam={17} cor={K.sub} />{user.foto ? "Trocar foto" : "Adicionar foto"}</button>
+          {user.foto && <button role="menuitem" style={item} onClick={async () => { setMsg("Removendo…"); try { await onFoto(null); setMsg(""); } catch (er) { setMsg(er.message); } }}><Icone nome="fechar" tam={17} cor={K.sub} />Remover foto</button>}
           <button role="menuitem" style={item} onClick={() => { setAberto(false); onConfig(); }}><Icone nome="config" tam={17} cor={K.sub} />Configurações</button>
           <button role="menuitem" style={{ ...item, color:"#dc2626" }} onClick={() => { setAberto(false); onSair(); }}><Icone nome="sair" tam={17} />Sair</button>
         </div>

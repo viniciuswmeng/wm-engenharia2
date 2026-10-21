@@ -1,7 +1,29 @@
-import { useState, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Avatar, Btn, C, Card, DIAS_LABEL, DRIVE_ROOT_ID, InpC, SelC, TIPOS, calcHorasDia, calcHorasDiaSemana, calcHorasSemanais, expedientePadrao, expedienteParaDiaSemana, horaMin, labelExpediente, labelModoExpediente } from "../nucleo.jsx";
 
-export function Configuracoes({usuarios,onSalvarUsuarios,usuarioAtual}){
+// Cartão "Minha foto": usado no perfil do colaborador e no topo das Configurações
+function MinhaFoto({usuario,onFoto}){
+  const [msg,setMsg]=useState("");
+  const ref=useRef(null);
+  const enviar=async f=>{ if(!onFoto) return; setMsg("Salvando…"); try{ await onFoto(f); setMsg(f?"Foto atualizada.":"Foto removida."); }catch(e){ setMsg(e.message||"Erro ao salvar a foto."); } };
+  return(
+    <Card style={{display:"flex",alignItems:"center",gap:18,flexWrap:"wrap"}}>
+      <Avatar u={usuario} size={72}/>
+      <div style={{flex:"1 1 220px"}}>
+        <div style={{fontWeight:700,fontSize:16,color:C.marinho}}>{usuario.nome}</div>
+        <div style={{fontSize:13,color:C.cinzaClaro}}>{usuario.email}</div>
+        {msg&&<div role="status" style={{fontSize:12.5,marginTop:6,color:/Erro|Falta|Não/.test(msg)?C.vermelho:C.verde}}>{msg}</div>}
+      </div>
+      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+        <Btn onClick={()=>ref.current?.click()}>{usuario.foto?"Trocar foto":"Adicionar foto"}</Btn>
+        {usuario.foto&&<Btn variant="ghost" onClick={()=>enviar(null)}>Remover</Btn>}
+      </div>
+      <input ref={ref} type="file" accept="image/*" style={{display:"none"}} onChange={e=>{const f=e.target.files?.[0];e.target.value="";if(f)enviar(f);}}/>
+    </Card>
+  );
+}
+
+export function Configuracoes({usuarios,onSalvarUsuarios,usuarioAtual,onFoto}){
   const [lista,setLista]=useState(usuarios);
   const [editId,setEditId]=useState(null);
   const [showForm,setShowForm]=useState(false);
@@ -26,14 +48,15 @@ export function Configuracoes({usuarios,onSalvarUsuarios,usuarioAtual}){
     const eu = usuarios.find(u=>u.id===usuarioAtual.id)||usuarioAtual;
     return (
       <div style={{display:"flex",flexDirection:"column",gap:20}}>
+        <MinhaFoto usuario={eu} onFoto={onFoto}/>
         <Card>
-          <h2 style={{color:C.azulEscuro,margin:"0 0 16px",fontSize:16,fontWeight:700}}>👤 Meu Perfil</h2>
+          <h2 style={{color:C.marinho,margin:"0 0 16px",fontSize:16,fontWeight:700}}>Meu Perfil</h2>
           <div style={{display:"flex",alignItems:"center",gap:16,padding:"14px 16px",background:C.cinzaFundo,borderRadius:10,marginBottom:16}}>
             <Avatar u={eu} size={52}/>
             <div>
               <div style={{fontWeight:800,color:C.cinzaEscuro,fontSize:16}}>{eu.nome}</div>
               <div style={{fontSize:12,color:C.cinzaClaro}}>{eu.email}</div>
-              <div style={{fontSize:11,color:C.cinzaClaro,marginTop:2}}>👤 Colaborador</div>
+              <div style={{fontSize:11,color:C.cinzaClaro,marginTop:2}}>Colaborador</div>
             </div>
           </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
@@ -48,7 +71,7 @@ export function Configuracoes({usuarios,onSalvarUsuarios,usuarioAtual}){
                   <div style={{fontSize:11,fontWeight:700,color:C.cinzaEscuro,marginBottom:4}}>Turno 2 — Tarde</div>
                   <div style={{fontSize:18,fontWeight:800,color:C.azulMedio}}>{eu.expediente.turno2.inicio} – {eu.expediente.turno2.fim}</div>
                   <div style={{fontSize:11,color:C.cinzaClaro,marginTop:3}}>
-                    {eu.expediente.modo==="OU"?"🔀 Trabalha 1 turno/dia (flexível)":"🔁 Trabalha os 2 turnos"}
+                    {eu.expediente.modo==="OU"?"Trabalha 1 turno/dia (flexível)":"Trabalha os 2 turnos"}
                   </div>
                 </div>
               : <div style={{padding:"12px 16px",background:C.cinzaFundo,borderRadius:10}}>
@@ -70,7 +93,7 @@ export function Configuracoes({usuarios,onSalvarUsuarios,usuarioAtual}){
           </div>
         </Card>
         <Card>
-          <h2 style={{color:C.azulEscuro,margin:"0 0 16px",fontSize:16,fontWeight:700}}>⚙ Informações do Sistema</h2>
+          <h2 style={{color:C.marinho,margin:"0 0 16px",fontSize:16,fontWeight:700}}>Informações do Sistema</h2>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
             {[
               {label:"Verificação de atividade", valor:"A cada 30 minutos",    sub:"Aviso automático de inatividade"},
@@ -94,10 +117,11 @@ export function Configuracoes({usuarios,onSalvarUsuarios,usuarioAtual}){
 
   return(
     <div style={{display:"flex",flexDirection:"column",gap:20}}>
+      <MinhaFoto usuario={usuarios.find(u=>u.id===usuarioAtual.id)||usuarioAtual} onFoto={onFoto}/>
       <Card>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
           <div>
-            <h2 style={{color:C.azulEscuro,margin:0,fontSize:16,fontWeight:700}}>👥 Colaboradores</h2>
+            <h2 style={{color:C.marinho,margin:0,fontSize:16,fontWeight:700}}>Colaboradores</h2>
             <p style={{color:C.cinzaClaro,fontSize:12,margin:"4px 0 0"}}>{lista.filter(u=>u.ativo).length} ativo(s)</p>
           </div>
           <Btn onClick={()=>{setForm(VAZIO);setEditId(null);setShowForm(true);}}>+ Novo Colaborador</Btn>
@@ -105,12 +129,12 @@ export function Configuracoes({usuarios,onSalvarUsuarios,usuarioAtual}){
 
         {showForm&&(
           <div style={{background:C.cinzaFundo,borderRadius:12,padding:20,marginBottom:20,border:`2px solid ${C.azulClaro}`}}>
-            <h3 style={{color:C.azulEscuro,margin:"0 0 16px",fontSize:14}}>{editId?"✏ Editar":"➕ Novo"} Colaborador</h3>
+            <h3 style={{color:C.marinho,margin:"0 0 16px",fontSize:14}}>{editId?"Editar":"Novo"} Colaborador</h3>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
               <InpC label="Nome completo *" value={form.nome} onChange={v=>sf("nome",v)}/>
               <InpC label="E-mail Google (login) *" value={form.email} onChange={v=>sf("email",v.trim().toLowerCase())} type="email" placeholder="nome@gmail.com"/>
               <InpC label="Salario Mensal (R$)" value={form.salario||""} onChange={v=>sf("salario",parseFloat(v)||0)} type="number" placeholder="Ex: 3500"/>
-              <SelC label="Perfil" value={form.perfil} onChange={v=>sf("perfil",v)} options={[{value:"colaborador",label:"👤 Colaborador"},{value:"gestor",label:"🔑 Gestor"},{value:"admin",label:"👑 Admin"}]}/>
+              <SelC label="Perfil" value={form.perfil} onChange={v=>sf("perfil",v)} options={[{value:"colaborador",label:"Colaborador"},{value:"gestor",label:"Gestor"},{value:"admin",label:"Admin"}]}/>
               {/* Expediente por dia da semana */}
               <div style={{gridColumn:"1/-1"}}>
                 <label style={{fontSize:12,fontWeight:600,color:C.cinzaEscuro,display:"block",marginBottom:4}}>
@@ -139,7 +163,7 @@ export function Configuracoes({usuarios,onSalvarUsuarios,usuarioAtual}){
                           {exp.ativo&&<span style={{fontSize:12,color:C.verde,fontWeight:700}}>{hDia}h/dia</span>}
                           {exp.ativo&&exp.turno2?.ativo&&(
                             <span style={{marginLeft:"auto",fontSize:10,background:modo==="OU"?"#fff7ed":"#eff6ff",color:modo==="OU"?"#c2410c":C.azulMedio,padding:"2px 8px",borderRadius:4,fontWeight:700,border:`1px solid ${modo==="OU"?"#fed7aa":"#bfdbfe"}`}}>
-                              {modo==="OU"?"🔀 OU":"🔁 E"}
+                              {modo==="OU"?"OU":"E"}
                             </span>
                           )}
                           {!exp.ativo&&<span style={{fontSize:11,color:C.cinzaClaro}}>Não trabalha</span>}
@@ -158,7 +182,7 @@ export function Configuracoes({usuarios,onSalvarUsuarios,usuarioAtual}){
                               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:exp.turno2?.ativo?8:0}}>
                                 <input type="checkbox" checked={!!exp.turno2?.ativo} onChange={e=>setT2("ativo",e.target.checked)} style={{cursor:"pointer"}}/>
                                 <label style={{fontSize:12,fontWeight:600,color:exp.turno2?.ativo?C.azulMedio:C.cinzaClaro,cursor:"pointer"}}>
-                                  {exp.turno2?.ativo?"✓ Tarde ativo":"+ Adicionar turno tarde"}
+                                  {exp.turno2?.ativo?"Tarde ativo":"+ Adicionar turno tarde"}
                                 </label>
                                 {exp.turno2?.ativo&&h2>0&&<span style={{fontSize:11,color:C.cinzaClaro}}>{h2.toFixed(1)}h</span>}
                               </div>
@@ -172,8 +196,8 @@ export function Configuracoes({usuarios,onSalvarUsuarios,usuarioAtual}){
                                 {/* Seletor E / OU */}
                                 <div style={{display:"flex",gap:6}}>
                                   {[
-                                    {val:"E",  label:"🔁 Manhã E Tarde",  sub:`${(h1+h2).toFixed(1)}h/dia contabilizadas`},
-                                    {val:"OU", label:"🔀 Manhã OU Tarde", sub:`${Math.max(h1,h2).toFixed(1)}h/dia (flexível)`},
+                                    {val:"E",  label:"Manhã E Tarde",  sub:`${(h1+h2).toFixed(1)}h/dia contabilizadas`},
+                                    {val:"OU", label:"Manhã OU Tarde", sub:`${Math.max(h1,h2).toFixed(1)}h/dia (flexível)`},
                                   ].map(opt=>(
                                     <div key={opt.val} onClick={()=>setModo(opt.val)}
                                       style={{flex:1,padding:"7px 10px",borderRadius:8,border:`2px solid ${modo===opt.val?C.azulMedio:C.cinzaCard}`,background:modo===opt.val?C.azulEscuro:"white",cursor:"pointer",transition:"all 0.15s",textAlign:"center"}}>
@@ -215,7 +239,7 @@ export function Configuracoes({usuarios,onSalvarUsuarios,usuarioAtual}){
             </div>
             <div style={{display:"flex",gap:10,marginTop:16,justifyContent:"flex-end"}}>
               <Btn variant="ghost" onClick={()=>{setShowForm(false);setEditId(null);}}>Cancelar</Btn>
-              <Btn onClick={salvarForm}>💾 Salvar</Btn>
+              <Btn onClick={salvarForm}>Salvar</Btn>
             </div>
           </div>
         )}
@@ -227,9 +251,9 @@ export function Configuracoes({usuarios,onSalvarUsuarios,usuarioAtual}){
               <div style={{flex:1}}>
                 <div style={{fontWeight:700,color:C.cinzaEscuro}}>{u.nome}</div>
                 <div style={{fontSize:11,color:C.cinzaClaro,marginTop:2}}>
-                    {u.email} • {u.perfil==="admin"?"👑 Admin":u.perfil==="gestor"?"🔑 Gestor":"👤 Colaborador"} •{" "}
+                    {u.email} • {u.perfil==="admin"?"Admin":u.perfil==="gestor"?"Gestor":"Colaborador"} •{" "}
                     ⏰ {labelExpediente(u.expediente)} ({calcHorasDia(u.expediente)}h/dia)
-                    {u.expediente?.turno2?.ativo&&<span style={{marginLeft:6,fontSize:10,background:u.expediente.modo==="OU"?"#fff7ed":"#eff6ff",color:u.expediente.modo==="OU"?"#c2410c":C.azulMedio,padding:"1px 6px",borderRadius:4,fontWeight:700}}>{u.expediente.modo==="OU"?"🔀 OU":"🔁 E"}</span>}
+                    {u.expediente?.turno2?.ativo&&<span style={{marginLeft:6,fontSize:10,background:u.expediente.modo==="OU"?"#fff7ed":"#eff6ff",color:u.expediente.modo==="OU"?"#c2410c":C.azulMedio,padding:"1px 6px",borderRadius:4,fontWeight:700}}>{u.expediente.modo==="OU"?"OU":"E"}</span>}
                   </div>
                   {(u.especialidades||[]).length>0&&<div style={{display:"flex",gap:4,marginTop:4,flexWrap:"wrap"}}>{(u.especialidades||[]).map(e=><span key={e} style={{background:C.cinzaEscuro,color:C.ciano,padding:"1px 6px",borderRadius:3,fontSize:9,fontWeight:800}}>{e}</span>)}</div>}
               </div>
@@ -243,7 +267,7 @@ export function Configuracoes({usuarios,onSalvarUsuarios,usuarioAtual}){
       </Card>
 
       <Card>
-        <h2 style={{color:C.azulEscuro,margin:"0 0 16px",fontSize:16,fontWeight:700}}>⚙ Informações do Sistema</h2>
+        <h2 style={{color:C.marinho,margin:"0 0 16px",fontSize:16,fontWeight:700}}>Informações do Sistema</h2>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
           {[
             {label:"Verificação de atividade", valor:"A cada 30 minutos",        sub:"Aviso automático de inatividade"},
