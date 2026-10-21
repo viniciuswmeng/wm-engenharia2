@@ -748,7 +748,7 @@ export default function App(){
   // Foto do usuário logado (menu do usuário e Configurações)
   const alterarFoto = async (arquivo) => {
     const foto = arquivo ? await prepararFoto(arquivo) : "";
-    await db.usuarios.salvarFoto(user.id, foto);
+    await db.usuarios.salvarFoto(user.id, foto, usuarios.find(x => x.id === user.id) || user);
     const u = { ...user, foto };
     setUser(u);
     try { localStorage.setItem("intec_user_logado", JSON.stringify(u)); } catch { /* sem espaço */ }
