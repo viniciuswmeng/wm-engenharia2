@@ -969,7 +969,7 @@ export default function App(){
     ...(!isColab ? [{id:"orcamentos", label:"Orçamentos", icone:"calculadora", grupo:"principal"}] : []),
     {id:"obras",      label:"Obras",         icone:"capacete",    grupo:"principal"},
     {id:"tarefas",    label:"Tarefas",       icone:"tarefa",      grupo:"principal"},
-    {id:"calculadoras", label:"Calculadoras", icone:"regua",      grupo:"principal"},
+    {id:"calculadoras", label:"Calculadoras e materiais de apoio", linhas:["Calculadoras","e materiais de apoio"], icone:"regua", grupo:"principal"},
     {id:"ifc",        label:"Visualizador IFC", icone:"cubo",     grupo:"principal"},
     {id:"comparativo", label:"Comparativo",  icone:"balanca",     grupo:"principal"},
     {id:"relatorios", label:"Relatórios",    icone:"relatorio",   grupo:"principal"},
@@ -990,7 +990,9 @@ export default function App(){
             const ativo = aba===a.id;
             return <button key={a.id} className={"wm-nav-item"+(ativo?" ativo":"")} aria-current={ativo?"page":undefined}
               onClick={()=>{setAba(a.id);setMenuAberto(false);}}>
-              <Icone nome={a.icone} tam={21}/><span>{a.label}</span>
+              <Icone nome={a.icone} tam={21}/>{a.linhas
+                ? <span style={{display:"flex",flexDirection:"column",lineHeight:1.15}}><span>{a.linhas[0]}</span><span style={{fontSize:"0.82em",fontWeight:500,opacity:.85}}>{a.linhas[1]}</span></span>
+                : <span>{a.label}</span>}
             </button>;
           })}
         </nav>

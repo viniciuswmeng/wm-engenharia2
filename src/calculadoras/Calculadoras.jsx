@@ -1,5 +1,8 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import Icone from "../ui/Icone.jsx";
+import { Abas } from "../ui/ds.jsx";
+import { ListaMateriais, LeitorMaterial } from "./MateriaisApoio.jsx";
+import { MATERIAIS } from "./materiais.js";
 
 const numParseBR = (v, def=0) => parseFloat(String(v||'').replace(',','.')) || def;
 
@@ -1850,6 +1853,8 @@ const COR_GRUPO = { verif:"#1565d8", fund:"#16a34a", super:"#7c3aed", arrimo:"#d
 export function AbaCalculadoras() {
   const [calc, setCalc] = useState(null);
   const [busca, setBusca] = useState("");
+  const [aba, setAba] = useState("calc");
+  const [material, setMaterial] = useState(null);
 
   const GRUPOS = [
     { id:'verif', label:'Verificações', desc:'Conversões, armaduras e reservatórios', items: [
@@ -1913,20 +1918,30 @@ export function AbaCalculadoras() {
     );
   }
 
+  // ── Material aberto ──
+  if (material) return <LeitorMaterial id={material} onVoltar={()=>setMaterial(null)}/>;
+
   // ── Grade de calculadoras ──
   const q = busca.trim().toLowerCase();
   return (
     <div style={{display:'flex',flexDirection:'column',gap:22}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:14,flexWrap:'wrap'}}>
         <div>
-          <h1 style={titulo}>Calculadoras</h1>
-          <p style={{margin:'6px 0 0',fontSize:14.5,color:'#6b7a90'}}>Ferramentas de cálculo técnico · NBR 6118 · NBR 6122</p>
+          <h1 style={titulo}>Calculadoras e materiais de apoio</h1>
+          <p style={{margin:'6px 0 0',fontSize:14.5,color:'#6b7a90'}}>Ferramentas de cálculo técnico e guias de conferência de projeto</p>
         </div>
-        <input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar calculadora…" aria-label="Buscar calculadora"
-          style={{border:'1px solid #d9e2ee',borderRadius:10,padding:'10px 14px',fontSize:14,minWidth:240,background:'#fff'}}/>
+        <input value={busca} onChange={e=>setBusca(e.target.value)} placeholder={aba==='calc'?'Buscar calculadora…':'Buscar material, norma ou assunto…'} aria-label="Buscar"
+          style={{border:'1px solid #d9e2ee',borderRadius:10,padding:'10px 14px',fontSize:14,minWidth:260,background:'#fff'}}/>
       </div>
 
-      {GRUPOS.map(grupo => {
+      <Abas valor={aba} onChange={setAba} style={{alignSelf:'flex-start'}} itens={[
+        {id:'calc', label:'Calculadoras', icone:'calculadora'},
+        {id:'materiais', label:'Materiais de apoio', icone:'documento', badge:MATERIAIS.length},
+      ]}/>
+
+      {aba==='materiais' && <ListaMateriais busca={busca} onAbrir={setMaterial}/>}
+
+      {aba==='calc' && GRUPOS.map(grupo => {
         const itens = grupo.items.filter(i => !q || `${i.label} ${i.desc}`.toLowerCase().includes(q));
         if (!itens.length) return null;
         const cor = COR_GRUPO[grupo.id];
