@@ -17,6 +17,10 @@
     {
       "source": "/briefing/:token",
       "destination": "/briefing.html"
+    },
+    {
+      "source": "/modelo/:token",
+      "destination": "/modelo.html"
     }
   ]
 }

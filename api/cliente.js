@@ -59,6 +59,11 @@ export default async function handler(req) {
       `projeto_id=eq.${projeto.id}&hora_fim=not.is.null&order=created_at.desc&select=*,usuarios(nome)`
     );
 
+    // Modelos 3D (IFC) com link ativo — tabela opcional (ignora se ainda não existir)
+    const modelos3d = await supabaseGet('modelos_ifc',
+      `projeto_id=eq.${encodeURIComponent(projeto.id)}&link_ativo=eq.true&order=created_at.desc&select=nome,disciplina,versao,token,created_at`
+    ).catch(() => []);
+
     // Retornar apenas dados públicos (sem financeiro, sem dados internos)
     const dadosPublicos = {
       // Identificação
@@ -77,6 +82,8 @@ export default async function handler(req) {
       dataEntregaPrevista:  projeto.data_entrega_prevista || null,
       dataEntregaReal:      projeto.data_entrega_real || null,
       driveEntregaveis:      projeto.drive_entregaveis || '',
+      // Modelos 3D
+      modelos3d: (modelos3d || []).map(m => ({ nome: m.nome, disciplina: m.disciplina || '', versao: m.versao || '', link: `/modelo/${m.token}`, data: m.created_at })),
       // Portal
       progresso:            projeto.progresso || 0,
       obs:                  projeto.obs_cliente || '',

@@ -2,6 +2,7 @@ import Icone from "../ui/Icone.jsx";
 import { CartaoNumero, Abas, CabecalhoModal } from "../ui/ds.jsx";
 import { useState, useEffect, useMemo } from "react";
 import { db, portal } from "../supabase.js";
+import ModelosDoProjeto from "../ifc/ModelosDoProjeto.jsx";
 import { Badge, Btn, C, Card, DISCIPLINAS_CB, InpC, STATUS_CONFIG, SelC, TIPOS, TipoBadge, calcStatusAuto, diasAte, fmt, fmtData, obrasProgressoListeners, statusN } from "../nucleo.jsx";
 
 export function PainelDrive({drive,projetosExistentes,onImportar}){
@@ -759,6 +760,8 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}
                 </div>
               </div>
             )}
+
+            {modo!=="novo" && form.id && <ModelosDoProjeto projetoId={form.id}/>}
 
             {/* Progresso e obs do cliente */}
             <div style={{marginTop:20,display:"flex",flexDirection:"column",gap:12}}>

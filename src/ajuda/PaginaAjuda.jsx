@@ -131,6 +131,44 @@ const TOPICOS = [
       "A prévia mostra exatamente o que sai. Clique em Gerar PDF (na janela de impressão escolha Salvar como PDF) ou em Planilha (Excel).",
       "Os valores financeiros vêm das parcelas de cada projeto. Horas, tarefas e entregas respeitam o período escolhido.",
     ]}]},
+  { id:"calculadoras", icone:"📐", titulo:"Calculadoras", aba:"calculadoras",
+    resumo:"Ferramentas de cálculo técnico: verificações de armadura, reservatórios e sapata associada.",
+    secoes:[{ t:"Usar", itens:[
+      "Escolha a calculadora na grade (ou busque pelo nome). Os resultados atualizam enquanto você digita.",
+      "Sapata associada: preencha materiais, pilares e geometria; na etapa Resultados é possível baixar o desenho em DXF.",
+    ]}]},
+  { id:"ifc", icone:"🧊", titulo:"Visualizador IFC e link do cliente", aba:"ifc",
+    resumo:"Abra modelos BIM, confira elementos e envie um link para o cliente ver o modelo 3D sem login.",
+    secoes:[
+      { t:"Visualizar", itens:[
+        "Clique em Abrir arquivo .ifc ou arraste o arquivo para a área 3D (IFC 2x3 e IFC 4: estrutural, arquitetônico, hidrossanitário, elétrico).",
+        "Arrastar gira, botão direito move, a roda aproxima. Clique num elemento para ver nome, pavimento, materiais e propriedades.",
+        "No painel Modelo, oculte disciplinas, categorias ou pavimentos. A barra inferior tem corte horizontal, raio-X, arestas, modo caminhar (W A S D) e imagem da vista.",
+        "Sobrepor modelo carrega outro arquivo junto (compatibilização). Use Cores → Por arquivo para diferenciar cada um.",
+      ]},
+      { t:"Vincular ao projeto e enviar ao cliente", itens:[
+        "Com o modelo aberto, vá na aba Link do painel, escolha o projeto, a disciplina e a versão e clique em Salvar no projeto e gerar link.",
+        "Copie o link ou envie pelo WhatsApp. O cliente abre no navegador ou no celular, sem login.",
+        "O modelo também aparece no Portal do cliente do projeto. Desative o link ou gere um novo quando quiser que o anterior pare de funcionar.",
+        "Em Modelos dos projetos ficam todos os modelos salvos, agrupados por projeto, para abrir de novo, sobrepor, copiar o link ou excluir.",
+        "Antes do primeiro uso, rode no Supabase o arquivo supabase/modelos_ifc_comparativos.sql (cria a tabela e a pasta de arquivos). Limite de 50 MB por arquivo.",
+      ]},
+    ]},
+  { id:"comparativo", icone:"⚖️", titulo:"Comparativo de modelos", aba:"comparativo",
+    resumo:"Compare aço, concreto, forma e custo de até 6 soluções estruturais e gere o PDF com o papel timbrado da WM.",
+    secoes:[
+      { t:"Preencher", itens:[
+        "Digite os quantitativos por elemento (Enter pula para a próxima célula) ou use Importar do Eberick com o Resumo de Materiais em .xlsx.",
+        "Ajuste o preço do aço por bitola e do concreto em cada modelo. Itens extras (movimento de terra, cubetas…) entram no total.",
+        "Duplique um modelo para testar variações. O resumo à direita mostra o mais econômico e a diferença dos demais.",
+        "Vincule a um projeto e clique em Salvar para continuar depois (Abrir salvo).",
+      ]},
+      { t:"Gerar o PDF", itens:[
+        "Clique em Gerar PDF: aparece a prévia em folhas A4 com o papel timbrado da WM.",
+        "Escolha o responsável, se quer o detalhamento de cada modelo e edite as considerações (o botão Sugerir texto escreve um resumo automático).",
+        "Clique em Baixar PDF e, na janela de impressão, escolha Salvar como PDF.",
+      ]},
+    ]},
   { id:"financeiro", icone:"💰", titulo:"Financeiro", aba:"financeiro",
     resumo:"Valores contratados, recebidos e pendentes por projeto.",
     secoes:[{ t:"Usar", itens:[

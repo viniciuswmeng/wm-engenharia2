@@ -38,6 +38,8 @@ const imp_contratos = () => import("./paginas/contratos.jsx");
 const GeradorContratos = carregarPagina(imp_contratos, "GeradorContratos");
 const PaginaAjuda = lazy(() => import("./ajuda/PaginaAjuda.jsx"));
 const PaginaCalculadoras = carregarPagina(() => import("./calculadoras/Calculadoras.jsx"), "AbaCalculadoras");
+const PaginaIFC = carregarPagina(() => import("./ifc/PaginaIFC.jsx"), "PaginaIFC");
+const PaginaComparativo = carregarPagina(() => import("./comparativo/PaginaComparativo.jsx"), "PaginaComparativo");
 const PaginaRelatorios = carregarPagina(() => import("./paginas/relatorios.jsx"), "PaginaRelatorios");
 
 export default function App(){
@@ -968,6 +970,8 @@ export default function App(){
     {id:"obras",      label:"Obras",         icone:"capacete",    grupo:"principal"},
     {id:"tarefas",    label:"Tarefas",       icone:"tarefa",      grupo:"principal"},
     {id:"calculadoras", label:"Calculadoras", icone:"regua",      grupo:"principal"},
+    {id:"ifc",        label:"Visualizador IFC", icone:"cubo",     grupo:"principal"},
+    {id:"comparativo", label:"Comparativo",  icone:"balanca",     grupo:"principal"},
     {id:"relatorios", label:"Relatórios",    icone:"relatorio",   grupo:"principal"},
     {id:"config",     label:"Configurações", icone:"config",      grupo:"config"},
     {id:"ajuda",      label:"Ajuda",         icone:"ajuda",       grupo:"config"},
@@ -1051,6 +1055,8 @@ export default function App(){
           orcamentoInicial={orcParaContrato} onOrcamentoUsado={()=>setOrcParaContrato(null)}/>}
         {aba==="ajuda" && <PaginaAjuda usuarioAtual={user} irPara={setAba}/>}
         {aba==="calculadoras" && <PaginaCalculadoras/>}
+        {aba==="ifc" && <PaginaIFC projetos={projetos} usuarioAtual={user}/>}
+        {aba==="comparativo" && <PaginaComparativo projetos={projetos} usuarioAtual={user}/>}
         {aba==="relatorios" && <PaginaRelatorios projetos={projetos} usuarios={usuarios} registros={registros} tarefas={central.tarefas||[]} usuarioAtual={user}/>}
         {aba==="tarefas" && <PaginaTarefas central={central} user={user} usuarios={usuarios} projetos={projetos}
           gestor={["admin","gestor"].includes(user.perfil)} tarefaFoco={tarefaFoco} onFocoUsado={()=>setTarefaFoco(null)}/>}
