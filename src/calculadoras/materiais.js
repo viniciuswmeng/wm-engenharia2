@@ -1,5 +1,19 @@
-// Materiais de apoio (PDFs em public/materiais). Para incluir um novo, copie o PDF e a capa (.png) para
-// public/materiais e acrescente um item nesta lista.
+// Materiais de apoio. Os guias abaixo vêm junto com o sistema (public/materiais);
+// os enviados pelo botão "Adicionar PDF" ficam no Supabase (tabela materiais_apoio).
+
+export const DISCIPLINAS_MATERIAL = [
+  { nome: "Hidrossanitário", cor: "#0891b2" },
+  { nome: "Elétrico", cor: "#d97706" },
+  { nome: "Estrutural", cor: "#1565d8" },
+  { nome: "Fundações", cor: "#16a34a" },
+  { nome: "Arquitetônico", cor: "#64748b" },
+  { nome: "Climatização", cor: "#7c3aed" },
+  { nome: "Incêndio (PPCI)", cor: "#e11d48" },
+  { nome: "Obras e gestão", cor: "#0a2557" },
+  { nome: "Geral", cor: "#475569" },
+];
+export const corDisciplina = d => DISCIPLINAS_MATERIAL.find(x => x.nome === d)?.cor || "#475569";
+
 export const MATERIAIS = [
   {
     id: "guia-hidro",
@@ -40,7 +54,10 @@ export const MATERIAIS = [
   },
 ];
 
-export function filtrarMateriais(q) {
+export const MATERIAIS_PADRAO = MATERIAIS.map(m => ({ ...m, padrao: true }));
+
+export function filtrarMateriais(lista, q, disciplina) {
   const t = q.trim().toLowerCase();
-  return MATERIAIS.filter(m => !t || [m.titulo, m.disciplina, m.resumo, ...m.normas, ...m.topicos].join(" ").toLowerCase().includes(t));
+  return lista.filter(m => (!disciplina || m.disciplina === disciplina) &&
+    (!t || [m.titulo, m.disciplina, m.resumo, m.autor, ...(m.normas || []), ...(m.topicos || [])].join(" ").toLowerCase().includes(t)));
 }

@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import Icone from "../ui/Icone.jsx";
 import { Abas } from "../ui/ds.jsx";
-import { ListaMateriais, LeitorMaterial } from "./MateriaisApoio.jsx";
-import { MATERIAIS } from "./materiais.js";
+import { ListaMateriais, LeitorMaterial, ModalAdicionarMaterial } from "./MateriaisApoio.jsx";
+import { MATERIAIS_PADRAO } from "./materiais.js";
+import { materiaisDb } from "./dadosMateriais.js";
 
 const numParseBR = (v, def=0) => parseFloat(String(v||'').replace(',','.')) || def;
 
@@ -1850,11 +1851,29 @@ function CalcSapataAssociada() {
 const ICONE_CALC = { unidades:"tendencia", bitolas:"grafico", conv:"tendencia", esp:"menu", costura:"link", caixa:"nuvem", cargacx:"baixo", sapata:"capacete" };
 const COR_GRUPO = { verif:"#1565d8", fund:"#16a34a", super:"#7c3aed", arrimo:"#d97706" };
 
-export function AbaCalculadoras() {
+export function AbaCalculadoras({ usuarioAtual } = {}) {
   const [calc, setCalc] = useState(null);
   const [busca, setBusca] = useState("");
   const [aba, setAba] = useState("calc");
   const [material, setMaterial] = useState(null);
+  const [enviados, setEnviados] = useState([]);
+  const [erroMat, setErroMat] = useState("");
+  const [disciplina, setDisciplina] = useState("");
+  const [adicionando, setAdicionando] = useState(false);
+  const [avisoMat, setAvisoMat] = useState("");
+
+  useEffect(() => {
+    let vivo = true;
+    materiaisDb.listar().then(l => { if (vivo) setEnviados(l); }).catch(e => { if (vivo) setErroMat(e.message); });
+    return () => { vivo = false; };
+  }, []);
+  const materiais = [...MATERIAIS_PADRAO, ...enviados];
+  const disciplinasMat = [...new Set(materiais.map(m => m.disciplina))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  async function excluirMaterial(m) {
+    if (!window.confirm(`Excluir "${m.titulo}"? O PDF sai do sistema para toda a equipe.`)) return;
+    try { await materiaisDb.excluir(m); setEnviados(l => l.filter(x => x.id !== m.id)); setAvisoMat("Material excluído."); setTimeout(() => setAvisoMat(""), 3000); }
+    catch (e) { window.alert(e.message); }
+  }
 
   const GRUPOS = [
     { id:'verif', label:'Verificações', desc:'Conversões, armaduras e reservatórios', items: [
@@ -1919,7 +1938,7 @@ export function AbaCalculadoras() {
   }
 
   // ── Material aberto ──
-  if (material) return <LeitorMaterial id={material} onVoltar={()=>setMaterial(null)}/>;
+  if (material) return <LeitorMaterial material={material} onVoltar={()=>setMaterial(null)}/>;
 
   // ── Grade de calculadoras ──
   const q = busca.trim().toLowerCase();
@@ -1930,16 +1949,30 @@ export function AbaCalculadoras() {
           <h1 style={titulo}>Calculadoras e materiais de apoio</h1>
           <p style={{margin:'6px 0 0',fontSize:14.5,color:'#6b7a90'}}>Ferramentas de cálculo técnico e guias de conferência de projeto</p>
         </div>
-        <input value={busca} onChange={e=>setBusca(e.target.value)} placeholder={aba==='calc'?'Buscar calculadora…':'Buscar material, norma ou assunto…'} aria-label="Buscar"
-          style={{border:'1px solid #d9e2ee',borderRadius:10,padding:'10px 14px',fontSize:14,minWidth:260,background:'#fff'}}/>
+        <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+          {aba==='materiais' && (
+            <select value={disciplina} onChange={e=>setDisciplina(e.target.value)} aria-label="Filtrar por disciplina"
+              style={{border:'1px solid #d9e2ee',borderRadius:10,padding:'10px 12px',fontSize:14,background:'#fff',color:'#0f1f3d',cursor:'pointer',minWidth:190}}>
+              <option value="">Todas as disciplinas</option>
+              {disciplinasMat.map(d => <option key={d} value={d}>{d} ({materiais.filter(m=>m.disciplina===d).length})</option>)}
+            </select>
+          )}
+          <input value={busca} onChange={e=>setBusca(e.target.value)} placeholder={aba==='calc'?'Buscar calculadora…':'Buscar por nome, norma ou assunto…'} aria-label="Buscar"
+            style={{border:'1px solid #d9e2ee',borderRadius:10,padding:'10px 14px',fontSize:14,minWidth:260,background:'#fff'}}/>
+        </div>
       </div>
 
       <Abas valor={aba} onChange={setAba} style={{alignSelf:'flex-start'}} itens={[
         {id:'calc', label:'Calculadoras', icone:'calculadora'},
-        {id:'materiais', label:'Materiais de apoio', icone:'documento', badge:MATERIAIS.length},
+        {id:'materiais', label:'Materiais de apoio', icone:'documento', badge:materiais.length},
       ]}/>
 
-      {aba==='materiais' && <ListaMateriais busca={busca} onAbrir={setMaterial}/>}
+      {aba==='materiais' && avisoMat && <div role="status" style={{fontSize:13.5,fontWeight:600,color:'#166534',background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:12,padding:'10px 14px'}}>{avisoMat}</div>}
+      {aba==='materiais' && erroMat && <div role="alert" style={{fontSize:13,color:'#92400e',background:'#fffbeb',border:'1px solid #fde68a',borderRadius:12,padding:'10px 14px'}}>Os guias padrão estão disponíveis, mas os materiais enviados não puderam ser carregados: {erroMat}</div>}
+      {aba==='materiais' && <ListaMateriais lista={materiais} busca={busca} disciplina={disciplina} onAbrir={setMaterial}
+        onAdicionar={()=>setAdicionando(true)} onExcluir={excluirMaterial}/>}
+      {adicionando && <ModalAdicionarMaterial usuarioAtual={usuarioAtual} onFechar={()=>setAdicionando(false)}
+        onSalvo={m=>{ setEnviados(l=>[m,...l]); setAdicionando(false); setDisciplina(""); setAvisoMat(`“${m.titulo}” adicionado aos materiais de apoio.`); setTimeout(()=>setAvisoMat(""),4000); }}/>}
 
       {aba==='calc' && GRUPOS.map(grupo => {
         const itens = grupo.items.filter(i => !q || `${i.label} ${i.desc}`.toLowerCase().includes(q));

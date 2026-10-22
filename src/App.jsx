@@ -1056,7 +1056,7 @@ export default function App(){
           onSalvarProjeto={salvarProjetoFluxo} onAbrirProjeto={abrirProjetoPorId}
           orcamentoInicial={orcParaContrato} onOrcamentoUsado={()=>setOrcParaContrato(null)}/>}
         {aba==="ajuda" && <PaginaAjuda usuarioAtual={user} irPara={setAba}/>}
-        {aba==="calculadoras" && <PaginaCalculadoras/>}
+        {aba==="calculadoras" && <PaginaCalculadoras usuarioAtual={user}/>}
         {aba==="ifc" && <PaginaIFC projetos={projetos} usuarioAtual={user}/>}
         {aba==="comparativo" && <PaginaComparativo projetos={projetos} usuarioAtual={user}/>}
         {aba==="relatorios" && <PaginaRelatorios projetos={projetos} usuarios={usuarios} registros={registros} tarefas={central.tarefas||[]} usuarioAtual={user}/>}

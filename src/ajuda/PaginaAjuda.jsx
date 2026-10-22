@@ -137,6 +137,8 @@ const TOPICOS = [
       "Escolha a calculadora na grade (ou busque pelo nome). Os resultados atualizam enquanto você digita.",
       "Sapata associada: preencha materiais, pilares e geometria; na etapa Resultados é possível baixar o desenho em DXF.",
       "Na aba Materiais de apoio ficam os guias de conferência em PDF: leia dentro do sistema (com o sumário ao lado) ou baixe o arquivo. A busca encontra por assunto ou norma (ex.: NBR 5410).",
+      "Use o filtro ao lado da busca para ver só uma disciplina (hidrossanitário, elétrico, estrutural…).",
+      "Adicionar PDF envia um material novo para toda a equipe: o sistema lê a capa, o número de páginas e as normas citadas; confira o título, escolha a disciplina e salve. Antes do primeiro envio, rode no Supabase o arquivo supabase/materiais_apoio.sql.",
     ]}]},
   { id:"ifc", icone:"🧊", titulo:"Visualizador IFC e link do cliente", aba:"ifc",
     resumo:"Abra modelos BIM, confira elementos e envie um link para o cliente ver o modelo 3D sem login.",
