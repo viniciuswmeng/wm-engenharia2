@@ -7,6 +7,16 @@ import { ACESSOS_GOOGLE, C, prepararFoto, CHECK_INTERVAL, TelaLogin, USUARIOS_PA
 import { ModalHoras } from "./paginas/ModalHoras.jsx";
 import Icone from "./ui/Icone.jsx";
 import { BuscaGlobal, MenuUsuario, CarregandoPagina, CabecalhoPagina } from "./ui/Topo.jsx";
+import { Abas } from "./ui/ds.jsx";
+
+// Abas agrupadas em um único item do menu (cada uma continua sendo uma página)
+const GRUPOS_MENU = {
+  comercial: { label:"Orçamentos e contratos", linhas:["Orçamentos","e contratos"], icone:"documento", abas:[
+    { id:"orcamentos", label:"Orçamentos", icone:"calculadora" }, { id:"contratos", label:"Contratos", icone:"documento" } ] },
+  rotina: { label:"Horas, agenda e tarefas", linhas:["Horas, agenda","e tarefas"], icone:"relogio", abas:[
+    { id:"horas", label:"Horas", icone:"relogio" }, { id:"agenda", label:"Agenda", icone:"agenda" }, { id:"tarefas", label:"Tarefas", icone:"tarefa" } ] },
+};
+const grupoDaAba = id => Object.entries(GRUPOS_MENU).find(([, g]) => g.abas.some(a => a.id === id))?.[0] || null;
 
 // Título das páginas que não têm cabeçalho próprio
 const CABECALHOS = {
@@ -71,7 +81,14 @@ export default function App(){
       return s ? JSON.parse(s) : null;
     } catch { return null; }
   });
-  const [aba,       setAba]       = useState("dashboard");
+  const [aba,       setAbaAtual]  = useState("dashboard");
+  const [ultimaSub, setUltimaSub] = useState({ comercial:"orcamentos", rotina:"horas" });
+  // Troca de página; nas abas agrupadas, lembra a última sub-aba usada
+  const setAba = useCallback(id => {
+    setAbaAtual(id);
+    const g = grupoDaAba(id);
+    if (g) setUltimaSub(u => (u[g] === id ? u : { ...u, [g]: id }));
+  }, []);
   const [modal,     setModal]     = useState(null);
   const [modalH,    setModalH]    = useState(null);
   const drive    = useGoogleDrive();
@@ -963,12 +980,12 @@ export default function App(){
     {id:"dashboard",  label:"Dashboard",     icone:"painel",      grupo:"principal"},
     {id:"projetos",   label:"Projetos",      icone:"pasta",       grupo:"principal"},
     ...(!isColab ? [{id:"financeiro", label:"Financeiro", icone:"grafico", grupo:"principal"}] : []),
-    {id:"horas",      label:"Horas",         icone:"relogio",     grupo:"principal"},
-    {id:"agenda",     label:"Agenda",        icone:"agenda",      grupo:"principal"},
-    ...(!isColab ? [{id:"contratos",  label:"Contratos",  icone:"documento",   grupo:"principal"}] : []),
-    ...(!isColab ? [{id:"orcamentos", label:"Orçamentos", icone:"calculadora", grupo:"principal"}] : []),
+    {id:"horas",      label:"Horas",         icone:"relogio",     grupo:"principal", menu:"rotina"},
+    {id:"agenda",     label:"Agenda",        icone:"agenda",      grupo:"principal", menu:"rotina"},
+    {id:"tarefas",    label:"Tarefas",       icone:"tarefa",      grupo:"principal", menu:"rotina"},
+    ...(!isColab ? [{id:"orcamentos", label:"Orçamentos", icone:"calculadora", grupo:"principal", menu:"comercial"}] : []),
+    ...(!isColab ? [{id:"contratos",  label:"Contratos",  icone:"documento",   grupo:"principal", menu:"comercial"}] : []),
     {id:"obras",      label:"Obras",         icone:"capacete",    grupo:"principal"},
-    {id:"tarefas",    label:"Tarefas",       icone:"tarefa",      grupo:"principal"},
     {id:"calculadoras", label:"Calculadoras e materiais de apoio", linhas:["Calculadoras","e materiais de apoio"], icone:"regua", grupo:"principal"},
     {id:"ifc",        label:"Visualizador IFC", icone:"cubo",     grupo:"principal"},
     {id:"comparativo", label:"Comparativo",  icone:"balanca",     grupo:"principal"},
@@ -979,6 +996,22 @@ export default function App(){
 
 
 
+  // Itens do menu lateral: as abas de um mesmo grupo aparecem como um item só
+  const itensMenu = [];
+  abasMenu.filter(a=>a.grupo!=="config").forEach(a=>{
+    if (!a.menu) { itensMenu.push(a); return; }
+    if (itensMenu.some(x=>x.grupoMenu===a.menu)) return;
+    const g = GRUPOS_MENU[a.menu];
+    itensMenu.push({ id:"grupo-"+a.menu, grupoMenu:a.menu, label:g.label, linhas:g.linhas, icone:g.icone });
+  });
+  const grupoAtual = grupoDaAba(aba);
+  const subAbas = grupoAtual ? GRUPOS_MENU[grupoAtual].abas.filter(x=>abasMenu.some(m=>m.id===x.id)) : [];
+  const barraSubAbas = subAbas.length > 1 && (
+    <div className={aba==="orcamentos" ? "wm-subabas wm-subabas-cheio" : "wm-subabas"}>
+      <Abas valor={aba} onChange={setAba} itens={subAbas}/>
+    </div>
+  );
+
   return(
     <div className={"wm-shell"+(menuAberto?" menu-aberto":"")}>
       <div className="wm-fundo-menu" onClick={()=>setMenuAberto(false)}/>
@@ -986,10 +1019,10 @@ export default function App(){
       <aside className="wm-sidebar" aria-label="Menu principal">
         <div className="wm-logo"><img src="/Logo_Branco.png" alt="WM Engenharia"/></div>
         <nav className="wm-nav">
-          {abasMenu.filter(a=>a.grupo!=="config").map(a=>{
-            const ativo = aba===a.id;
+          {itensMenu.map(a=>{
+            const ativo = a.grupoMenu ? grupoDaAba(aba)===a.grupoMenu : aba===a.id;
             return <button key={a.id} className={"wm-nav-item"+(ativo?" ativo":"")} aria-current={ativo?"page":undefined}
-              onClick={()=>{setAba(a.id);setMenuAberto(false);}}>
+              onClick={()=>{setAba(a.grupoMenu ? (abasMenu.some(x=>x.id===ultimaSub[a.grupoMenu]) ? ultimaSub[a.grupoMenu] : abasMenu.find(x=>x.menu===a.grupoMenu).id) : a.id);setMenuAberto(false);}}>
               <Icone nome={a.icone} tam={21}/>{a.linhas
                 ? <span style={{display:"flex",flexDirection:"column",lineHeight:1.15}}><span>{a.linhas[0]}</span><span style={{fontSize:"0.82em",fontWeight:500,opacity:.85}}>{a.linhas[1]}</span></span>
                 : <span>{a.label}</span>}
@@ -1045,6 +1078,7 @@ export default function App(){
       )}
         <main className={"wm-conteudo"+((aba==="obras"||aba==="orcamentos")?" wm-conteudo-cheio":"")}>
           <Suspense fallback={<CarregandoPagina/>}>
+            {barraSubAbas}
             {CABECALHOS[aba]&&<CabecalhoPagina {...CABECALHOS[aba]}/>} 
         {aba==="dashboard" &&<Dashboard projetos={projetos} onAbrirProjeto={abrirP} drive={drive} onImportar={importar} usuarioAtual={user} onIrPara={setAba}/>}
         {aba==="projetos"  &&<ListaProjetos projetos={projetos} onAbrirProjeto={abrirP} onNovoProjeto={novoP} usuarios={usuarios} usuarioAtual={user}/>}
@@ -1073,7 +1107,7 @@ export default function App(){
           </div>
         )}
         {aba==="orcamentos" && (
-          <div className="wm-frame">
+          <div className={"wm-frame"+(barraSubAbas?" wm-frame-com-abas":"")}>
             <iframe
               src="/orcamentos.html"
               title="Gerador de Orçamentos"
