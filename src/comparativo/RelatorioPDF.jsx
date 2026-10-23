@@ -1,21 +1,10 @@
 // Relatório do comparativo em páginas A4 com o papel timbrado da WM (impressão → PDF)
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
+import { Titulo, PaginasTimbradas } from "./Timbrado.jsx";
+import { D } from "./estilo.js";
 import { ELEMS_CMP, PRECO_FORMA_M2, fmtC, fmtR, fmtPct, numC, resumoComparativo } from "./calculo.js";
 
-const D = { mar: "#0a2557", azul: "#1565d8", barra: "#154c7a", tx: "#0f1f3d", sub: "#5f6f86", borda: "#dfe6f0", fundo: "#f3f6fb", verde: "#15803d" };
-const MM = 96 / 25.4;               // px por mm
-const ALT_UTIL = 220 * MM;          // altura útil de conteúdo por página
 const COMP = [["totalAco$", "Aço", "#0a2557"], ["conc$", "Concreto", "#1565d8"], ["forma$", "Forma", "#7fb0f0"], ["extras$", "Extras", "#f59e0b"]];
-
-function Titulo({ children, sub }) {
-  return (
-    <div style={{ display: "flex", alignItems: "baseline", gap: 8, margin: "0 0 7px" }}>
-      <span style={{ width: 4, height: 13, borderRadius: 2, background: D.azul, alignSelf: "center" }} />
-      <h2 style={{ margin: 0, fontSize: 12.5, fontWeight: 800, color: D.mar, letterSpacing: 0.2 }}>{children}</h2>
-      {sub && <span style={{ fontSize: 9.5, color: D.sub }}>{sub}</span>}
-    </div>
-  );
-}
 
 const th = { padding: "6px 8px", fontSize: 9.5, fontWeight: 700, color: "#fff", background: D.mar, textAlign: "right", whiteSpace: "nowrap" };
 const td = { padding: "5px 8px", fontSize: 10, color: D.tx, textAlign: "right", borderBottom: `1px solid ${D.borda}`, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" };
@@ -54,22 +43,6 @@ function TabelaModelos({ calcs, linhas, primeira = "Item", destacar = true }) {
         })}
       </tbody>
     </table>
-  );
-}
-
-function Pagina({ n, total, emissao, children }) {
-  return (
-    <section className="wm-cmp-pagina" style={{ width: "210mm", height: "297mm", position: "relative", background: "#fff", overflow: "hidden", boxSizing: "border-box", fontFamily: "Inter, 'Segoe UI', Arial, sans-serif", color: D.tx }}>
-      <img src="/Papel_Timbrado.png" alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }} />
-      <div style={{ position: "absolute", left: "79.5mm", right: 0, top: "18.9mm", height: "14.8mm", display: "flex", alignItems: "center", justifyContent: "flex-end", padding: "0 14mm", color: "#fff", textAlign: "right" }}>
-        <div>
-          <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: 1.8 }}>COMPARATIVO DE MODELOS</div>
-          <div style={{ fontSize: 8, letterSpacing: 0.6, opacity: 0.85, marginTop: 1 }}>Página {n} de {total}</div>
-        </div>
-      </div>
-      <div style={{ position: "absolute", left: "16mm", right: "16mm", top: "42mm", height: "220mm" }}>{children}</div>
-      <div style={{ position: "absolute", right: "12mm", bottom: "7mm", fontSize: 8, color: "#fff", opacity: 0.9 }}>Emitido em {emissao}</div>
-    </section>
   );
 }
 
@@ -277,33 +250,5 @@ export default function RelatorioPDF({ modelos, info, opcoes }) {
     });
   }
 
-  // ── medir e paginar ──
-  const medidor = useRef(null);
-  const [alturas, setAlturas] = useState(null);
-  const chave = blocos.map(b => b.key).join("|") + JSON.stringify([modelos, info, opcoes]);
-  useLayoutEffect(() => {
-    const el = medidor.current; if (!el) return;
-    setAlturas([...el.children].map(c => c.getBoundingClientRect().height));
-  }, [chave]);
-
-  const paginas = [];
-  if (alturas && alturas.length === blocos.length) {
-    let atual = [], usado = 0;
-    blocos.forEach((b, i) => {
-      const h = alturas[i];
-      if (atual.length && usado + h > ALT_UTIL) { paginas.push(atual); atual = []; usado = 0; }
-      atual.push(b); usado += h;
-    });
-    if (atual.length) paginas.push(atual);
-  }
-  const embrulhar = b => <div key={b.key} style={{ paddingBottom: "5mm" }}>{b}</div>;
-
-  return (
-    <>
-      <div ref={medidor} aria-hidden="true" style={{ position: "absolute", left: -10000, top: 0, width: "178mm", visibility: "hidden", fontFamily: "Inter, 'Segoe UI', Arial, sans-serif" }}>
-        {blocos.map(embrulhar)}
-      </div>
-      {paginas.map((pg, i) => <Pagina key={i} n={i + 1} total={paginas.length} emissao={emissao}>{pg.map(embrulhar)}</Pagina>)}
-    </>
-  );
+  return <PaginasTimbradas titulo="COMPARATIVO DE MODELOS" blocos={blocos} chave={JSON.stringify([modelos, info, opcoes])} />;
 }

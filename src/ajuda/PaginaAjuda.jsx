@@ -171,6 +171,13 @@ const TOPICOS = [
         "Escolha o responsável, se quer o detalhamento de cada modelo e edite as considerações (o botão Sugerir texto escreve um resumo automático).",
         "Clique em Baixar PDF e, na janela de impressão, escolha Salvar como PDF.",
       ]},
+      { t:"Estimativa de custo das instalações (elétrico e hidrossanitário)", itens:[
+        "Na aba Instalações · estimativa de custo, importe a Lista de Materiais exportada pelo QiBuilder em .xlsx (pode importar o elétrico e o hidrossanitário juntos).",
+        "Cada item recebe o preço da composição SINAPI MG (set/2026, não desonerado) de fornecimento e instalação. Os selos mostram a origem: SINAPI, Estimado (equivalência de bitola ou peça), Incluído, Informado ou Sem preço.",
+        "Filtre Sem preço e informe os valores que faltam (acessórios de piscina, padrão de entrada, duchas…). Ao salvar, esses preços ficam guardados e são usados nas próximas estimativas.",
+        "Desmarque um sistema para tirá-lo do total, ajuste o BDI ou marque Somente materiais. Gere o PDF com o papel timbrado da WM, com ou sem o detalhamento dos itens.",
+        "Antes do primeiro uso, rode no Supabase o arquivo supabase/estimativa_instalacoes.sql.",
+      ]},
     ]},
   { id:"financeiro", icone:"💰", titulo:"Financeiro", aba:"financeiro",
     resumo:"Valores contratados, recebidos e pendentes por projeto.",

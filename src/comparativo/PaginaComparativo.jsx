@@ -1,8 +1,8 @@
 // Aba "Comparativo de modelos": quantitativos e custos de soluções estruturais + PDF com a identidade WM
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import Icone from "../ui/Icone.jsx";
-import { fundoModal, caixaModal, CabecalhoModal } from "../ui/ds.jsx";
+import { fundoModal, caixaModal, CabecalhoModal, Abas } from "../ui/ds.jsx";
+import { EstimativaInstalacoes } from "./instalacoes/EstimativaInstalacoes.jsx";
 import {
   ELEMS_CMP, PRECO_FORMA_M2, calcModelo, corModelo, fmtC, fmtR, fmtPct, limparModelos, nomeModelo,
   normalizarModelo, novoExtra, novoModelo, numC, resumoComparativo, sugerirConclusao,
@@ -10,6 +10,8 @@ import {
 import { lerExcelEberick } from "./importar.js";
 import { comparativos } from "./dados.js";
 import RelatorioPDF from "./RelatorioPDF.jsx";
+import { ModalImpressao } from "./Timbrado.jsx";
+import { nomeArquivoPdf } from "./estilo.js";
 
 const K = { mar: "#0a2557", azul: "#1565d8", tx: "#0f1f3d", sub: "#6b7a90", borda: "#e6ecf4", fundo: "#f3f6fb", verde: "#16a34a", ambar: "#b45309" };
 const inp = { width: "100%", boxSizing: "border-box", border: `1px solid ${K.borda}`, borderRadius: 10, padding: "9px 11px", fontSize: 13.5, fontFamily: "inherit", color: K.tx, background: "#fff", outline: "none" };
@@ -250,7 +252,7 @@ function ModalImportar({ modelos, onImportar, onFechar }) {
 function ModalSalvos({ projetos, onAbrir, onFechar }) {
   const [lista, setLista] = useState(null);
   const [erro, setErro] = useState("");
-  useEffect(() => { comparativos.listar().then(setLista).catch(e => { setErro(e.message); setLista([]); }); }, []);
+  useEffect(() => { comparativos.listar().then(l => setLista(l.filter(c => c.dados?.tipo !== "instalacoes"))).catch(e => { setErro(e.message); setLista([]); }); }, []);
   const proj = id => projetos.find(p => String(p.id) === String(id));
   return (
     <div style={fundoModal} onClick={e => { if (e.target === e.currentTarget) onFechar(); }}>
@@ -279,77 +281,31 @@ function ModalSalvos({ projetos, onAbrir, onFechar }) {
 
 function ModalPDF({ modelos, info, usuarioAtual, onFechar }) {
   const [opcoes, setOpcoes] = useState({ detalhar: true, responsavel: usuarioAtual?.nome || "", conclusao: sugerirConclusao(modelos) });
-  const area = useRef(null);
-  const [zoom, setZoom] = useState(0.8);
-  useEffect(() => {
-    const ajustar = () => { const w = area.current?.clientWidth || 800; setZoom(Math.min(1, (w - 48) / 794)); };
-    ajustar(); window.addEventListener("resize", ajustar); return () => window.removeEventListener("resize", ajustar);
-  }, []);
-  useEffect(() => {
-    document.body.classList.add("wm-cmp-aberto");
-    const esc = e => { if (e.key === "Escape") onFechar(); };
-    window.addEventListener("keydown", esc);
-    return () => { document.body.classList.remove("wm-cmp-aberto"); window.removeEventListener("keydown", esc); };
-  }, [onFechar]);
-  const nomeArq = `Comparativo_WM_${(info.projeto || info.cliente || "modelos").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9 ]/g, "").trim().replace(/\s+/g, "_")}`;
-  const imprimir = () => { const t = document.title; document.title = nomeArq; window.print(); setTimeout(() => { document.title = t; }, 1500); };
   const o = (k, v) => setOpcoes(x => ({ ...x, [k]: v }));
-
-  return createPortal(
-    <div className="wm-cmp-print-root" style={{ position: "fixed", inset: 0, zIndex: 1200, background: "#e9eef5", display: "flex" }}>
-      <aside className="wm-cmp-chrome" style={{ width: 320, flexShrink: 0, background: "#fff", borderRight: `1px solid ${K.borda}`, display: "flex", flexDirection: "column" }}>
-        <div style={{ padding: "18px 20px", borderBottom: `1px solid ${K.borda}` }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: K.azul, letterSpacing: 1, textTransform: "uppercase" }}>Relatório em PDF</div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: K.mar, marginTop: 2 }}>Comparativo de modelos</div>
-          <div style={{ fontSize: 12.5, color: K.sub, marginTop: 4 }}>Papel timbrado e identidade visual da WM.</div>
-        </div>
-        <div style={{ padding: 20, display: "grid", gap: 18, alignContent: "start", overflowY: "auto", flex: 1 }}>
-          <div><label style={lbl}>Responsável</label><input value={opcoes.responsavel} onChange={e => o("responsavel", e.target.value)} style={inp} /></div>
-          <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", fontSize: 13.5, color: K.tx }}>
-            <input type="checkbox" checked={opcoes.detalhar} onChange={e => o("detalhar", e.target.checked)} style={{ width: 17, height: 17, accentColor: K.azul, marginTop: 1 }} />
-            <span><b>Detalhar cada modelo</b><br /><span style={{ fontSize: 12.5, color: K.sub }}>Aço por bitola e elemento, concreto, forma e custos.</span></span>
-          </label>
-          <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-              <label style={lbl}>Considerações</label>
-              <button onClick={() => o("conclusao", sugerirConclusao(modelos))} style={{ border: "none", background: "none", color: K.azul, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Sugerir texto</button>
-            </div>
-            <textarea value={opcoes.conclusao} onChange={e => o("conclusao", e.target.value)} rows={7} placeholder="Texto que aparece no relatório (deixe vazio para omitir)"
-              style={{ ...inp, resize: "vertical", lineHeight: 1.5, fontSize: 13 }} />
+  return (
+    <ModalImpressao titulo="Comparativo de modelos" voltar="Voltar ao comparativo" onFechar={onFechar}
+      nomeArquivo={nomeArquivoPdf("Comparativo_WM", info.projeto || info.cliente || "modelos")}
+      opcoes={<>
+        <div><label style={lbl}>Responsável</label><input value={opcoes.responsavel} onChange={e => o("responsavel", e.target.value)} style={inp} /></div>
+        <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", fontSize: 13.5, color: K.tx }}>
+          <input type="checkbox" checked={opcoes.detalhar} onChange={e => o("detalhar", e.target.checked)} style={{ width: 17, height: 17, accentColor: K.azul, marginTop: 1 }} />
+          <span><b>Detalhar cada modelo</b><br /><span style={{ fontSize: 12.5, color: K.sub }}>Aço por bitola e elemento, concreto, forma e custos.</span></span>
+        </label>
+        <div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+            <label style={lbl}>Considerações</label>
+            <button onClick={() => o("conclusao", sugerirConclusao(modelos))} style={{ border: "none", background: "none", color: K.azul, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Sugerir texto</button>
           </div>
+          <textarea value={opcoes.conclusao} onChange={e => o("conclusao", e.target.value)} rows={7} placeholder="Texto que aparece no relatório (deixe vazio para omitir)"
+            style={{ ...inp, resize: "vertical", lineHeight: 1.5, fontSize: 13 }} />
         </div>
-        <div style={{ padding: 16, borderTop: `1px solid ${K.borda}`, display: "grid", gap: 8 }}>
-          <button onClick={imprimir} style={btn("pri", { padding: "11px 14px" })}><Icone nome="download" tam={17} />Baixar PDF</button>
-          <button onClick={onFechar} style={btn("sec")}>Voltar ao comparativo</button>
-          <div style={{ fontSize: 11.5, color: K.sub, textAlign: "center" }}>Na janela de impressão, escolha “Salvar como PDF”.</div>
-        </div>
-      </aside>
-      <div ref={area} className="wm-cmp-preview" style={{ flex: 1, overflow: "auto", padding: "24px 0", "--z": zoom }}>
-        <div className="wm-cmp-paginas" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 18 }}>
-          <RelatorioPDF modelos={modelos} info={info} opcoes={opcoes} />
-        </div>
-      </div>
-      <style>{`
-        .wm-cmp-preview .wm-cmp-pagina { zoom: var(--z); box-shadow: 0 8px 30px rgba(10,37,87,.14); }
-        @media (max-width: 860px) { .wm-cmp-print-root { flex-direction: column; } .wm-cmp-chrome { width: auto !important; max-height: 46vh; } }
-        @media print {
-          @page { size: A4; margin: 0; }
-          body.wm-cmp-aberto > *:not(.wm-cmp-print-root) { display: none !important; }
-          body.wm-cmp-aberto { background: #fff !important; }
-          .wm-cmp-print-root { position: static !important; display: block !important; background: #fff !important; }
-          .wm-cmp-chrome { display: none !important; }
-          .wm-cmp-preview { overflow: visible !important; padding: 0 !important; }
-          .wm-cmp-paginas { display: block !important; }
-          .wm-cmp-preview .wm-cmp-pagina { zoom: 1 !important; box-shadow: none !important; break-after: page; page-break-after: always; }
-          .wm-cmp-preview .wm-cmp-pagina:last-child { break-after: auto; page-break-after: auto; }
-        }
-      `}</style>
-    </div>,
-    document.body
+      </>}>
+      <RelatorioPDF modelos={modelos} info={info} opcoes={opcoes} />
+    </ModalImpressao>
   );
 }
 
-export function PaginaComparativo({ projetos = [], usuarioAtual }) {
+function ComparativoEstrutural({ projetos = [], usuarioAtual }) {
   const [modelos, setModelos] = useState(() => [novoModelo(1), novoModelo(2)]);
   const [info, setInfo] = useState({ cliente: "", projeto: "", obs: "" });
   const [projVinc, setProjVinc] = useState("");
@@ -391,11 +347,7 @@ export function PaginaComparativo({ projetos = [], usuarioAtual }) {
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 18 }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: 30, fontWeight: 800, color: K.mar, letterSpacing: -0.5, lineHeight: 1.15 }}>Comparativo de modelos</h1>
-          <p style={{ margin: "6px 0 0", fontSize: 14.5, color: K.sub }}>Compare quantitativos e custos entre soluções estruturais e gere o relatório para o cliente</p>
-        </div>
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 16, flexWrap: "wrap", marginBottom: 14 }}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button onClick={novo} style={btn("sec")}>Novo</button>
           <button onClick={() => setModal("salvos")} style={btn("sec")}><Icone nome="pasta" tam={16} />Abrir salvo</button>
@@ -452,6 +404,27 @@ export function PaginaComparativo({ projetos = [], usuarioAtual }) {
       {modal === "salvos" && <ModalSalvos projetos={projetos} onAbrir={abrirSalvo} onFechar={() => setModal(null)} />}
       {modal === "pdf" && <ModalPDF modelos={modelos} info={info} usuarioAtual={usuarioAtual} onFechar={() => setModal(null)} />}
       <style>{".wm-cmp-grade input[type=number]::-webkit-inner-spin-button,.wm-cmp-grade input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0} .wm-cmp-grade input[type=number]{-moz-appearance:textfield} @media (max-width: 1100px){ .wm-cmp-grade{ grid-template-columns: minmax(0,1fr) !important; } } @media (max-width: 760px){ .wm-cmp-info{ grid-template-columns: 1fr !important; } }"}</style>
+    </div>
+  );
+}
+
+export function PaginaComparativo({ projetos = [], usuarioAtual }) {
+  const [modo, setModo] = useState("estrutural");
+  return (
+    <div>
+      <div style={{ marginBottom: 14 }}>
+        <h1 style={{ margin: 0, fontSize: 30, fontWeight: 800, color: K.mar, letterSpacing: -0.5, lineHeight: 1.15 }}>Comparativo e estimativas</h1>
+        <p style={{ margin: "6px 0 0", fontSize: 14.5, color: K.sub }}>
+          {modo === "estrutural" ? "Compare quantitativos e custos entre soluções estruturais e gere o relatório para o cliente"
+            : "Estime o custo das instalações elétricas e hidrossanitárias a partir da lista de materiais do QiBuilder"}
+        </p>
+      </div>
+      <Abas valor={modo} onChange={setModo} style={{ marginBottom: 6 }} itens={[
+        { id: "estrutural", label: "Estrutural · comparativo de modelos", icone: "balanca" },
+        { id: "instalacoes", label: "Instalações · estimativa de custo", icone: "calculadora" },
+      ]} />
+      <div style={{ display: modo === "estrutural" ? "block" : "none" }}><ComparativoEstrutural projetos={projetos} usuarioAtual={usuarioAtual} /></div>
+      <div style={{ display: modo === "instalacoes" ? "block" : "none" }}><EstimativaInstalacoes projetos={projetos} usuarioAtual={usuarioAtual} /></div>
     </div>
   );
 }
