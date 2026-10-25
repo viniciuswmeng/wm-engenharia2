@@ -72,6 +72,15 @@ export function PainelDrive({drive,projetosExistentes,onImportar}){
 }
 
 // ─── MODAL PROJETO ─────────────────────────────────────────────────────────────
+// Mensagem legível para erros do Supabase no portal do cliente
+function msgErro(e){
+  const m = String(e?.message || e || "");
+  if (/uuid/i.test(m)) return "a tabela no Supabase espera um código em formato uuid. Rode o arquivo supabase/portal_cliente.sql no SQL Editor.";
+  if (/row-level security|permission denied|42501/i.test(m)) return "o Supabase recusou a gravação (permissões/RLS). Rode o arquivo supabase/portal_cliente.sql no SQL Editor.";
+  if (/does not exist|schema cache|PGRST20|42P01|42703/i.test(m)) return "tabela ou coluna ausente no Supabase. Rode o arquivo supabase/portal_cliente.sql no SQL Editor.";
+  return m || "erro desconhecido";
+}
+
 export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}){
   const [form,setForm]=useState(()=>{
     const base = {
@@ -107,15 +116,20 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}
   const [novaAtu, setNovaAtu] = useState({ titulo:"", descricao:"", icone:"📝", tipo:"manual", visivelCliente:true });
   const [gerandoLink, setGerandoLink] = useState(false);
   const [copiado, setCopiado] = useState(false);
+  const [erroPortal, setErroPortal] = useState("");
+  const [salvandoAtu, setSalvandoAtu] = useState(false);
 
   // Carregar atualizações ao abrir projeto existente
   useEffect(() => {
     if (modo !== "editar" || !projeto?.id) return;
     setCarregandoAtu(true);
+    // Uma fonte com erro não esconde a outra (antes, uma falha apagava a linha do tempo toda)
     Promise.all([
-      portal.listarAtualizacoes(projeto.id),
-      db.sessoes.listar().then(s => s.filter(x => x.projetoId===projeto.id && x.horaFim)),
-    ]).then(([manuais, sessoesProjeto]) => {
+      portal.listarAtualizacoes(projeto.id).catch(e => { console.error(e); return { erro: e }; }),
+      db.sessoes.listar().then(s => s.filter(x => x.projetoId===projeto.id && x.horaFim)).catch(() => []),
+    ]).then(([resManuais, sessoesProjeto]) => {
+      const manuais = Array.isArray(resManuais) ? resManuais : [];
+      if (resManuais?.erro) setErroPortal("Não foi possível carregar as atualizações: "+msgErro(resManuais.erro));
       // Converter sessões para formato de atualização
       const sessaoItems = sessoesProjeto.map(s => {
         const u = usuarios?.find(x=>x.id===s.usuarioId);
@@ -148,36 +162,50 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}
     if (!form.id) return;
     setGerandoLink(true);
     try {
+      setErroPortal("");
       const token = await portal.gerarToken(form.id);
       setForm(f=>({...f, tokenCliente:token, linkClienteAtivo:true}));
-    } catch(e){ console.error(e); }
+    } catch(e){ console.error(e); setErroPortal("Não foi possível gerar o link: "+msgErro(e)); }
     finally{ setGerandoLink(false); }
   };
 
   const toggleLink = async (ativo) => {
     if (!form.id) return;
-    await portal.setLinkAtivo(form.id, ativo);
-    setForm(f=>({...f, linkClienteAtivo:ativo}));
+    try {
+      setErroPortal("");
+      await portal.setLinkAtivo(form.id, ativo);
+      setForm(f=>({...f, linkClienteAtivo:ativo}));
+    } catch(e){ console.error(e); setErroPortal("Não foi possível alterar o link: "+msgErro(e)); }
   };
 
   const adicionarAtu = async () => {
-    if (!novaAtu.titulo || !form.id) return;
-    const atu = await portal.adicionarAtualizacao(form.id, {
-      ...novaAtu, autorId: null, autorNome: "Equipe WM"
-    });
-    setAtualizacoes(a=>[atu,...a]);
-    setNovaAtu({ titulo:"", descricao:"", icone:"📝", tipo:"manual", visivelCliente:true });
+    if (!novaAtu.titulo.trim()) return;
+    if (!form.id || modo==="novo") { setErroPortal("Salve o projeto primeiro para adicionar atualizações."); return; }
+    setSalvandoAtu(true); setErroPortal("");
+    try {
+      const atu = await portal.adicionarAtualizacao(form.id, {
+        ...novaAtu, titulo: novaAtu.titulo.trim(), autorId: null, autorNome: "Equipe WM"
+      });
+      setAtualizacoes(a=>[{...atu, origem:"manual"},...a]);
+      setNovaAtu({ titulo:"", descricao:"", icone:"📝", tipo:"manual", visivelCliente:true });
+    } catch(e){
+      console.error(e);
+      setErroPortal("Não foi possível adicionar a atualização: "+msgErro(e));
+    } finally { setSalvandoAtu(false); }
   };
 
   const excluirAtu = async (id) => {
     if (!window.confirm("Excluir esta atualização?")) return;
-    await portal.excluirAtualizacao(id);
-    setAtualizacoes(a=>a.filter(x=>x.id!==id));
+    try {
+      await portal.excluirAtualizacao(id);
+      setAtualizacoes(a=>a.filter(x=>x.id!==id));
+    } catch(e){ console.error(e); setErroPortal("Não foi possível excluir: "+msgErro(e)); }
   };
 
-  const copiarLink = () => {
+  const copiarLink = async () => {
     const url = `${window.location.origin}/cliente/${form.tokenCliente||form.token_cliente}`;
-    navigator.clipboard.writeText(url);
+    try { await navigator.clipboard.writeText(url); }
+    catch { window.prompt("Copie o link do cliente:", url); return; }
     setCopiado(true); setTimeout(()=>setCopiado(false),2000);
   };
 
@@ -723,6 +751,10 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}
           <div>
             <h3 style={{color:C.marinho,fontSize:15,fontWeight:700,margin:"0 0 4px"}}>Portal do Cliente</h3>
             <p style={{color:C.cinzaClaro,fontSize:12,margin:"0 0 16px"}}>Gere um link exclusivo para o cliente acompanhar o projeto em tempo real, sem precisar de login.</p>
+            {erroPortal && <div role="alert" style={{display:"flex",gap:10,alignItems:"flex-start",padding:"10px 14px",marginBottom:14,background:"#fef2f2",border:"1px solid #fecaca",borderRadius:10,color:"#991b1b",fontSize:12.5}}>
+              <span style={{flex:1}}>{erroPortal}</span>
+              <button type="button" onClick={()=>setErroPortal("")} style={{border:"none",background:"none",color:"#991b1b",cursor:"pointer",fontSize:14}} aria-label="Fechar">×</button>
+            </div>}
 
             {/* Gerar/copiar link */}
             {!form.tokenCliente && !form.token_cliente ? (
@@ -805,7 +837,7 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}
                     <input type="checkbox" checked={novaAtu.visivelCliente} onChange={e=>setNovaAtu(n=>({...n,visivelCliente:e.target.checked}))} id="vc" style={{cursor:"pointer"}}/>
                     <label htmlFor="vc" style={{fontSize:12,cursor:"pointer",color:C.cinzaClaro}}>Visível ao cliente</label>
                   </div>
-                  <Btn onClick={adicionarAtu} small disabled={!novaAtu.titulo}>+ Adicionar</Btn>
+                  <Btn onClick={adicionarAtu} small disabled={!novaAtu.titulo.trim()||salvandoAtu}>{salvandoAtu?"Adicionando...":"+ Adicionar"}</Btn>
                 </div>
               </div>
 

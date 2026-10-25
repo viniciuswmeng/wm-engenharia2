@@ -49,15 +49,22 @@ export default async function handler(req) {
       });
     }
 
-    // Buscar atualizações manuais do projeto
+    // Buscar atualizações manuais do projeto (se a tabela falhar, o portal abre mesmo assim)
     const atualizacoes = await supabaseGet('atualizacoes_projeto',
-      `projeto_id=eq.${projeto.id}&order=created_at.desc&select=*`
-    );
+      `projeto_id=eq.${encodeURIComponent(projeto.id)}&order=created_at.desc&select=*`
+    ).catch(e => { console.error('atualizacoes_projeto:', e.message); return []; });
 
-    // Buscar sessões do banco de horas deste projeto (apenas encerradas)
+    // Sessões do banco de horas deste projeto (apenas encerradas). Os nomes vêm de uma
+    // consulta separada: a tabela de sessões não tem chave estrangeira para usuarios,
+    // então o "join" usuarios(nome) derrubava o portal inteiro.
     const sessoes = await supabaseGet('sessoes_horas',
-      `projeto_id=eq.${projeto.id}&hora_fim=not.is.null&order=created_at.desc&select=*,usuarios(nome)`
-    );
+      `projeto_id=eq.${encodeURIComponent(projeto.id)}&hora_fim=not.is.null&order=created_at.desc&select=*`
+    ).catch(e => { console.error('sessoes_horas:', e.message); return []; });
+    const idsUsuarios = [...new Set(sessoes.map(x => x.usuario_id).filter(Boolean))];
+    const listaUsuarios = idsUsuarios.length
+      ? await supabaseGet('usuarios', `id=in.(${idsUsuarios.map(i => `"${String(i).replace(/"/g, '')}"`).join(',')})&select=id,nome`).catch(() => [])
+      : [];
+    const nomeUsuario = Object.fromEntries(listaUsuarios.map(u => [String(u.id), u.nome]));
 
     // Modelos 3D (IFC) com link ativo — tabela opcional (ignora se ainda não existir)
     const modelos3d = await supabaseGet('modelos_ifc',
@@ -105,7 +112,7 @@ export default async function handler(req) {
 
         // Sessões do banco de horas como linha do tempo
         const sessoesTimeline = (sessoes || []).filter(s => s.visivel_cliente !== false).map(s => {
-          const nomeColaborador = s.usuarios?.nome || 'Equipe WM';
+          const nomeColaborador = nomeUsuario[String(s.usuario_id)] || 'Equipe WM';
           const hIni  = s.hora_inicio || '';
           const hFim  = s.hora_fim    || '';
           const durMin= s.duracao_min || 0;
