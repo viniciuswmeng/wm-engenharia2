@@ -419,6 +419,7 @@ function toSessaoFront(r) {
     obsInicio:      r.obs_inicio || r.obs || '',
     obsFim:         r.obs_fim    || '',
     visivelCliente: r.visivel_cliente !== false,
+    lancadoPor:     r.lancado_por || null,
   };
 }
 
@@ -438,6 +439,7 @@ function toSessaoBack(s) {
     obs_inicio:       s.obsInicio || s.obs || '',
     obs_fim:          s.obsFim || '',
     visivel_cliente:  s.visivelCliente !== false,
+    ...(s.lancadoPor ? { lancado_por: s.lancadoPor } : {}),
   };
 }
 

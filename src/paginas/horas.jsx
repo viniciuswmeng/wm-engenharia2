@@ -2,6 +2,7 @@ import { CartaoNumero, Abas } from "../ui/ds.jsx";
 import { useState, useMemo, useCallback } from "react";
 import * as syncHoras from "../sessoesSync.js";
 import { CATS_ADMIN } from "./ModalHoras.jsx";
+import { ModalLancarHoras } from "./LancarHoras.jsx";
 import { Avatar, Btn, C, Card, calcHorasDia, fmtData, fmtDuracao } from "../nucleo.jsx";
 
 export function carregarJsPDF() {
@@ -498,7 +499,16 @@ export function BancoHoras({registros,setRegistros,usuarios,projetos,usuarioAtua
   const [abaH,     setAbaH]=useState("historico"); // historico | extras
   const [editandoObs,setEditandoObs]=useState(null);
   const [novaObs,setNovaObs]=useState("");
+  const [lancando,setLancando]=useState(false);
   const isGestor=["admin","gestor"].includes(usuarioAtual.perfil);
+
+  // Lançamento manual (dias anteriores) — só gestores/admin
+  const lancarHoras = (sessao) => {
+    if(!isGestor) return;
+    setRegistros(x=>[...x, sessao]);
+    syncHoras.salvar(sessao);
+    setLancando(false);
+  };
 
   const podeEditar = (r) => isGestor || r.usuarioId===usuarioAtual.id;
 
@@ -581,8 +591,11 @@ export function BancoHoras({registros,setRegistros,usuarios,projetos,usuarioAtua
             {meses.map(m=><option key={m} value={m}>{m}</option>)}
           </select>
           <span style={{fontSize:12,color:C.cinzaClaro,marginLeft:"auto"}}>{filtrados.length} registro(s)</span>
+          {isGestor&&<Btn onClick={()=>setLancando(true)} small title="Registrar horas trabalhadas em dias anteriores">+ Lançar horas</Btn>}
         </div>
       </Card>
+      {lancando&&isGestor&&<ModalLancarHoras usuarios={usuarios} projetos={projetos} registros={registros} usuarioAtual={usuarioAtual}
+        usuarioInicial={filtroUser} onSalvar={lancarHoras} onFechar={()=>setLancando(false)}/>}
 
       {isGestor&&filtroUser==="todos"&&Object.keys(resumoUser).length>0&&(
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:14}}>
@@ -651,6 +664,7 @@ export function BancoHoras({registros,setRegistros,usuarios,projetos,usuarioAtua
                           {r.categoriaAdmin
                             ? <span style={{fontSize:10,background:"#f0fdf4",color:"#166534",padding:"2px 7px",borderRadius:4,fontWeight:700}}>Adm</span>
                             : <span style={{fontSize:10,background:"#eff6ff",color:C.azulMedio,padding:"2px 7px",borderRadius:4,fontWeight:700}}>Proj</span>}
+                          {r.lancadoPor&&<span title={`Lançamento manual por ${r.lancadoPor}`} style={{marginLeft:4,fontSize:10,background:"#f3e8ff",color:"#7c3aed",padding:"2px 7px",borderRadius:4,fontWeight:700}}>Manual</span>}
                         </td>
                       )}
                       <td style={{padding:"9px 14px"}}>

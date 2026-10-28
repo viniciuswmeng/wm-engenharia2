@@ -101,6 +101,7 @@ const TOPICOS = [
         "Clique em \"▶ Iniciar\" na barra superior, escolha Projeto ou Administrativa, descreva o que vai fazer e inicie.",
         "Para trocar de projeto use \"Mudar\"; para terminar o dia, \"🏁 Encerrar expediente\".",
         "Sessões fora do expediente contam como hora extra.",
+        "Gestores: em Banco de horas, \"+ Lançar horas\" registra horas de dias anteriores para qualquer colaborador (data, projeto ou atividade, entrada e saída). O sistema calcula a hora extra, impede horários sobrepostos e marca o registro como \"Manual\".",
         "Os registros ficam guardados no computador até o servidor confirmar. Se aparecer a faixa amarela de \"registros não salvos\", não feche o sistema e clique em \"Tentar agora\".",
       ]},
       { t:"Consultar", itens:[
