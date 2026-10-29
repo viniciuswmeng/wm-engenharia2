@@ -2,10 +2,12 @@
 import { useEffect, useState } from "react";
 import Icone from "../ui/Icone.jsx";
 import { modelosIfc } from "./dados.js";
+import { ModalQRCode } from "./QRCodeModelo.jsx";
 
 const K = { mar: "#0a2557", azul: "#1565d8", tx: "#0f1f3d", sub: "#6b7a90", borda: "#e6ecf4", verde: "#16a34a" };
 
-export default function ModelosDoProjeto({ projetoId }) {
+export default function ModelosDoProjeto({ projetoId, projeto }) {
+  const [qrModelo, setQrModelo] = useState(null);
   const [lista, setLista] = useState(null);
   const [copiado, setCopiado] = useState("");
   useEffect(() => {
@@ -36,10 +38,12 @@ export default function ModelosDoProjeto({ projetoId }) {
           </div>
           {m.linkAtivo && <>
             <button type="button" onClick={() => copiar(m)} style={{ border: `1px solid ${K.borda}`, background: "#fff", borderRadius: 8, padding: "5px 10px", fontSize: 12, fontWeight: 600, color: K.mar, cursor: "pointer" }}>{copiado === m.id ? "Copiado" : "Copiar link"}</button>
+            <button type="button" onClick={() => setQrModelo(m)} title="QR code para as pranchas" style={{ border: `1px solid ${K.borda}`, background: "#fff", borderRadius: 8, padding: "4px 8px", color: K.mar, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600 }}><Icone nome="qrcode" tam={14} />QR</button>
             <a href={modelosIfc.linkCliente(m.token)} target="_blank" rel="noreferrer" style={{ fontSize: 12, fontWeight: 600, color: K.azul, textDecoration: "none" }}>Abrir</a>
           </>}
         </div>
       ))}
+      {qrModelo && <ModalQRCode modelo={qrModelo} projeto={projeto} onFechar={() => setQrModelo(null)} />}
     </div>
   );
 }

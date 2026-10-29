@@ -100,13 +100,15 @@ export function notificarUmaVez(chave, titulo, corpo, tag) {
 
 // ─── CORES WM ───────────────────────────────────────────────────────────────
 // Paleta do sistema (redesign 2026): marinho no menu, azul vivo para ações, fundo claro
+// As cores neutras são variáveis CSS (index.css) para o tema claro/escuro.
+// Cores de marca ficam em hexadecimal (são usadas com transparência, ex.: `${C.azulMedio}40`).
 export const C = {
   azulEscuro:"#0b2350", azulMedio:"#1565d8", azulClaro:"#3b82f6",
-  ciano:"#60a5fa", cinzaEscuro:"#0f1f3d", cinzaMedio:"#334866",
-  cinzaClaro:"#6b7a90", cinzaFundo:"#f3f6fb", cinzaCard:"#e6ecf4",
+  ciano:"#60a5fa", cinzaEscuro:"var(--c-texto, #0f1f3d)", cinzaMedio:"var(--c-texto2, #334866)",
+  cinzaClaro:"var(--c-sub, #6b7a90)", cinzaFundo:"var(--c-fundo, #f3f6fb)", cinzaCard:"var(--c-linha, #e6ecf4)",
   branco:"#ffffff", verde:"#16a34a", amarelo:"#f59e0b",
   vermelho:"#ef4444", laranja:"#f97316",
-  marinho:"#0a2557", borda:"#e6ecf4", texto:"#0f1f3d", sub:"#6b7a90",
+  marinho:"var(--c-titulo, #0a2557)", borda:"var(--c-linha, #e6ecf4)", texto:"var(--c-texto, #0f1f3d)", sub:"var(--c-sub, #6b7a90)",
   sombra:"0 1px 2px rgba(15,31,61,.04), 0 6px 20px rgba(15,31,61,.05)",
 };
 // Cores de cada tipo de projeto (selos)

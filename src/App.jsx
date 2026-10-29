@@ -66,6 +66,14 @@ export default function App(){
   // Menu lateral recolhido (só ícones) — a escolha fica guardada neste navegador
   const [menuRecolhido, setMenuRecolhido] = useState(() => { try { return localStorage.getItem("wm-menu-recolhido")==="1"; } catch { return false; } });
   const [dicaMenu, setDicaMenu] = useState(null);
+  // Tema claro/escuro — salvo neste navegador (aplicado antes do 1º desenho em main.jsx)
+  const [tema, setTema] = useState(() => (typeof document !== "undefined" && document.documentElement.dataset.tema === "escuro") ? "escuro" : "claro");
+  const alternarTema = () => setTema(t => {
+    const n = t === "escuro" ? "claro" : "escuro";
+    if (n === "escuro") document.documentElement.dataset.tema = "escuro"; else delete document.documentElement.dataset.tema;
+    try { localStorage.setItem("wm-tema", n); } catch { /* sem storage */ }
+    return n;
+  });
   const alternarMenu = () => setMenuRecolhido(r => { const n=!r; try { localStorage.setItem("wm-menu-recolhido", n?"1":"0"); } catch { /* sem storage */ } return n; });
   const mostrarDica = (e, texto) => {
     if (!menuRecolhido || window.innerWidth <= 1080) return;
@@ -1076,6 +1084,9 @@ export default function App(){
                   <Icone nome="play" tam={15}/><span className="wm-esconde-celular">Iniciar sessão</span></button>}
             <SinoNotificacoes central={central} push={push} user={user} usuarios={usuarios} projetos={projetos}
               onAbrir={abrirLembrete} onVerTarefas={()=>setAba("tarefas")} gestor={["admin","gestor"].includes(user.perfil)}/>
+            <button className="wm-icone-btn" onClick={alternarTema} title={tema==="escuro"?"Usar tema claro":"Usar tema escuro"} aria-label={tema==="escuro"?"Usar tema claro":"Usar tema escuro"} aria-pressed={tema==="escuro"}>
+              <Icone nome={tema==="escuro"?"sol":"lua"} tam={20}/>
+            </button>
             <button className="wm-icone-btn" onClick={()=>setAba("ajuda")} aria-label="Ajuda e tutoriais" style={aba==="ajuda"?{background:"#e9f1fd",color:C.azulMedio}:undefined}>
               <Icone nome="ajuda" tam={21}/><span className="wm-esconde-celular">Ajuda</span>
             </button>

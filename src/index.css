@@ -7,8 +7,46 @@
   --wm-texto: #0f1f3d;
   --wm-sub: #6b7a90;
   --wm-sidebar: 232px;
+  --wm-superficie: #ffffff;
+  --c-texto: #0f1f3d; --c-texto2: #334866; --c-sub: #6b7a90; --c-titulo: #0a2557;
+  --c-fundo: #f3f6fb; --c-linha: #e6ecf4;
   color-scheme: light;
 }
+/* ── Tema escuro ─────────────────────────────────────────────────────────── */
+html[data-tema="escuro"] {
+  --wm-marinho: #cfe0ff;
+  --wm-fundo: #0d1626;
+  --wm-borda: #2a3b57;
+  --wm-texto: #e6edf7;
+  --wm-sub: #95a3b8;
+  --wm-superficie: #16233a;
+  --c-texto: #e6edf7; --c-texto2: #c3cfe0; --c-sub: #95a3b8; --c-titulo: #dbe7ff;
+  --c-fundo: #1b2a44; --c-linha: #2a3b57;
+  color-scheme: dark;
+}
+/* Papel (prévias de PDF/relatórios) continua claro no tema escuro */
+html[data-tema="escuro"] :is(.wm-cmp-pagina, .wm-relatorio-doc, .wm-claro) {
+  --c-texto: #0f1f3d; --c-texto2: #334866; --c-sub: #6b7a90; --c-titulo: #0a2557;
+  --c-fundo: #f3f6fb; --c-linha: #e6ecf4; color-scheme: light;
+}
+html[data-tema="escuro"] .wm-topo { background: rgba(13,22,38,.92); }
+html[data-tema="escuro"] .wm-busca input { background: #1b2a44; color: var(--wm-texto); }
+html[data-tema="escuro"] .wm-icone-btn { color: #c3cfe0; }
+html[data-tema="escuro"] .wm-icone-btn:hover { background: #1b2a44; }
+html[data-tema="escuro"] .wm-sidebar { background: linear-gradient(180deg, #0a1b3d 0%, #08162f 55%, #061127 100%); }
+html[data-tema="escuro"] ::-webkit-scrollbar-thumb { background: #2f4161; background-clip: content-box; border: 2px solid transparent; }
+html[data-tema="escuro"] input::placeholder, html[data-tema="escuro"] textarea::placeholder { color: #6f7f97; }
+html[data-tema="escuro"] .wm-subabas-cheio { background: #16233a; }
+html[data-tema="escuro"] .wm-cab-tabela { background: #1b2a44 !important; }
+html[data-tema="escuro"] .wm-cab-tabela th { color: #95a3b8 !important; border-bottom-color: #2a3b57; }
+html[data-tema="escuro"] table tbody tr:hover { background: #1d2d48; }
+html[data-tema="escuro"] .wm-card-projeto:hover { border-color: #3b5a8c !important; box-shadow: 0 10px 28px rgba(0,0,0,.35) !important; }
+/* Obras e Orçamentos (páginas próprias, dentro de iframe): inversão com cores preservadas */
+html[data-tema="escuro"] .wm-frame { background: #0d1626; }
+html[data-tema="escuro"] .wm-frame iframe { filter: invert(.9) hue-rotate(180deg) brightness(.95); }
+html[data-tema="escuro"] img[src*="Logo_Escuro"], html[data-tema="escuro"] img[src*="Logo_Sem_Fundo"] { filter: brightness(0) invert(1); }
+html, body { transition: background-color .2s; }
+@media print { html[data-tema="escuro"] { --c-texto: #0f1f3d; --c-sub: #6b7a90; --c-titulo: #0a2557; --c-fundo: #f3f6fb; --c-linha: #e6ecf4; --wm-fundo:#fff; --wm-texto:#0f1f3d; color-scheme: light; } }
 * { box-sizing: border-box; }
 html, body, #root { margin: 0; min-height: 100%; }
 body {

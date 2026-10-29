@@ -793,7 +793,7 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}
               </div>
             )}
 
-            {modo!=="novo" && form.id && <ModelosDoProjeto projetoId={form.id}/>}
+            {modo!=="novo" && form.id && <ModelosDoProjeto projetoId={form.id} projeto={form}/>}
 
             {/* Progresso e obs do cliente */}
             <div style={{marginTop:20,display:"flex",flexDirection:"column",gap:12}}>

@@ -79,7 +79,7 @@ export function Configuracoes({usuarios,onSalvarUsuarios,usuarioAtual,onFoto}){
                   <div style={{fontSize:14,color:C.cinzaClaro}}>Somente 1 turno</div>
                 </div>
             }
-            <div style={{padding:"12px 16px",background:C.cinzaEscuro,borderRadius:10}}>
+            <div style={{padding:"12px 16px",background:C.azulEscuro,borderRadius:10}}>
               <div style={{fontSize:11,fontWeight:700,color:C.ciano,marginBottom:4}}>Meta Diária</div>
               <div style={{fontSize:22,fontWeight:800,color:C.branco}}>{calcHorasDia(eu.expediente)}h</div>
               <div style={{fontSize:10,color:"rgba(255,255,255,0.6)"}}>{labelModoExpediente(eu.expediente)||"por dia"}</div>
@@ -87,7 +87,7 @@ export function Configuracoes({usuarios,onSalvarUsuarios,usuarioAtual,onFoto}){
             <div style={{padding:"12px 16px",background:C.cinzaFundo,borderRadius:10,gridColumn:"1/-1"}}>
               <div style={{fontSize:11,fontWeight:700,color:C.cinzaEscuro,marginBottom:4}}>Especialidades</div>
               <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:4}}>
-                {(eu.especialidades||[]).map(e=><span key={e} style={{background:C.cinzaEscuro,color:C.ciano,padding:"2px 8px",borderRadius:4,fontSize:11,fontWeight:800}}>{e}</span>)}
+                {(eu.especialidades||[]).map(e=><span key={e} style={{background:C.azulEscuro,color:C.ciano,padding:"2px 8px",borderRadius:4,fontSize:11,fontWeight:800}}>{e}</span>)}
               </div>
             </div>
           </div>
@@ -255,7 +255,7 @@ export function Configuracoes({usuarios,onSalvarUsuarios,usuarioAtual,onFoto}){
                     ⏰ {labelExpediente(u.expediente)} ({calcHorasDia(u.expediente)}h/dia)
                     {u.expediente?.turno2?.ativo&&<span style={{marginLeft:6,fontSize:10,background:u.expediente.modo==="OU"?"#fff7ed":"#eff6ff",color:u.expediente.modo==="OU"?"#c2410c":C.azulMedio,padding:"1px 6px",borderRadius:4,fontWeight:700}}>{u.expediente.modo==="OU"?"OU":"E"}</span>}
                   </div>
-                  {(u.especialidades||[]).length>0&&<div style={{display:"flex",gap:4,marginTop:4,flexWrap:"wrap"}}>{(u.especialidades||[]).map(e=><span key={e} style={{background:C.cinzaEscuro,color:C.ciano,padding:"1px 6px",borderRadius:3,fontSize:9,fontWeight:800}}>{e}</span>)}</div>}
+                  {(u.especialidades||[]).length>0&&<div style={{display:"flex",gap:4,marginTop:4,flexWrap:"wrap"}}>{(u.especialidades||[]).map(e=><span key={e} style={{background:C.azulEscuro,color:C.ciano,padding:"1px 6px",borderRadius:3,fontSize:9,fontWeight:800}}>{e}</span>)}</div>}
               </div>
               <div style={{display:"flex",gap:8}}>
                 <Btn onClick={()=>{setForm({...u, expediente: expedienteParaDiaSemana(u.expediente)});setEditId(u.id);setShowForm(true);}} variant="ghost" small>✏</Btn>

@@ -5,6 +5,7 @@ import { Abas } from "../ui/ds.jsx";
 import Visualizador3D from "./Visualizador3D.jsx";
 import { modelosIfc, LIMITE_MB } from "./dados.js";
 import { DISCIPLINAS_MODELO } from "./categorias.js";
+import { ModalQRCode } from "./QRCodeModelo.jsx";
 
 const K = { mar: "#0a2557", azul: "#1565d8", tx: "#0f1f3d", sub: "#6b7a90", borda: "#e6ecf4", fundo: "#f3f6fb", verde: "#16a34a" };
 const inp = { width: "100%", boxSizing: "border-box", border: `1px solid ${K.borda}`, borderRadius: 10, padding: "9px 11px", fontSize: 13.5, fontFamily: "inherit", color: K.tx, background: "#fff", outline: "none" };
@@ -25,8 +26,9 @@ async function copiar(txt) {
   catch { const t = document.createElement("textarea"); t.value = txt; document.body.appendChild(t); t.select(); document.execCommand("copy"); t.remove(); return true; }
 }
 
-function CaixaLink({ modelo, onAlterar }) {
+function CaixaLink({ modelo, projeto, onAlterar }) {
   const [copiado, setCopiado] = useState(false);
+  const [qr, setQr] = useState(false);
   const [ocupado, setOcupado] = useState(false);
   const url = modelosIfc.linkCliente(modelo.token);
   const exec = async (campos) => { setOcupado(true); try { await onAlterar(modelo, campos); } finally { setOcupado(false); } };
@@ -45,7 +47,9 @@ function CaixaLink({ modelo, onAlterar }) {
         <a href={url} target="_blank" rel="noreferrer" style={{ ...btn("sec", { padding: "8px 10px", fontSize: 13 }), textDecoration: "none" }}><Icone nome="externo" tam={15} />Abrir</a>
         <a href={`https://wa.me/?text=${encodeURIComponent(`Olá! Segue o link para visualizar o modelo 3D do seu projeto (${modelo.nome}): ${url}`)}`} target="_blank" rel="noreferrer"
           style={{ ...btn("sec", { padding: "8px 10px", fontSize: 13 }), textDecoration: "none" }}>WhatsApp</a>
+        <button onClick={() => setQr(true)} title="Gerar QR code para colocar nas pranchas" style={btn("sec", { padding: "8px 10px", fontSize: 13 })}><Icone nome="qrcode" tam={15} />QR code</button>
       </div>
+      {qr && <ModalQRCode modelo={modelo} projeto={projeto} onFechar={() => setQr(false)} />}
       <button disabled={ocupado} onClick={() => { if (window.confirm("Gerar um novo link? O link enviado antes deixa de funcionar.")) exec({ novoToken: true }); }}
         style={btn("link", { fontSize: 12, marginTop: 6, padding: "4px 0", color: K.sub })}>Gerar novo link (invalida o anterior)</button>
     </div>
@@ -97,6 +101,7 @@ export function PaginaIFC({ projetos = [], usuarioAtual }) {
   const [aba, setAba] = useState("viz");
   const [carregados, setCarregados] = useState([]); // [{vizId, nome, arquivo?, salvo?}]
   const [salvos, setSalvos] = useState([]);
+  const [qrModelo, setQrModelo] = useState(null);
   const [listaErro, setListaErro] = useState("");
   const [carregandoLista, setCarregandoLista] = useState(true);
   const [filtroProj, setFiltroProj] = useState("");
@@ -179,7 +184,7 @@ export function PaginaIFC({ projetos = [], usuarioAtual }) {
               </div>
             </div>
             {item.salvo
-              ? <CaixaLink modelo={item.salvo} onAlterar={alterar} />
+              ? <CaixaLink modelo={item.salvo} projeto={projPorId[item.salvo.projetoId]} onAlterar={alterar} />
               : <FormSalvar item={item} projetos={projetos} usuarioAtual={usuarioAtual}
                   onSalvo={(vizId, salvo) => { setCarregados(c => c.map(x => (x.vizId === vizId ? { ...x, salvo } : x))); setSalvos(l => [salvo, ...l]); avisar("Modelo salvo no projeto. O link do cliente está pronto."); }} />}
           </div>
@@ -269,6 +274,7 @@ export function PaginaIFC({ projetos = [], usuarioAtual }) {
                     <button onClick={() => abrirSalvo(m, true)} disabled={!carregados.length} title="Sobrepor ao modelo aberto" style={btn("sec", { padding: "7px 10px", fontSize: 13, opacity: carregados.length ? 1 : 0.5 })}>Sobrepor</button>
                     <button onClick={async () => { await copiar(modelosIfc.linkCliente(m.token)); avisar("Link copiado."); }} disabled={!m.linkAtivo} title="Copiar link do cliente"
                       style={btn("sec", { padding: "7px 10px", opacity: m.linkAtivo ? 1 : 0.5 })}><Icone nome="link" tam={15} /></button>
+                    <button onClick={() => setQrModelo(m)} title="QR code para as pranchas" style={btn("sec", { padding: "7px 10px" })}><Icone nome="qrcode" tam={15} /></button>
                     <button onClick={() => alterar(m, { linkAtivo: !m.linkAtivo })} title={m.linkAtivo ? "Desativar link" : "Ativar link"} style={btn("sec", { padding: "7px 10px" })}><Icone nome={m.linkAtivo ? "olhoFechado" : "olho"} tam={15} /></button>
                     <button onClick={() => excluir(m)} title="Excluir" style={btn("sec", { padding: "7px 10px", color: "#e11d48" })}><Icone nome="lixeira" tam={15} /></button>
                   </div>
@@ -278,6 +284,7 @@ export function PaginaIFC({ projetos = [], usuarioAtual }) {
           ))}
         </div>
       )}
+      {qrModelo && <ModalQRCode modelo={qrModelo} projeto={projPorId[qrModelo.projetoId]} onFechar={() => setQrModelo(null)} />}
       <style>{"@media (max-width: 760px){ .wm-ifc-linha{ grid-template-columns: 1fr !important; } }"}</style>
     </div>
   );
