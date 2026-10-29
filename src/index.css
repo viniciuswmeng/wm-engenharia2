@@ -60,6 +60,36 @@ input:focus, select:focus, textarea:focus {
 .wm-nav-item.ativo { background: var(--wm-azul); color: #fff; font-weight: 600; box-shadow: 0 6px 16px rgba(21,101,216,.35); }
 .wm-nav-rodape { flex: none; margin-top: auto; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.12); display: flex; flex-direction: column; gap: 4px; }
 .wm-coluna { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+/* Menu recolhido: só ícones (telas largas) */
+.wm-sidebar { transition: width .2s ease, padding .2s ease; }
+.wm-logo { position: relative; }
+.wm-logo .wm-logo-icone { display: none; }
+.wm-recolher {
+  position: fixed; top: 74px; left: calc(var(--wm-sidebar) - 13px); width: 26px; height: 26px; border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.25); background: #123a7d; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,.25); z-index: 310; padding: 0; transition: background .15s, left .2s ease;
+}
+.wm-recolher:hover { background: var(--wm-azul); }
+.wm-recolher svg { transform: rotate(90deg); transition: transform .2s; }
+.wm-shell.menu-recolhido .wm-recolher svg { transform: rotate(-90deg); }
+@media (min-width: 1081px) {
+  .wm-shell.menu-recolhido .wm-recolher { left: 63px; }
+  .wm-shell.menu-recolhido .wm-sidebar { width: 76px; padding: 22px 10px 16px; }
+  .wm-shell.menu-recolhido .wm-logo { padding: 6px 0 28px; }
+  .wm-shell.menu-recolhido .wm-logo-cheio { display: none; }
+  .wm-shell.menu-recolhido .wm-logo-icone { display: block; width: 46px; height: auto; }
+  .wm-shell.menu-recolhido .wm-nav-item { justify-content: center; padding: 11px 0; gap: 0; }
+  .wm-shell.menu-recolhido .wm-nav-item > span { display: none !important; }
+  .wm-shell.menu-recolhido .wm-nav { overflow-x: visible; }
+}
+@media (max-width: 1080px) { .wm-recolher { display: none; } }
+/* Rótulo flutuante ao passar o mouse no menu recolhido */
+.wm-dica-menu {
+  position: fixed; z-index: 1000; pointer-events: none; background: #0a2252; color: #fff; font-size: 13px; font-weight: 600;
+  padding: 7px 11px; border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,.25); white-space: nowrap; transform: translateY(-50%);
+}
+.wm-dica-menu::before { content: ""; position: absolute; left: -5px; top: 50%; margin-top: -5px; border: 5px solid transparent; border-left: 0; border-right-color: #0a2252; }
+
 .wm-topo {
   position: sticky; top: 0; z-index: 200; background: rgba(255,255,255,.92); backdrop-filter: saturate(1.4) blur(8px);
   border-bottom: 1px solid var(--wm-borda); height: 68px; display: flex; align-items: center; gap: 14px; padding: 0 24px;

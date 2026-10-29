@@ -63,6 +63,15 @@ export default function App(){
   const [pwaPrompt,   setPwaPrompt]   = useState(null);
   const [pwaInstalado,setPwaInstalado]= useState(false);
   const [menuAberto,  setMenuAberto]  = useState(false);
+  // Menu lateral recolhido (só ícones) — a escolha fica guardada neste navegador
+  const [menuRecolhido, setMenuRecolhido] = useState(() => { try { return localStorage.getItem("wm-menu-recolhido")==="1"; } catch { return false; } });
+  const [dicaMenu, setDicaMenu] = useState(null);
+  const alternarMenu = () => setMenuRecolhido(r => { const n=!r; try { localStorage.setItem("wm-menu-recolhido", n?"1":"0"); } catch { /* sem storage */ } return n; });
+  const mostrarDica = (e, texto) => {
+    if (!menuRecolhido || window.innerWidth <= 1080) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    setDicaMenu({ texto, top: r.top + r.height/2, left: r.right + 12 });
+  };
   useEffect(()=>{
     const handler = (e) => { e.preventDefault(); setPwaPrompt(e); };
     window.addEventListener('beforeinstallprompt', handler);
@@ -1013,15 +1022,16 @@ export default function App(){
   );
 
   return(
-    <div className={"wm-shell"+(menuAberto?" menu-aberto":"")}>
+    <div className={"wm-shell"+(menuAberto?" menu-aberto":"")+(menuRecolhido?" menu-recolhido":"")}>
       <div className="wm-fundo-menu" onClick={()=>setMenuAberto(false)}/>
       {/* ── MENU LATERAL ── */}
-      <aside className="wm-sidebar" aria-label="Menu principal">
-        <div className="wm-logo"><img src="/Logo_Branco.png" alt="WM Engenharia"/></div>
+      <aside className="wm-sidebar" aria-label="Menu principal" onMouseLeave={()=>setDicaMenu(null)}>
+        <div className="wm-logo"><img className="wm-logo-cheio" src="/Logo_Branco.png" alt="WM Engenharia"/><img className="wm-logo-icone" src="/Logo_Icone.png" alt="WM Engenharia"/></div>
         <nav className="wm-nav">
           {itensMenu.map(a=>{
             const ativo = a.grupoMenu ? grupoDaAba(aba)===a.grupoMenu : aba===a.id;
-            return <button key={a.id} className={"wm-nav-item"+(ativo?" ativo":"")} aria-current={ativo?"page":undefined}
+            return <button key={a.id} className={"wm-nav-item"+(ativo?" ativo":"")} aria-current={ativo?"page":undefined} aria-label={a.label}
+              onMouseEnter={e=>mostrarDica(e,a.label)} onMouseLeave={()=>setDicaMenu(null)}
               onClick={()=>{setAba(a.grupoMenu ? (abasMenu.some(x=>x.id===ultimaSub[a.grupoMenu]) ? ultimaSub[a.grupoMenu] : abasMenu.find(x=>x.menu===a.grupoMenu).id) : a.id);setMenuAberto(false);}}>
               <Icone nome={a.icone} tam={21}/>{a.linhas
                 ? <span style={{display:"flex",flexDirection:"column",lineHeight:1.15}}><span>{a.linhas[0]}</span><span style={{fontSize:"0.82em",fontWeight:500,opacity:.85}}>{a.linhas[1]}</span></span>
@@ -1031,15 +1041,20 @@ export default function App(){
         </nav>
         <div className="wm-nav-rodape">
           {abasMenu.filter(a=>a.grupo==="config"&&a.id!=="ajuda").map(a=>(
-            <button key={a.id} className={"wm-nav-item"+(aba===a.id?" ativo":"")} onClick={()=>{setAba(a.id);setMenuAberto(false);}}>
+            <button key={a.id} className={"wm-nav-item"+(aba===a.id?" ativo":"")} aria-label={a.label} onMouseEnter={e=>mostrarDica(e,a.label)} onMouseLeave={()=>setDicaMenu(null)} onClick={()=>{setAba(a.id);setMenuAberto(false);}}>
               <Icone nome={a.icone} tam={21}/><span>{a.label}</span>
             </button>
           ))}
-          <button className="wm-nav-item" onClick={()=>{if(window.confirm("Sair do sistema?"))fazerLogout();}}>
+          <button className="wm-nav-item" aria-label="Sair" onMouseEnter={e=>mostrarDica(e,"Sair")} onMouseLeave={()=>setDicaMenu(null)} onClick={()=>{if(window.confirm("Sair do sistema?"))fazerLogout();}}>
             <Icone nome="sair" tam={21}/><span>Sair</span>
           </button>
         </div>
       </aside>
+      <button type="button" className="wm-recolher" onClick={()=>{alternarMenu();setDicaMenu(null);}}
+        title={menuRecolhido?"Expandir menu":"Recolher menu"} aria-label={menuRecolhido?"Expandir menu":"Recolher menu"} aria-expanded={!menuRecolhido}>
+        <Icone nome="seta" tam={15} traco={2.5}/>
+      </button>
+      {dicaMenu&&<div className="wm-dica-menu" style={{top:dicaMenu.top,left:dicaMenu.left}} role="tooltip">{dicaMenu.texto}</div>}
 
       <div className="wm-coluna">
         {/* ── BARRA SUPERIOR ── */}
