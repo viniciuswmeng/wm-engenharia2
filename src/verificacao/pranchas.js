@@ -123,18 +123,20 @@ export function resumoListaParaIA(lista) {
 const esperar = ms => new Promise(r => setTimeout(r, ms));
 export async function analisarComIA(pg, { token, contexto, total, aoEsperar }) {
   let r, j = {};
-  // Cota por minuto (429) ou Gemini sobrecarregado (503): espera e tenta de novo (até 3 vezes)
-  for (let tentativa = 0; tentativa < 4; tentativa++) {
+  // Limite por minuto (429), sobrecarga (503) ou demora (504): espera e tenta de novo; a cada tentativa
+  // o servidor usa outro modelo gratuito do Gemini.
+  for (let tentativa = 0; tentativa < 5; tentativa++) {
     r = await fetch("/api/verificar-prancha", {
       method: "POST",
       headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-      body: JSON.stringify({ imagem: pg.imagem, texto: pg.texto, pagina: pg.n, totalPaginas: total, arquivo: pg.arquivo, disciplina: "Hidrossanitário", contexto }),
+      body: JSON.stringify({ imagem: pg.imagem, texto: pg.texto, pagina: pg.n, totalPaginas: total, arquivo: pg.arquivo, disciplina: "Hidrossanitário", contexto, tentativa }),
     });
-    j = {}; try { j = await r.json(); } catch { /* resposta vazia */ }
-    if ((r.status !== 429 && r.status !== 503) || tentativa === 3) break;
-    const s = 20 * (tentativa + 1); aoEsperar?.(s, r.status); await esperar(s * 1000);
+    j = {}; try { j = await r.json(); } catch { /* resposta vazia (tempo esgotado na Vercel) */ }
+    if (![429, 503, 504].includes(r.status) || tentativa === 4) break;
+    const s = r.status === 429 ? 20 * (tentativa + 1) : 5; aoEsperar?.(s, r.status); await esperar(s * 1000);
   }
   if (r.status === 404) { const e = new Error("O serviço de IA não está disponível neste endereço (rode pela Vercel ou com `vercel dev`)."); e.codigo = "indisponivel"; throw e; }
+  if (r.status === 504 && !j.erro) { const e = new Error("A IA demorou demais para responder, mesmo depois de várias tentativas. Tente de novo mais tarde."); throw e; }
   if (!r.ok) { const e = new Error(j.erro || `Erro ${r.status} na análise por IA`); e.codigo = j.codigo; throw e; }
   let seq = 0;
   return {

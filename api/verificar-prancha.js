@@ -6,7 +6,7 @@
 //   PROVEDOR_IA = "gemini" | "anthropic" escolhe quando as duas chaves existem (padrão: gemini).
 // Só aceita chamadas de usuários logados no sistema (token de sessão do Supabase).
 
-export const config = { maxDuration: 120 };
+export const config = { maxDuration: 60 };
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY;
@@ -101,44 +101,36 @@ function esquemaGemini(sch) {
 
 const falha = (msg, status) => Object.assign(new Error(msg), { status });
 
-const esperar = ms => new Promise(r => setTimeout(r, ms));
-
-async function geminiUmModelo(modelo, chave, corpo) {
-  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelo)}:generateContent`, {
-    method: "POST", headers: { "content-type": "application/json", "x-goog-api-key": chave }, body: JSON.stringify(corpo),
-  });
-  const j = await r.json().catch(() => ({}));
-  return { r, j };
-}
-
-async function chamarGemini(chave, sistema, imagem, texto) {
+// Uma chamada por pedido, com limite de tempo: quem faz as novas tentativas (e troca de modelo) é o navegador,
+// para nunca estourar o tempo máximo da função na Vercel.
+async function chamarGemini(chave, sistema, imagem, texto, tentativa = 0) {
+  const modelo = MODELOS_GEMINI[Math.min(tentativa, MODELOS_GEMINI.length - 1)];
   const partes = [];
   if (imagem) partes.push({ inline_data: { mime_type: "image/jpeg", data: imagem } });
   partes.push({ text: texto });
-  const corpo = {
-    systemInstruction: { parts: [{ text: sistema }] },
-    contents: [{ role: "user", parts: partes }],
-    generationConfig: { temperature: 0.2, maxOutputTokens: 8000, responseMimeType: "application/json", responseSchema: esquemaGemini(FERRAMENTA.input_schema) },
-  };
-  let ultimo = null;
-  // Sobrecarga (503/500): tenta o mesmo modelo de novo e depois os próximos modelos gratuitos
-  for (const modelo of MODELOS_GEMINI) {
-    for (let t = 0; t < 2; t++) {
-      const { r, j } = await geminiUmModelo(modelo, chave, corpo);
-      if (r.ok) {
-        const txt = (j.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
-        try { return { dados: JSON.parse(txt), modelo, tokens: j.usageMetadata || null }; }
-        catch { ultimo = falha("O Gemini devolveu uma resposta fora do formato esperado.", 502); break; }
-      }
-      ultimo = { status: r.status, msg: j?.error?.message || "erro desconhecido" };
-      if (r.status === 404 || r.status === 429) break;          // modelo indisponível ou cota deste modelo: vai para o próximo
-      if (r.status !== 503 && r.status !== 500) throw falha(`O Gemini recusou a análise (${r.status}): ${ultimo.msg}`, 502);
-      await esperar(2500 * (t + 1));
-    }
-  }
-  if (ultimo instanceof Error) throw ultimo;
-  if (ultimo?.status === 429) throw falha("Limite gratuito do Gemini atingido (pedidos por minuto ou por dia). Aguarde um pouco e tente de novo.", 429);
-  throw falha("Os modelos gratuitos do Gemini estão sobrecarregados agora. O sistema vai tentar de novo em instantes.", 503);
+  const ctl = new AbortController(); const tempo = setTimeout(() => ctl.abort(), 50000);
+  let r, j;
+  try {
+    r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelo)}:generateContent`, {
+      method: "POST", signal: ctl.signal,
+      headers: { "content-type": "application/json", "x-goog-api-key": chave },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: sistema }] },
+        contents: [{ role: "user", parts: partes }],
+        generationConfig: { temperature: 0.2, maxOutputTokens: 6000, responseMimeType: "application/json", responseSchema: esquemaGemini(FERRAMENTA.input_schema) },
+      }),
+    });
+    j = await r.json().catch(() => ({}));
+  } catch (e) {
+    if (e.name === "AbortError") throw Object.assign(falha(`O Gemini (${modelo}) demorou demais para responder.`, 504), { tentar: true });
+    throw e;
+  } finally { clearTimeout(tempo); }
+  if (r.status === 429) throw Object.assign(falha("Limite gratuito do Gemini atingido (pedidos por minuto ou por dia). Aguarde um pouco e tente de novo.", 429), { tentar: true });
+  if ([500, 503, 404].includes(r.status)) throw Object.assign(falha(`O Gemini (${modelo}) está sobrecarregado ou indisponível agora.`, 503), { tentar: true });
+  if (!r.ok) throw falha(`O Gemini recusou a análise (${r.status}): ${j?.error?.message || "erro desconhecido"}`, 502);
+  const txt = (j.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
+  try { return { dados: JSON.parse(txt), modelo, tokens: j.usageMetadata || null }; }
+  catch { throw Object.assign(falha("O Gemini devolveu uma resposta incompleta.", 503), { tentar: true }); }
 }
 
 async function chamarClaude(chave, sistema, imagem, texto) {
@@ -163,7 +155,7 @@ export default async function handler(req, res) {
   const u = await usuarioLogado(req).catch(() => null);
   if (!u) return res.status(401).json({ erro: "Sessão expirada. Entre novamente no sistema." });
 
-  const { imagem, texto = "", pagina = 1, totalPaginas = 1, arquivo = "", disciplina = "Hidrossanitário", contexto = {} } = req.body || {};
+  const { imagem, texto = "", pagina = 1, totalPaginas = 1, arquivo = "", disciplina = "Hidrossanitário", contexto = {}, tentativa = 0 } = req.body || {};
   if (!imagem && !texto) return res.status(400).json({ erro: "Prancha sem imagem e sem texto." });
 
   const sistema = `Você é um engenheiro civil revisor de projetos (compatibilização e conformidade com as normas ABNT) do escritório WM Engenharia Integrada.
@@ -182,10 +174,10 @@ Checklist de referência:${CHECKLIST[disciplina] || CHECKLIST["Hidrossanitário"
     contexto.modelo && `Resumo do modelo IFC: ${contexto.modelo}`,
   ].filter(Boolean).join("\n");
   const img = imagem ? String(imagem).replace(/^data:image\/\w+;base64,/, "") : null;
-  const textoUsuario = `Arquivo: ${arquivo} — página ${pagina} de ${totalPaginas}.\n${ctx}\n\nTexto extraído do PDF desta página (pode estar fora de ordem):\n"""\n${String(texto).slice(0, 18000)}\n"""\n\nRevise a prancha e devolva o resultado no formato pedido.`;
+  const textoUsuario = `Arquivo: ${arquivo} — página ${pagina} de ${totalPaginas}.\n${ctx}\n\nTexto extraído do PDF desta página (pode estar fora de ordem):\n"""\n${String(texto).slice(0, 12000)}\n"""\n\nRevise a prancha e devolva o resultado no formato pedido.`;
 
   try {
-    const r = prov.nome === "gemini" ? await chamarGemini(prov.chave, sistema, img, textoUsuario) : await chamarClaude(prov.chave, sistema, img, textoUsuario);
+    const r = prov.nome === "gemini" ? await chamarGemini(prov.chave, sistema, img, textoUsuario, Number(tentativa) || 0) : await chamarClaude(prov.chave, sistema, img, textoUsuario);
     const d = r.dados || {};
     return res.status(200).json({
       resumo: d.resumo || "", carimbo: d.carimbo || {},
@@ -193,6 +185,6 @@ Checklist de referência:${CHECKLIST[disciplina] || CHECKLIST["Hidrossanitário"
       provedor: prov.nome, modelo: r.modelo, tokens: r.tokens,
     });
   } catch (e) {
-    return res.status(e.status || 500).json({ erro: e.status ? e.message : `Falha ao chamar a IA: ${e.message}`, codigo: e.status === 429 ? "limite" : undefined });
+    return res.status(e.status || 500).json({ erro: e.status ? e.message : `Falha ao chamar a IA: ${e.message}`, codigo: e.status === 429 ? "limite" : e.tentar ? "tentar" : undefined });
   }
 }
