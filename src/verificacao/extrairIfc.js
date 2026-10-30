@@ -16,12 +16,12 @@ const TIPOS = {
 };
 const TODOS = Object.values(TIPOS).flat();
 
-const v = x => (x && typeof x === "object" && "value" in x ? x.value : x);
-const txt = x => textoIFC(v(x) ?? "");
-const num = x => { const n = typeof x === "number" ? x : parseFloat(String(x ?? "").replace(",", ".")); return Number.isFinite(n) ? n : null; };
+export const v = x => (x && typeof x === "object" && "value" in x ? x.value : x);
+export const txt = x => textoIFC(v(x) ?? "");
+export const num = x => { const n = typeof x === "number" ? x : parseFloat(String(x ?? "").replace(",", ".")); return Number.isFinite(n) ? n : null; };
 
 // Propriedades achatadas: { "pset.nome": valor, "nome": valor }
-async function propriedades(api, mid, eid) {
+export async function propriedades(api, mid, eid) {
   const out = {};
   const ler = ps => {
     const pn = norm(txt(ps?.Name));
@@ -41,7 +41,7 @@ async function propriedades(api, mid, eid) {
   return out;
 }
 
-async function materiais(api, mid, eid) {
+export async function materiais(api, mid, eid) {
   const nomes = new Set();
   const varrer = (o, d = 0) => {
     if (!o || typeof o !== "object" || d > 6) return;
@@ -54,7 +54,7 @@ async function materiais(api, mid, eid) {
 }
 
 // Primeiro valor numérico entre as chaves candidatas (aceita "25 mm")
-function prop(p, re) {
+export function prop(p, re) {
   for (const [k, val] of Object.entries(p)) {
     if (!re.test(k)) continue;
     const n = typeof val === "number" ? val : diametroDoTexto(val) ?? num(val);
@@ -62,11 +62,11 @@ function prop(p, re) {
   }
   return null;
 }
-const emMm = d => d == null ? null : d < 1 ? d * 1000 : d;          // m → mm
-const emM = l => l == null ? null : l > 60 ? l / 1000 : l;           // mm → m
+export const emMm = d => d == null ? null : d < 1 ? d * 1000 : d;          // m → mm
+export const emM = l => l == null ? null : l > 60 ? l / 1000 : l;           // mm → m
 
 // Eixo principal dos vértices (método da potência na covariância) → comprimento, declividade e raio médio
-function geometria(pts) {
+export function geometria(pts) {
   const n = pts.length / 3; if (!n) return null;
   let cx = 0, cy = 0, cz = 0;
   const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];

@@ -2,6 +2,7 @@
 import { Titulo, PaginasTimbradas } from "../comparativo/Timbrado.jsx";
 import { D } from "../comparativo/estilo.js";
 import { GRAVIDADES, ORIGENS, SISTEMAS, NORMAS, STATUS } from "./regras.js";
+import { SISTEMAS_E, NORMAS_ELETRICA } from "./regrasEletrica.js";
 import TrechoPlanilha from "./TrechoPlanilha.jsx";
 
 const th = { padding: "5px 7px", fontSize: 9, fontWeight: 700, color: "#fff", background: D.mar, textAlign: "right", whiteSpace: "nowrap" };
@@ -15,6 +16,7 @@ export default function RelatorioVerificacao({ resultado, avaliacoes, opcoes }) 
     .filter(a => opcoes.aceitos || avaliacoes[a.id]?.status !== "aceito")
     .sort((a, b) => GRAVIDADES[a.gravidade].ordem - GRAVIDADES[b.gravidade].ordem);
   const cont = g => apontamentos.filter(a => a.gravidade === g).length;
+  const eletrica = info.disciplina === "Elétrico";
   const blocos = [];
 
   blocos.push(
@@ -62,7 +64,7 @@ export default function RelatorioVerificacao({ resultado, avaliacoes, opcoes }) 
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 10.5, fontWeight: 800, color: D.mar, lineHeight: 1.35 }}>{a.titulo}</div>
             <div style={{ fontSize: 8.5, color: D.sub, marginTop: 1 }}>
-              <b style={{ color: G.cor }}>{G.rot}</b> · {ORIGENS[a.origem]?.rot}{a.ia ? " (IA)" : ""}{a.sistema && SISTEMAS[a.sistema] && a.sistema !== "??" ? ` · ${SISTEMAS[a.sistema].nome}` : ""}{a.norma ? ` · ${a.norma}` : ""}{a.prancha ? ` · ${a.prancha}` : ""}{a.local ? ` · ${a.local}` : ""}
+              <b style={{ color: G.cor }}>{G.rot}</b> · {ORIGENS[a.origem]?.rot}{a.ia ? " (IA)" : ""}{a.sistema && a.sistema !== "??" && (SISTEMAS[a.sistema] || SISTEMAS_E[a.sistema]) ? ` · ${(SISTEMAS[a.sistema] || SISTEMAS_E[a.sistema]).nome}` : ""}{a.norma ? ` · ${a.norma}` : ""}{a.prancha ? ` · ${a.prancha}` : ""}{a.local ? ` · ${a.local}` : ""}
             </div>
             <div style={{ fontSize: 9.5, color: D.tx, marginTop: 3, lineHeight: 1.45 }}>{a.descricao}</div>
             {a.sugestao && <div style={{ fontSize: 9.5, color: D.tx, marginTop: 2 }}><b>Ação: </b>{a.sugestao}</div>}
@@ -83,10 +85,10 @@ export default function RelatorioVerificacao({ resultado, avaliacoes, opcoes }) 
   });
 
   if (opcoes.cruzamento && cruzamento?.tabela?.length) {
-    const linhas = cruzamento.tabela.filter(t => t.tipo === "tubo");
+    const linhas = cruzamento.tabela.filter(t => t.tipo === "tubo" || t.tipo === "comprimento");
     if (linhas.length) blocos.push(
       <div key="cruz">
-        <Titulo sub="comprimento de tubos por sistema e diâmetro">Modelo IFC × lista de materiais</Titulo>
+        <Titulo sub={eletrica ? "comprimento de eletrodutos e cabos" : "comprimento de tubos por sistema e diâmetro"}>Modelo IFC × lista de materiais</Titulo>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead><tr><th style={{ ...th, textAlign: "left", borderTopLeftRadius: 6 }}>Item</th><th style={th}>Modelo (m)</th><th style={th}>Lista (m)</th><th style={th}>Diferença</th><th style={{ ...th, borderTopRightRadius: 6 }}>%</th></tr></thead>
           <tbody>{linhas.map((t, i) => {
@@ -105,9 +107,12 @@ export default function RelatorioVerificacao({ resultado, avaliacoes, opcoes }) 
     <div key="prem">
       <Titulo>Critérios e limitações</Titulo>
       <ul style={{ margin: 0, paddingLeft: 16, fontSize: 9.5, color: D.sub, lineHeight: 1.65 }}>
-        <li>Normas de referência: {Object.values(NORMAS).join("; ")}.</li>
+        <li>Normas de referência: {Object.values(eletrica ? NORMAS_ELETRICA : NORMAS).join("; ")}.</li>
         <li>Declividades e comprimentos lidos das propriedades do IFC ou, na falta delas, calculados pela geometria dos tubos. Associação aparelho–tubo pelas conexões do IFC ou, quando o arquivo não as traz, pela proximidade (indicado em cada apontamento).</li>
-        <li>Pressões estimadas pela diferença de cota entre o reservatório superior e os pontos de utilização, sem perdas de carga: servem como alerta, não substituem o memorial de cálculo.</li>
+        {eletrica ? <>
+          <li>Quantidade mínima de tomadas e pontos de luz conferida por cômodo, com os ambientes (IfcSpace) do IFC; área e perímetro lidos das propriedades ou, na falta delas, estimados pela caixa envolvente do ambiente.</li>
+          <li>Coordenação disjuntor × condutor verificada com a capacidade de condução do método B1, 2 condutores carregados, 30 °C (Tabela 36), sem fatores de agrupamento: serve como alerta, não substitui o dimensionamento.</li>
+        </> : <li>Pressões estimadas pela diferença de cota entre o reservatório superior e os pontos de utilização, sem perdas de carga: servem como alerta, não substituem o memorial de cálculo.</li>}
         {resultado.usouIA && <li>Apontamentos marcados “(IA)” foram gerados por análise automática das pranchas e devem ser confirmados pelo projetista.</li>}
         <li>Esta verificação é uma ferramenta de apoio à revisão e não substitui a análise do responsável técnico.</li>
       </ul>

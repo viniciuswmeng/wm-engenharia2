@@ -75,6 +75,7 @@ export function criarVisualizador(el, { onSelecionar, onCaminharMudou } = {}) {
   let selecionado = null;
   let origem = null;
   const matSel = new THREE.MeshLambertMaterial({ color: COR_SELECAO, emissive: 0x0b5d2a, side: THREE.DoubleSide });
+  let extras = [];
   const matFoco = new THREE.MeshLambertMaterial({ color: 0xe11d48, emissive: 0x7f1d1d, side: THREE.DoubleSide });
   const matFantasma = new THREE.MeshLambertMaterial({ color: 0x9aa8bd, transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide });
 
@@ -437,18 +438,26 @@ export function criarVisualizador(el, { onSelecionar, onCaminharMudou } = {}) {
     capturar() { renderer.render(scene, camera); return renderer.domElement.toDataURL("image/png"); },
     // Destaca elementos (Map modeloId → Set de expressIDs) em vermelho, esmaece o entorno e enquadra.
     // Usado pela Verificação de projetos para gerar as imagens dos apontamentos.
-    focar(alvos, { contexto = 2.5, vista = "iso" } = {}) {
+    focar(alvos, { contexto = 2.5, vista = "iso", caixas = [] } = {}) {
       const box = new THREE.Box3();
+      // contornos extras (ex.: o cômodo do apontamento), em coordenadas do IFC
+      extras.forEach(h => { scene.remove(h); h.geometry?.dispose?.(); }); extras = [];
+      if (origem) caixas.forEach(({ min, max }) => {
+        const b = new THREE.Box3(new THREE.Vector3(min[0] - origem[0], min[1] - origem[1], min[2] - origem[2]), new THREE.Vector3(max[0] - origem[0], max[1] - origem[1], max[2] - origem[2]));
+        const h = new THREE.Box3Helper(b, 0xe11d48); scene.add(h); extras.push(h); box.union(b);
+      });
       modelos.forEach((m, id) => m.meshes.forEach(x => {
         x.userData.foco = !!alvos.get(id)?.has(x.userData.eid);
         if (x.userData.foco) { if (!x.geometry.boundingBox) x.geometry.computeBoundingBox(); box.union(x.geometry.boundingBox); }
       }));
       if (box.isEmpty()) return false;
       const ctx = box.clone().expandByScalar(contexto);
+      const temAlvo = [...alvos.values()].some(x => x.size);
       modelos.forEach(m => m.meshes.forEach(x => {
         const u = x.userData;
         if (!x.geometry.boundingBox) x.geometry.computeBoundingBox();
         if (u.foco) { x.material = matFoco; x.visible = true; }
+        else if (!temAlvo && ctx.containsBox(x.geometry.boundingBox)) { x.material = matFantasma; x.visible = u.categoria !== "Ambientes"; }
         else { x.material = matFantasma; x.visible = u.categoria !== "Ambientes" && x.geometry.boundingBox.intersectsBox(ctx); }
       }));
       const c = box.getCenter(new THREE.Vector3()), sz = box.getSize(new THREE.Vector3());
@@ -465,6 +474,7 @@ export function criarVisualizador(el, { onSelecionar, onCaminharMudou } = {}) {
       return true;
     },
     limparFoco() {
+      extras.forEach(h => { scene.remove(h); h.geometry?.dispose?.(); }); extras = [];
       modelos.forEach(m => m.meshes.forEach(x => { x.userData.foco = false; x.material = x.userData.matBase; }));
       grade.visible = true; renderer.setClearColor(0x000000, 0); aplicarFiltros();
     },

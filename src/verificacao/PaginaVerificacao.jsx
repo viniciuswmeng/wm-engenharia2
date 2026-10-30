@@ -12,6 +12,10 @@ import { extrairIfc } from "./extrairIfc.js";
 import { verificarHidroIfc, quantitativosIfc } from "./motorHidro.js";
 import { lerLista, verificarLista, cruzarIfcLista } from "./lista.js";
 import { lerPranchas, verificarTextoPrancha, resumoListaParaIA, analisarComIA } from "./pranchas.js";
+import { extrairIfcEletrica } from "./extrairIfcEletrica.js";
+import { verificarEletricaIfc, quantitativosEletrica } from "./motorEletrica.js";
+import { lerListaEletrica, verificarListaEletrica, cruzarEletrica, verificarGlobalEletrica } from "./listaEletrica.js";
+import { SISTEMAS_E } from "./regrasEletrica.js";
 import RelatorioVerificacao from "./RelatorioVerificacao.jsx";
 import TrechoPlanilha from "./TrechoPlanilha.jsx";
 import { capturarIfc, recortarPrancha } from "./capturas.js";
@@ -30,7 +34,7 @@ const fmtTam = b => b > 1048576 ? `${fmt(b / 1048576)} MB` : `${Math.max(1, Math
 
 const DISCIPLINAS = [
   { id: "hidro", label: "Hidrossanitário", ativo: true },
-  { id: "eletrica", label: "Elétrico", ativo: false },
+  { id: "eletrica", label: "Elétrico", ativo: true },
   { id: "estrutura", label: "Estrutural", ativo: false },
   { id: "arquitetura", label: "Arquitetônico", ativo: false },
 ];
@@ -83,7 +87,7 @@ function CartaoApontamento({ a, av, onAvaliar, planilha }) {
             <span style={{ fontSize: 14, fontWeight: 700, color: K.mar }}>{a.titulo}</span>
           </span>
           <span style={{ display: "block", fontSize: 12, color: K.sub, marginTop: 3 }}>
-            {ORIGENS[a.origem]?.rot}{a.ia ? " · IA" : ""}{a.sistema && a.sistema !== "??" && SISTEMAS[a.sistema] ? ` · ${SISTEMAS[a.sistema].nome}` : ""}{a.norma ? ` · ${a.norma}` : ""}{a.prancha ? ` · ${a.prancha}` : ""}{a.modelo ? ` · ${a.modelo}` : ""}
+            {ORIGENS[a.origem]?.rot}{a.ia ? " · IA" : ""}{a.sistema && a.sistema !== "??" && (SISTEMAS[a.sistema] || SISTEMAS_E[a.sistema]) ? ` · ${(SISTEMAS[a.sistema] || SISTEMAS_E[a.sistema]).nome}` : ""}{a.norma ? ` · ${a.norma}` : ""}{a.prancha ? ` · ${a.prancha}` : ""}{a.modelo ? ` · ${a.modelo}` : ""}
           </span>
         </span>
         {st !== "pendente" && <span style={{ fontSize: 11.5, fontWeight: 700, color: STATUS[st].cor, whiteSpace: "nowrap" }}>{STATUS[st].rot}</span>}
@@ -104,13 +108,14 @@ function CartaoApontamento({ a, av, onAvaliar, planilha }) {
           {a.elementos?.length > 0 && (
             <div style={{ overflowX: "auto", border: `1px solid ${K.borda}`, borderRadius: 10, margin: "8px 0" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                <thead><tr style={{ background: "#f6f8fc" }}>{["Elemento / item", "Pavimento", "DN", "Decliv.", "Compr./qtd"].map(h => <th key={h} style={{ textAlign: "left", padding: "6px 8px", fontSize: 11, color: K.sub, fontWeight: 700 }}>{h}</th>)}</tr></thead>
+                <thead><tr style={{ background: "#f6f8fc" }}>{(a.disciplina === "Elétrico" ? ["Elemento / item", "Ambiente / pavimento", "Circuito", "Compr./qtd"] : ["Elemento / item", "Pavimento", "DN", "Decliv.", "Compr./qtd"]).map(h => <th key={h} style={{ textAlign: "left", padding: "6px 8px", fontSize: 11, color: K.sub, fontWeight: 700 }}>{h}</th>)}</tr></thead>
                 <tbody>{a.elementos.slice(0, 60).map((e, i) => (
                   <tr key={i} style={{ borderTop: "1px solid #f0f3f8" }}>
                     <td style={{ padding: "5px 8px" }}>{e.nome}{e.guid ? <span style={{ color: K.sub, fontSize: 11 }}> · {e.guid}</span> : ""}</td>
                     <td style={{ padding: "5px 8px" }}>{e.pavimento || "—"}</td>
+                    {a.disciplina === "Elétrico" ? <td style={{ padding: "5px 8px" }}>{e.circuito || "—"}</td> : <>
                     <td style={{ padding: "5px 8px" }}>{e.dn ?? "—"}</td>
-                    <td style={{ padding: "5px 8px" }}>{e.declividade != null && isFinite(e.declividade) ? `${fmt(e.declividade, 2)} %` : "—"}</td>
+                    <td style={{ padding: "5px 8px" }}>{e.declividade != null && isFinite(e.declividade) ? `${fmt(e.declividade, 2)} %` : "—"}</td></>}
                     <td style={{ padding: "5px 8px" }}>{e.comprimento != null ? `${fmt(e.comprimento, 2)} m` : e.qtd != null ? `${fmt(e.qtd, 2)} ${e.un || ""}` : "—"}</td>
                   </tr>))}</tbody>
               </table>
@@ -133,6 +138,9 @@ function CartaoApontamento({ a, av, onAvaliar, planilha }) {
 
 export function PaginaVerificacao({ projetos = [], usuarioAtual }) {
   const [disc, setDisc] = useState("hidro");
+  const eletrica = disc === "eletrica";
+  const nomeDisc = eletrica ? "Elétrico" : "Hidrossanitário";
+  const CORES_SIS = eletrica ? SISTEMAS_E : SISTEMAS;
   const [projetoId, setProjetoId] = useState("");
   const [ifcs, setIfcs] = useState([]);
   const [listaArq, setListaArq] = useState(null);
@@ -178,16 +186,19 @@ export function PaginaVerificacao({ projetos = [], usuarioAtual }) {
           const f = ifcs[i];
           setRodando({ etapa: `Lendo modelo IFC ${i + 1} de ${ifcs.length}: ${f.name}`, frac: 0 });
           const buf = f.salvo ? await modelosIfc.baixar(f.modelo) : await f.arrayBuffer();
-          const m = await extrairIfc(api, buf, { nome: f.name.replace(/\.ifc$/i, ""), aoProgredir: frac => setRodando(r => ({ ...r, frac })) });
+          const extrair = eletrica ? extrairIfcEletrica : extrairIfc;
+          const m = await extrair(api, buf, { nome: f.name.replace(/\.ifc$/i, ""), aoProgredir: frac => setRodando(r => ({ ...r, frac })) });
           modelos.push(m); arquivos.push({ nome: f.name, tipo: "IFC" }); buffers.push({ nome: m.nome, buffer: buf });
-          apont.push(...verificarHidroIfc(m));
+          if (!eletrica) apont.push(...verificarHidroIfc(m));
         }
+        // elétrico: os modelos são verificados juntos (o IFC da arquitetura traz os ambientes)
+        if (eletrica) apont.push(...verificarEletricaIfc(modelos));
       }
       if (listaArq) {
         setRodando({ etapa: "Lendo a lista de materiais", frac: 0.5 });
-        lista = await lerLista(listaArq); arquivos.push({ nome: listaArq.name, tipo: "Lista" });
-        apont.push(...verificarLista(lista));
-        if (modelos.length) { cruzamento = cruzarIfcLista(quantitativosIfc(modelos), lista); apont.push(...cruzamento.apontamentos); }
+        lista = eletrica ? await lerListaEletrica(listaArq) : await lerLista(listaArq); arquivos.push({ nome: listaArq.name, tipo: "Lista" });
+        apont.push(...(eletrica ? verificarListaEletrica(lista) : verificarLista(lista)));
+        if (modelos.length) { cruzamento = eletrica ? cruzarEletrica(quantitativosEletrica(modelos), lista) : cruzarIfcLista(quantitativosIfc(modelos), lista); apont.push(...cruzamento.apontamentos); }
       }
       if (pdfs.length) {
         const dnsLista = lista ? new Set(lista.itens.filter(i => i.dn != null).map(i => Math.round(i.dn))) : null;
@@ -195,7 +206,7 @@ export function PaginaVerificacao({ projetos = [], usuarioAtual }) {
           setRodando({ etapa: `Lendo pranchas: ${f.name}`, frac: 0 });
           const pgs = await lerPranchas(f, { aoProgredir: frac => setRodando(r => ({ ...r, frac })) });
           arquivos.push({ nome: f.name, tipo: "Pranchas" });
-          pgs.forEach(pg => { apont.push(...verificarTextoPrancha(pg, { dnsLista })); paginas.push({ ...pg }); });
+          pgs.forEach(pg => { apont.push(...verificarTextoPrancha(pg, { dnsLista: eletrica ? null : dnsLista, disciplina: nomeDisc })); paginas.push({ ...pg }); });
         }
         if (usarIA && paginas.length) {
           const { data } = await authClient.auth.getSession();
@@ -203,13 +214,13 @@ export function PaginaVerificacao({ projetos = [], usuarioAtual }) {
           const contexto = {
             projeto: projeto ? rotProj(projeto) : "",
             lista: resumoListaParaIA(lista),
-            modelo: modelos.map(m => `${m.nome}: ${m.elementos.filter(e => e.classe === "tubo").length} tubos, ${m.elementos.filter(e => e.classe === "terminal").length} aparelhos`).join("; "),
+            modelo: modelos.map(m => eletrica ? `${m.nome}: ${m.elementos.filter(e => e.classe === "tomada").length} tomadas, ${m.elementos.filter(e => e.classe === "luminaria").length} pontos de luz, ${(m.ambientes || []).length} ambientes` : `${m.nome}: ${m.elementos.filter(e => e.classe === "tubo").length} tubos, ${m.elementos.filter(e => e.classe === "terminal").length} aparelhos`).join("; "),
           };
           for (let i = 0; i < paginas.length; i++) {
             const pg = paginas[i];
             setRodando({ etapa: `IA analisando prancha ${i + 1} de ${paginas.length} (${pg.arquivo})`, frac: i / paginas.length });
             try {
-              const r = await analisarComIA(pg, { token, contexto, total: paginas.filter(p => p.arquivo === pg.arquivo).length,
+              const r = await analisarComIA(pg, { token, contexto, disciplina: nomeDisc, total: paginas.filter(p => p.arquivo === pg.arquivo).length,
                 aoEsperar: (s, st) => setRodando(x => ({ ...x, etapa: `${st === 429 ? "Limite gratuito da IA atingido" : st === 504 ? "IA demorou a responder" : "IA do Google sobrecarregada"}: tentando de novo com outro modelo em ${s} s (prancha ${i + 1} de ${paginas.length})` })) });
               pg.resumo = r.resumo; pg.carimbo = r.carimbo; apont.push(...r.apontamentos); usouIA = true;
             } catch (e) {
@@ -228,6 +239,7 @@ export function PaginaVerificacao({ projetos = [], usuarioAtual }) {
         }
         paginas.forEach(p => { delete p.imagem; });
       }
+      if (eletrica) apont.push(...verificarGlobalEletrica({ modelos, lista, paginas }));
       apont.forEach(a => { delete a.paginaRef; delete a.caixasPrancha; });
       // Linhas da planilha de cada apontamento da lista
       apont.forEach(a => { if (a.origem === "lista") { const ls = (a.elementos || []).map(e => e.linha).filter(n => n != null); if (ls.length) a.linhasPlanilha = ls; } });
@@ -238,8 +250,8 @@ export function PaginaVerificacao({ projetos = [], usuarioAtual }) {
         catch (e) { console.warn("Imagens 3D não geradas:", e); }
       }
       setRes({
-        info: { disciplina: "Hidrossanitário", projeto: projeto ? rotProj(projeto) : "", cliente: projeto?.cliente || "" },
-        apontamentos: apont, cruzamento, arquivos, modelos: modelos.map(m => ({ nome: m.nome, schema: m.schema, aplicativo: m.aplicativo, elementos: m.elementos.length, tubos: m.elementos.filter(e => e.classe === "tubo").length, temPortas: m.temPortas })),
+        info: { disciplina: nomeDisc, projeto: projeto ? rotProj(projeto) : "", cliente: projeto?.cliente || "" },
+        apontamentos: apont, cruzamento, arquivos, modelos: modelos.map(m => ({ nome: m.nome, schema: m.schema, aplicativo: m.aplicativo, elementos: m.elementos.length, tubos: m.elementos.filter(e => e.classe === "tubo").length, temPortas: eletrica ? true : m.temPortas })),
         lista: lista ? { arquivo: lista.arquivo, itens: lista.itens.length } : null, paginas, usouIA,
         planilha: lista ? { linhas: lista.linhasPlanilha, cabecalho: lista.cabecalho, arquivo: lista.arquivo } : null,
       });
@@ -266,7 +278,7 @@ export function PaginaVerificacao({ projetos = [], usuarioAtual }) {
       <div style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
         <div>
           <div style={lbl}>Disciplina</div>
-          <Abas valor={disc} onChange={id => DISCIPLINAS.find(d => d.id === id)?.ativo && setDisc(id)}
+          <Abas valor={disc} onChange={id => { if (DISCIPLINAS.find(d => d.id === id)?.ativo && id !== disc) { setDisc(id); setRes(null); setIfcs([]); setListaArq(null); setPdfs([]); setErro(""); setAvisoIA(""); } }}
             itens={DISCIPLINAS.map(d => ({ id: d.id, label: d.ativo ? d.label : `${d.label} · em breve` }))} />
         </div>
         <div style={{ flex: 1, minWidth: 240, maxWidth: 420 }}>
@@ -279,7 +291,7 @@ export function PaginaVerificacao({ projetos = [], usuarioAtual }) {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(270px, 1fr))", gap: 12 }}>
-        <CaixaArquivos titulo="Modelos IFC" legenda="Hidrossanitário exportado do Revit, QiBuilder etc." icone="cubo" aceita=".ifc" multiplo
+        <CaixaArquivos titulo="Modelos IFC" legenda={eletrica ? "Elétrico exportado do Revit, QiBuilder etc. Envie também o IFC da arquitetura para as regras por cômodo." : "Hidrossanitário exportado do Revit, QiBuilder etc."} icone="cubo" aceita=".ifc" multiplo
           arquivos={ifcs} onAdicionar={addIfc} onRemover={i => setIfcs(a => a.filter((_, k) => k !== i))}>
           {salvos.length > 0 && <div style={{ fontSize: 12.5 }}>
             <div style={{ color: K.sub, marginBottom: 4 }}>Modelos salvos neste projeto:</div>
@@ -318,7 +330,7 @@ export function PaginaVerificacao({ projetos = [], usuarioAtual }) {
           <CartaoNumero icone="olho" titulo="Pontos de atenção" valor={cont("atencao")} cor={GRAVIDADES.atencao.cor} legenda="conferir com o projetista" />
           <CartaoNumero icone="mensagem" titulo="Observações" valor={cont("info")} cor={GRAVIDADES.info.cor} legenda="informativas" />
           <CartaoNumero icone="camadas" titulo="Arquivos verificados" valor={res.arquivos.length} cor={K.mar}
-            legenda={[res.modelos.length && `${res.modelos.reduce((s, m) => s + m.tubos, 0)} tubos no IFC`, res.lista && `${res.lista.itens} itens na lista`, res.paginas.length && `${res.paginas.length} pranchas`].filter(Boolean).join(" · ")} />
+            legenda={[res.modelos.length && (res.info.disciplina === "Elétrico" ? `${res.modelos.reduce((s, m) => s + m.elementos, 0)} elementos no IFC` : `${res.modelos.reduce((s, m) => s + m.tubos, 0)} tubos no IFC`), res.lista && `${res.lista.itens} itens na lista`, res.paginas.length && `${res.paginas.length} pranchas`].filter(Boolean).join(" · ")} />
         </div>
 
         {res.modelos.some(m => !m.temPortas) && <div style={{ fontSize: 12.5, color: K.sub, background: "#f8fafd", border: `1px solid ${K.borda}`, borderRadius: 10, padding: "8px 12px" }}>
@@ -346,12 +358,12 @@ export function PaginaVerificacao({ projetos = [], usuarioAtual }) {
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 560 }}>
                 <thead><tr style={{ background: "#f6f8fc" }}>{["Item", "Modelo", "Lista", "Diferença"].map((h, i) => <th key={h} style={{ padding: "8px 10px", fontSize: 11, fontWeight: 700, color: K.sub, textTransform: "uppercase", textAlign: i ? "right" : "left" }}>{h}</th>)}</tr></thead>
                 <tbody>{res.cruzamento.tabela.map(t => {
-                  const ruim = t.tipo === "tubo" ? (!t.ifc || !t.lista || (t.rel > 0.1 && Math.abs(t.dif) > 1)) : t.ifc !== t.lista;
+                  const ruim = (t.tipo === "tubo" || t.tipo === "comprimento") ? (!t.ifc || !t.lista || (t.rel > 0.1 && Math.abs(t.dif) > 1)) : t.ifc !== t.lista;
                   return <tr key={t.chave} style={{ borderTop: "1px solid #f0f3f8" }}>
-                    <td style={{ padding: "6px 10px" }}><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: SISTEMAS[t.sistema]?.cor || K.sub, marginRight: 7 }} />{t.rot}</td>
+                    <td style={{ padding: "6px 10px" }}><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 2, background: CORES_SIS[t.sistema]?.cor || K.sub, marginRight: 7 }} />{t.rot}</td>
                     <td style={{ padding: "6px 10px", textAlign: "right" }}>{fmt(t.ifc, 2)} {t.un}</td>
                     <td style={{ padding: "6px 10px", textAlign: "right" }}>{fmt(t.lista, 2)} {t.un}</td>
-                    <td style={{ padding: "6px 10px", textAlign: "right", fontWeight: ruim ? 700 : 400, color: ruim ? "#be123c" : K.tx }}>{t.dif > 0.005 ? "+" : ""}{fmt(t.dif, 2)}{t.tipo === "tubo" && t.ifc && t.lista ? ` (${fmt(t.rel * 100, 0)} %)` : ""}</td>
+                    <td style={{ padding: "6px 10px", textAlign: "right", fontWeight: ruim ? 700 : 400, color: ruim ? "#be123c" : K.tx }}>{t.dif > 0.005 ? "+" : ""}{fmt(t.dif, 2)}{(t.tipo === "tubo" || t.tipo === "comprimento") && t.ifc && t.lista ? ` (${fmt(t.rel * 100, 0)} %)` : ""}</td>
                   </tr>;
                 })}</tbody>
               </table>
@@ -381,10 +393,10 @@ export function PaginaVerificacao({ projetos = [], usuarioAtual }) {
 
       {pdf && res && (
         <ModalImpressao titulo="Verificação de projeto" voltar="Voltar à verificação" onFechar={() => setPdf(false)}
-          nomeArquivo={nomeArquivoPdf("Verificacao_Hidrossanitario_WM", res.info.projeto || "projeto")}
+          nomeArquivo={nomeArquivoPdf(eletrica ? "Verificacao_Eletrico_WM" : "Verificacao_Hidrossanitario_WM", res.info.projeto || "projeto")}
           opcoes={<>
             <div><label style={lbl}>Verificado por</label><input value={opPdf.responsavel} onChange={e => setOpPdf(o => ({ ...o, responsavel: e.target.value }))} style={inp} /></div>
-            {[["observacoes", "Incluir observações", "Apontamentos informativos."], ["aceitos", "Incluir itens aceitos", "Apontamentos marcados como aceitos (sem ação)."], ["imagens", "Mostrar onde está cada problema", "Vista 3D do IFC, recorte da prancha e trecho da planilha."], ["elementos", "Listar elementos", "Até 8 elementos por apontamento."], ["cruzamento", "Tabela IFC × lista", "Comprimentos de tubo por sistema e diâmetro."]].map(([k, t, s]) => (
+            {[["observacoes", "Incluir observações", "Apontamentos informativos."], ["aceitos", "Incluir itens aceitos", "Apontamentos marcados como aceitos (sem ação)."], ["imagens", "Mostrar onde está cada problema", "Vista 3D do IFC, recorte da prancha e trecho da planilha."], ["elementos", "Listar elementos", "Até 8 elementos por apontamento."], ["cruzamento", "Tabela IFC × lista", "Comprimentos por sistema e bitola."]].map(([k, t, s]) => (
               <label key={k} style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", fontSize: 13.5, color: K.tx }}>
                 <input type="checkbox" checked={opPdf[k]} onChange={e => setOpPdf(o => ({ ...o, [k]: e.target.checked }))} style={{ width: 17, height: 17, accentColor: K.azul, marginTop: 1 }} />
                 <span><b>{t}</b><br /><span style={{ fontSize: 12.5, color: K.sub }}>{s}</span></span>

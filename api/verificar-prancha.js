@@ -13,8 +13,8 @@ const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY;
 const env = k => String(process.env[k] || "").trim().replace(/^["']|["']$/g, "");
 const MODELO_CLAUDE = env("ANTHROPIC_MODEL") || "claude-sonnet-5-5";
 // Modelos gratuitos tentados em ordem quando o anterior está sobrecarregado (erro 503/500)
-// (o 3.8 Flash com raciocínio baixo; o Flash-Lite é rápido e entra logo em seguida)
-const MODELOS_GEMINI = [...new Set([env("GEMINI_MODEL") || "gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.6-flash"])];
+// (o Flash-Lite responde em ~2 s; o 3.8 Flash, com raciocínio baixo, fica de reserva)
+const MODELOS_GEMINI = [...new Set([env("GEMINI_MODEL") || "gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.6-flash"])];
 
 function provedor() {
   const g = env("GEMINI_API_KEY"), a = env("ANTHROPIC_API_KEY"), pref = env("PROVEDOR_IA").toLowerCase();
@@ -46,6 +46,17 @@ const CHECKLIST = {
 - Água fria/quente: isométricos com diâmetros, registros de gaveta/pressão, alturas dos pontos; reservatório com volume; material de água quente compatível (não usar PVC soldável).
 - Coerência: o mesmo trecho com diâmetros diferentes entre planta e isométrico/detalhe; diâmetros que não existem na lista de materiais; cotas e textos incoerentes; erros de grafia.`,
 };
+
+CHECKLIST["Elétrico"] = `
+- Carimbo/selo: título da prancha, obra/cliente, endereço, responsável técnico com registro CREA/CAU, nº da ART/RRT, escala, data, revisão, número da prancha (x/y).
+- Legenda dos símbolos (NBR 5444 ou legenda própria) e notas gerais citando a ABNT NBR 5410:2004.
+- Planta: cada cômodo com ao menos 1 ponto de luz no teto comandado por interruptor; tomadas de uso geral (TUG) no mínimo: banheiro 1 junto ao lavatório; cozinha/copa/área de serviço 1 a cada 3,5 m de perímetro (2 acima da bancada da pia); salas e dormitórios 1 a cada 5 m de perímetro; varanda 1; demais cômodos > 6 m² 1 a cada 5 m de perímetro (9.5.2).
+- Pontos com potência e número do circuito indicados; tomadas de uso específico (chuveiro, ar-condicionado, forno etc.) em circuitos exclusivos.
+- Circuitos: iluminação separada de tomadas; tomadas de cozinha, copa, área de serviço e lavanderia em circuitos próprios (9.5.3).
+- Condutores: seção mínima 1,5 mm² (iluminação) e 2,5 mm² (força); disjuntor com corrente nominal ≤ capacidade do condutor (In ≤ Iz); neutro e proteção (terra) presentes em todos os circuitos.
+- DR 30 mA para banheiros, cozinhas, áreas de serviço, lavanderias, garagens e áreas externas (5.1.3.2.2); DPS no quadro de entrada.
+- Quadro de cargas e diagrama unifilar: potência por circuito, seção, disjuntor, fase, queda de tensão ≤ 4 % nos terminais, equilíbrio entre fases, espaço de reserva (Tabela 59).
+- Eletrodutos com diâmetro indicado; coerência entre planta, quadro de cargas, unifilar e lista de materiais; erros de grafia.`;
 
 const FERRAMENTA = {
   name: "registrar_verificacao",

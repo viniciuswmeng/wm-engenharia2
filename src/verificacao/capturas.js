@@ -25,7 +25,7 @@ export function alvosDoApontamento(a) {
 }
 
 export async function capturarIfc(modelos, apontamentos, { max = 30, aoProgredir } = {}) {
-  const com = apontamentos.filter(a => alvosDoApontamento(a).length)
+  const com = apontamentos.filter(a => alvosDoApontamento(a).length || a.caixasIfc?.length)
     .sort((a, b) => GRAVIDADES[a.gravidade].ordem - GRAVIDADES[b.gravidade].ordem).slice(0, max);
   if (!com.length || !modelos.length) return 0;
   const { criarVisualizador } = await import("../ifc/motor.js");
@@ -39,10 +39,12 @@ export async function capturarIfc(modelos, apontamentos, { max = 30, aoProgredir
     for (const a of com) {
       const alvos = new Map();
       alvosDoApontamento(a).forEach(({ modelo, eid }) => { if (!alvos.has(modelo)) alvos.set(modelo, new Set()); alvos.get(modelo).add(eid); });
-      if (!viz.focar(alvos)) continue;
+      const caixas = (a.caixasIfc || []).filter(c => modelos.some(m => m.nome === c.modelo));
+      if (!viz.focar(alvos, { caixas })) continue;
       await new Promise(r => requestAnimationFrame(() => r()));
       a.imagem = await paraJpeg(viz.capturar(), 820);
-      a.legendaImagem = `Modelo ${[...alvos.keys()].join(", ")} — em vermelho, ${[...alvos.values()].reduce((s, x) => s + x.size, 0)} elemento(s) do apontamento`;
+      const nEl = [...alvos.values()].reduce((s, x) => s + x.size, 0);
+      a.legendaImagem = `Modelo ${[...new Set([...alvos.keys(), ...caixas.map(c => c.modelo)])].join(", ")} — em vermelho${caixas.length ? ", o contorno do cômodo" : ""}${nEl ? `${caixas.length ? " e" : ","} ${nEl} elemento(s) do apontamento` : ""}`;
       feitas++;
       aoProgredir?.(feitas / com.length);
     }

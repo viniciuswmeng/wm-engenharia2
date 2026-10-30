@@ -28,12 +28,18 @@ function interpretarGenerica(linhas, arquivo) {
   return { arquivo, meta: {}, itens, cabecalho: h };
 }
 
-export function interpretarLista(linhas, arquivo = "lista") {
+// Lê a planilha (QiBuilder ou genérica) sem classificar por disciplina
+export function lerBaseLista(linhas, arquivo = "lista") {
   let base;
   try { base = interpretarLinhas(linhas, arquivo); } catch { base = interpretarGenerica(linhas, arquivo); }
   // guarda a planilha original para mostrar no relatório onde está cada problema
   base.linhasPlanilha = linhas;
   if (base.cabecalho == null) { const h = linhas.findIndex(r => /^n[º°o]$/i.test(String(r?.[0] ?? "").trim())); base.cabecalho = h >= 0 ? h : null; }
+  return base;
+}
+
+export function interpretarLista(linhas, arquivo = "lista") {
+  const base = lerBaseLista(linhas, arquivo);
   base.itens = base.itens.map(it => {
     const tudo = `${it.grupo} ${it.descricao} ${it.item}`;
     const t = norm(tudo);
@@ -48,7 +54,8 @@ export function interpretarLista(linhas, arquivo = "lista") {
   return base;
 }
 
-export async function lerLista(file) {
+// Matriz de células da primeira planilha do arquivo (xlsx, xls ou csv)
+export async function lerPlanilha(file) {
   const { carregarXlsx } = await import("../comparativo/instalacoes/qibuilder.js");
   const XLSX = await carregarXlsx();
   // CSV: lê como texto para não confundir a vírgula decimal ("3,8") com separador de milhar
@@ -56,8 +63,11 @@ export async function lerLista(file) {
     ? XLSX.read(await file.text(), { type: "string", raw: true })
     : XLSX.read(await file.arrayBuffer(), { type: "array" });
   const ws = wb.Sheets[wb.SheetNames[0]];
-  const linhas = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: true });
-  return interpretarLista(linhas, file.name);
+  return XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: true });
+}
+
+export async function lerLista(file) {
+  return interpretarLista(await lerPlanilha(file), file.name);
 }
 
 const refItem = it => ({ nome: [it.descricao, it.item].filter(Boolean).join(" — "), qtd: it.qtd, un: it.un, sistemaLista: it.sistema, linha: it.linha });

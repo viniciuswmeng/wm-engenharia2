@@ -1,5 +1,6 @@
 // Pranchas em PDF: leitura do texto (regras sem IA) e preparo das páginas para a análise por IA
 import { norm, LIMITES, SISTEMAS } from "./regras.js";
+import { IZ_B1, SECOES, reservaMinima, LIMITES_E, secaoDoTexto } from "./regrasEletrica.js";
 
 async function pdfjs() {
   const lib = await import("pdfjs-dist");
@@ -61,9 +62,9 @@ export async function lerPranchas(file, { aoProgredir } = {}) {
 const RE_DN = /(?:ø|Ø|⌀|dn|d\s*=|diam\.?)\s*(\d{2,3})(?!\d)/gi;
 const RE_I = /\bi\s*[=:]\s*(\d+(?:[.,]\d+)?)\s*%/gi;
 
-export function verificarTextoPrancha(pg, { dnsLista } = {}) {
+export function verificarTextoPrancha(pg, { dnsLista, disciplina = "Hidrossanitário" } = {}) {
   const ap = []; let seq = 0;
-  const add = a => ap.push({ id: `pr-${pg.arquivo}-${pg.n}-${++seq}`, origem: "prancha", disciplina: "Hidrossanitário", prancha: `${pg.arquivo} · pág. ${pg.n}`, elementos: [], ...a });
+  const add = a => ap.push({ id: `pr-${pg.arquivo}-${pg.n}-${++seq}`, origem: "prancha", disciplina, prancha: `${pg.arquivo} · pág. ${pg.n}`, elementos: [], ...a });
   const t = norm(pg.texto);
   if (t.length < 40) { add({ gravidade: "info", titulo: "Página sem texto selecionável", descricao: "O PDF desta página parece ser imagem (digitalizado ou exportado como raster). As regras de texto não puderam ser aplicadas; a análise por IA usa a imagem.", sugestao: "Exportar o PDF vetorial a partir do software de projeto." }); return ap; }
 
@@ -76,6 +77,8 @@ export function verificarTextoPrancha(pg, { dnsLista } = {}) {
   if (!/\bdata\b|\d{2}\/\d{2}\/\d{2,4}|(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[a-z]*\s*\/?\s*\d{2,4}/.test(t)) faltando.push("data");
   if (!/prancha|folha|\b\d{2}\s*\/\s*\d{2}\b/.test(t)) faltando.push("número da prancha");
   if (faltando.length) add({ gravidade: faltando.length >= 3 ? "atencao" : "info", titulo: `Carimbo: não encontrei ${faltando.join(", ")}`, local: "Carimbo", descricao: "Busca feita no texto do PDF. Se o carimbo for imagem ou bloco explodido, confira visualmente.", sugestao: "Completar o carimbo." });
+
+  if (disciplina === "Elétrico") { verificarTextoEletrico(pg, t, add); return ap; }
 
   // Declividades indicadas (i = x %) com o diâmetro na mesma linha
   const baixas = [];
@@ -112,16 +115,63 @@ export function verificarTextoPrancha(pg, { dnsLista } = {}) {
   return ap;
 }
 
+// ── Pranchas elétricas: quadro de cargas, coordenação disjuntor × cabo, reserva e queda de tensão ──
+const RE_CIRC = /^\s*(?:c|circ\.?|circuito)\s*[-.]?\s*0?(\d{1,2})\b/i;
+const izDe = s => IZ_B1[s] ?? IZ_B1[SECOES.find(x => x >= s)] ?? null;
+function verificarTextoEletrico(pg, t, add) {
+  if (!/5410/.test(t)) add({ gravidade: "info", titulo: "Notas sem referência à NBR 5410", local: "Notas gerais", descricao: "As notas gerais não citam a NBR 5410.", sugestao: "Incluir a norma nas notas gerais." });
+  const circ = [];
+  pg.linhas.forEach((linha, i) => {
+    const m = linha.match(RE_CIRC); if (!m) return;
+    const l = norm(linha);
+    const secao = secaoDoTexto(linha);
+    const amps = [...l.matchAll(/(\d{1,3})\s*a\b/g)].map(x => +x[1]).filter(a => a >= 2 && a <= 250);
+    const pct = [...l.matchAll(/(\d+(?:[.,]\d+)?)\s*%/g)].map(x => parseFloat(x[1].replace(",", ".")));
+    circ.push({ id: +m[1], linha, i, secao, corrente: amps.length ? amps[amps.length - 1] : null, pct, reserva: /reserva/.test(l) });
+  });
+  if (circ.length < 2) return; // página sem quadro de cargas
+  const caixa = c => pg.caixas?.[c.i];
+  // Disjuntor acima da capacidade do cabo (In ≤ Iz)
+  const ruins = circ.filter(c => c.secao && c.corrente && izDe(c.secao) && c.corrente > izDe(c.secao));
+  if (ruins.length) add({ gravidade: "erro", norma: "NBR 5410", local: "Quadro de cargas",
+    titulo: `Disjuntor acima da capacidade do cabo em ${ruins.length} circuito(s)`,
+    descricao: `A corrente nominal do disjuntor não pode superar a capacidade de condução do condutor (In ≤ Iz, NBR 5410, 5.3.4.1). Referência: cobre/PVC, método B1, 2 condutores carregados, 30 °C (Tabela 36) — com agrupamento a capacidade é ainda menor. ` +
+      ruins.slice(0, 6).map(c => `C${c.id}: ${c.corrente} A em ${String(c.secao).replace(".", ",")} mm² (Iz ≈ ${izDe(c.secao)} A)`).join("; "),
+    sugestao: "Reduzir o disjuntor ou aumentar a seção.", elementos: ruins.map(c => ({ nome: c.linha.slice(0, 120) })), caixasPrancha: ruins.map(caixa).filter(Boolean), paginaRef: pg });
+  // Seção mínima no quadro
+  const finos = circ.filter(c => c.secao && c.secao < 1.5);
+  if (finos.length) add({ gravidade: "erro", norma: "NBR 5410", local: "Quadro de cargas", titulo: `Circuito(s) com cabo abaixo de 1,5 mm²`, descricao: "Seção mínima: 1,5 mm² (iluminação) e 2,5 mm² (força) — Tabela 47.", sugestao: "Aumentar a seção.", elementos: finos.map(c => ({ nome: c.linha.slice(0, 120) })), caixasPrancha: finos.map(caixa).filter(Boolean), paginaRef: pg });
+  // Espaço de reserva (Tabela 59)
+  const ativos = circ.filter(c => !c.reserva).length, reservas = circ.filter(c => c.reserva).length;
+  const min = reservaMinima(ativos);
+  if (reservas < min) add({ gravidade: "atencao", norma: "NBR 5410", local: "Quadro de cargas",
+    titulo: `Quadro com ${reservas} circuito(s) de reserva (mínimo ${min} para ${ativos} circuitos)`,
+    descricao: "O quadro deve prever espaço de reserva para ampliações: até 6 circuitos → 2; 7 a 12 → 3; 13 a 30 → 4; acima de 30 → 0,15·N (NBR 5410, 6.5.4.7, Tabela 59). Contagem feita pelas linhas do quadro de cargas desta prancha.",
+    sugestao: "Prever os espaços de reserva no quadro e no unifilar.", caixasPrancha: (() => { const cs = circ.map(caixa).filter(Boolean); return cs.length ? [[Math.min(...cs.map(c => c[0])), Math.min(...cs.map(c => c[1])), Math.max(...cs.map(c => c[2])), Math.max(...cs.map(c => c[3]))]] : []; })(), paginaRef: pg });
+  // Queda de tensão (quando o quadro tem a coluna)
+  if (/queda|δv|Δv|\bdv\b/i.test(pg.texto)) {
+    const altos = circ.filter(c => c.pct.some(p => p > LIMITES_E.quedaTensaoMax && p < 30));
+    if (altos.length) add({ gravidade: "erro", norma: "NBR 5410", local: "Quadro de cargas", titulo: `Queda de tensão acima de ${LIMITES_E.quedaTensaoMax} % em ${altos.length} circuito(s)`,
+      descricao: "Nos circuitos terminais, a queda de tensão não deve superar 4 % a partir do quadro (NBR 5410, 6.2.7.1). Valores lidos na coluna de queda de tensão: " + altos.slice(0, 6).map(c => `C${c.id}: ${c.pct.filter(p => p > LIMITES_E.quedaTensaoMax).map(p => String(p).replace(".", ",")).join("/")} %`).join("; "),
+      sugestao: "Aumentar a seção ou redistribuir os circuitos.", elementos: altos.map(c => ({ nome: c.linha.slice(0, 120) })), caixasPrancha: altos.map(caixa).filter(Boolean), paginaRef: pg });
+  }
+}
+
 // Resumo da lista para dar contexto à IA: "Esgoto: 40, 50, 100 · Água fria: 20, 25"
 export function resumoListaParaIA(lista) {
   if (!lista) return "";
+  if (lista.itens.some(i => i.secao !== undefined || i.subTomada !== undefined)) {
+    const cab = [...new Set(lista.itens.filter(i => i.secao).map(i => i.secao))].sort((a, b) => a - b);
+    const dj = [...new Set(lista.itens.filter(i => i.corrente && i.tipo === "disjuntor").map(i => i.corrente))].sort((a, b) => a - b);
+    return [cab.length && `Cabos (mm²): ${cab.join(", ")}`, dj.length && `Disjuntores (A): ${dj.join(", ")}`, `DR na lista: ${lista.itens.some(i => i.tipo === "dr") ? "sim" : "não"}`, `DPS na lista: ${lista.itens.some(i => i.tipo === "dps") ? "sim" : "não"}`].filter(Boolean).join(" · ");
+  }
   const m = new Map();
   lista.itens.forEach(i => { if (i.dn == null || i.sistema === "??") return; if (!m.has(i.sistema)) m.set(i.sistema, new Set()); m.get(i.sistema).add(Math.round(i.dn)); });
   return [...m.entries()].map(([s, d]) => `${SISTEMAS[s]?.nome || s}: ${[...d].sort((a, b) => a - b).join(", ")}`).join(" · ");
 }
 
 const esperar = ms => new Promise(r => setTimeout(r, ms));
-export async function analisarComIA(pg, { token, contexto, total, aoEsperar }) {
+export async function analisarComIA(pg, { token, contexto, total, aoEsperar, disciplina = "Hidrossanitário" }) {
   let r, j = {};
   // Limite por minuto (429), sobrecarga (503) ou demora (504): espera e tenta de novo; a cada tentativa
   // o servidor usa outro modelo gratuito do Gemini.
@@ -129,7 +179,7 @@ export async function analisarComIA(pg, { token, contexto, total, aoEsperar }) {
     r = await fetch("/api/verificar-prancha", {
       method: "POST",
       headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-      body: JSON.stringify({ imagem: pg.imagem, texto: pg.texto, pagina: pg.n, totalPaginas: total, arquivo: pg.arquivo, disciplina: "Hidrossanitário", contexto, tentativa }),
+      body: JSON.stringify({ imagem: pg.imagem, texto: pg.texto, pagina: pg.n, totalPaginas: total, arquivo: pg.arquivo, disciplina, contexto, tentativa }),
     });
     j = {}; try { j = await r.json(); } catch { /* resposta vazia (tempo esgotado na Vercel) */ }
     if (![429, 503, 504].includes(r.status) || tentativa === 4) break;
@@ -142,7 +192,7 @@ export async function analisarComIA(pg, { token, contexto, total, aoEsperar }) {
   return {
     resumo: j.resumo, carimbo: j.carimbo,
     apontamentos: (j.apontamentos || []).map(a => ({
-      id: `ia-${pg.arquivo}-${pg.n}-${++seq}`, origem: "prancha", ia: true, disciplina: "Hidrossanitário", prancha: `${pg.arquivo} · pág. ${pg.n}`, elementos: [],
+      id: `ia-${pg.arquivo}-${pg.n}-${++seq}`, origem: "prancha", ia: true, disciplina, prancha: `${pg.arquivo} · pág. ${pg.n}`, elementos: [],
       gravidade: ["erro", "atencao", "info"].includes(a.gravidade) ? a.gravidade : "info",
       titulo: a.titulo, descricao: a.descricao, local: a.local, norma: a.norma, sugestao: a.sugestao, confianca: a.confianca,
       paginaRef: pg, caixaAproximada: true,
