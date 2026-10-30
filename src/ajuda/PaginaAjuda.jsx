@@ -158,7 +158,7 @@ const TOPICOS = [
         "Modelos sobrepostos: em Modelos dos projetos use \"Sobrepor todos\" (ou Sobrepor em cada modelo). Na aba Link aparece o link com todos sobrepostos (copiar, WhatsApp, QR). \"Link de todos\" copia direto. O cliente liga e desliga cada modelo no olho; modelos com link desativado ficam de fora (máx. 10).",
         "QR code: no botão QR code (aba Link, lista de modelos ou Portal do cliente) baixe o QR em PNG ou SVG, ou a etiqueta pronta com logo e legenda para colar na prancha. Se gerar um novo link, gere e troque o QR.",
         "Em Modelos dos projetos ficam todos os modelos salvos, agrupados por projeto, para abrir de novo, sobrepor, copiar o link ou excluir.",
-        "Antes do primeiro uso, rode no Supabase o arquivo supabase/modelos_ifc_comparativos.sql (cria a tabela e a pasta de arquivos). Limite de 50 MB por arquivo.",
+        "Antes do primeiro uso, rode no Supabase o arquivo supabase/modelos_ifc_comparativos.sql (cria a tabela e a pasta de arquivos). Limite de 100 MB por arquivo (veja supabase/modelos_ifc_100mb.sql; no plano Free do Supabase o máximo é 50 MB).",
       ]},
     ]},
   { id:"comparativo", icone:"⚖️", titulo:"Comparativo de modelos", aba:"comparativo",

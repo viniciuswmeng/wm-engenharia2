@@ -2,7 +2,7 @@
 import { supabase } from "../supabase.js";
 
 export const BUCKET = "modelos-ifc";
-export const LIMITE_MB = 50;
+export const LIMITE_MB = 100;
 
 const novoToken = () => Array.from(crypto.getRandomValues(new Uint8Array(18))).map(b => b.toString(16).padStart(2, "0")).join("");
 const nomeSeguro = n => String(n || "modelo.ifc").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, "_").replace(/[^a-zA-Z0-9._-]/g, "");
@@ -18,7 +18,9 @@ function erroAmigavel(e, etapa) {
   if (/bucket not found/i.test(msg)) return new Error("A pasta de arquivos \"modelos-ifc\" ainda não existe no Supabase. Rode o arquivo supabase/modelos_ifc_comparativos.sql.");
   if (/relation .*modelos_ifc|modelos_ifc.*does not exist|schema cache/i.test(msg)) return new Error("A tabela de modelos ainda não existe no Supabase. Rode o arquivo supabase/modelos_ifc_comparativos.sql.");
   if (/row-level security|violates|not allowed|unauthorized/i.test(msg)) return new Error(`O Supabase recusou ${etapa}. Rode o arquivo supabase/modelos_ifc_comparativos.sql para liberar o acesso.`);
-  if (/payload too large|exceeded the maximum/i.test(msg)) return new Error(`Arquivo maior que o limite de ${LIMITE_MB} MB.`);
+  if (/payload too large|exceeded the maximum|too large/i.test(msg)) return new Error(
+    `O Supabase recusou o arquivo por tamanho. O sistema aceita até ${LIMITE_MB} MB, mas o limite do Supabase precisa permitir também: ` +
+    `rode supabase/modelos_ifc_100mb.sql e, em Storage → Settings, ajuste o limite geral para 100 MB (no plano Free o máximo é 50 MB).`);
   return new Error(msg || `Falha ao ${etapa}.`);
 }
 

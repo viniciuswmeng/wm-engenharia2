@@ -29,7 +29,7 @@ grant select, insert, update, delete on public.modelos_ifc to anon, authenticate
 -- 2) Pasta de arquivos (Storage) dos modelos. Pública para leitura: o endereço de cada
 --    arquivo contém um código aleatório, então só abre quem recebeu o link.
 insert into storage.buckets (id, name, public, file_size_limit)
-values ('modelos-ifc', 'modelos-ifc', true, 52428800)
+values ('modelos-ifc', 'modelos-ifc', true, 104857600)  -- 100 MB
 on conflict (id) do update set public = true, file_size_limit = excluded.file_size_limit;
 
 drop policy if exists "modelos-ifc enviar" on storage.objects;
