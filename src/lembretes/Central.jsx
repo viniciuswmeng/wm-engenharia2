@@ -2,11 +2,13 @@
 // Central de notificações e tarefas: sino no topo, página "Tarefas", modal de
 // tarefa e ativação das notificações do computador (Web Push).
 import { useEffect, useRef, useState } from "react";
+import Icone from "../ui/Icone.jsx";
+import { CabecalhoModal } from "../ui/ds.jsx";
 
 const C = {
-  azulEscuro: "#0d1e35", azulMedio: "#1a4a7a", azulClaro: "#2e6da8", ciano: "#4a90c4",
-  cinzaClaro: "#8a9ab0", cinzaFundo: "#f0f4f8", cinzaCard: "#e2eaf3", branco: "#ffffff",
-  verde: "#22c55e", amarelo: "#f59e0b", vermelho: "#ef4444",
+  azulEscuro: "#0b2350", azulMedio: "#1565d8", azulClaro: "#3b82f6", ciano: "#60a5fa",
+  cinzaClaro: "#6b7a90", cinzaFundo: "#f3f6fb", cinzaCard: "#e6ecf4", branco: "#ffffff",
+  verde: "#16a34a", amarelo: "#f59e0b", vermelho: "#ef4444",
 };
 const NIVEL = {
   urgente: { cor: "#dc2626", bg: "#fef2f2", rot: "Urgente" },
@@ -62,7 +64,7 @@ function ConfigPush({ push, gestor }) {
   if (e === "bloqueado") return <div style={{ fontSize: 12, color: "#b45309" }}>Notificações bloqueadas neste navegador. Libere no cadeado ao lado do endereço do site.</div>;
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: C.azulEscuro, flexWrap: "wrap" }}>
-      <span>🔔 Notificações no computador: <b style={{ color: e === "ligado" ? "#16a34a" : C.cinzaClaro }}>{e === "ligado" ? "ativas" : "desligadas"}</b></span>
+      <span>Notificações no computador: <b style={{ color: e === "ligado" ? "#16a34a" : C.cinzaClaro }}>{e === "ligado" ? "ativas" : "desligadas"}</b></span>
       {e === "ligado"
         ? <><button style={btn("link")} onClick={async () => { setMsg("Enviando…"); setMsg(await push.testar()); }}>Testar</button><button style={btn("link", { color: C.cinzaClaro })} onClick={push.desativar}>Desativar</button></>
         : <button style={btn("link")} onClick={async () => { setMsg("Ativando…"); const r = await push.ativar(); setMsg(r ? "Não ativou: " + r : "Ativado neste computador"); }}>Ativar</button>}
@@ -112,19 +114,19 @@ export function SinoNotificacoes({ central, push, user, usuarios, projetos, onAb
   return (
     <div ref={ref} style={{ position: "relative" }}>
       <button onClick={() => setAberto(a => !a)} aria-label={`Notificações (${total})`} title="Lembretes e tarefas"
-        style={{ position: "relative", background: aberto ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 8, width: 36, height: 34, cursor: "pointer", fontSize: 16, color: "#fff" }}>
-        🔔
-        {total > 0 && <span style={{ position: "absolute", top: -6, right: -6, minWidth: 18, height: 18, padding: "0 4px", borderRadius: 9, background: urg ? "#ef4444" : C.amarelo, color: "#fff", fontSize: 10.5, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 0 2px #1a4a7a" }}>{total > 99 ? "99+" : total}</span>}
+        className="wm-icone-btn" style={aberto ? { background: "#e9f1fd", color: C.azulMedio } : undefined}>
+        <Icone nome="sino" tam={21} />
+        {total > 0 && <span style={{ position: "absolute", top: 3, right: 3, minWidth: 18, height: 18, padding: "0 4px", borderRadius: 9, background: urg ? "#ef4444" : C.amarelo, color: "#fff", fontSize: 10.5, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 0 2px #fff" }}>{total > 99 ? "99+" : total}</span>}
       </button>
       {aberto && (
-        <div style={{ position: "absolute", right: 0, top: 44, width: 400, maxWidth: "calc(100vw - 24px)", background: "#fff", borderRadius: 14, boxShadow: "0 18px 50px rgba(13,30,53,0.3)", zIndex: 500, overflow: "hidden", fontFamily: "'Segoe UI',system-ui,sans-serif", color: C.azulEscuro }}>
+        <div style={{ position: "absolute", right: 0, top: 44, width: 400, maxWidth: "calc(100vw - 24px)", background: "#fff", borderRadius: 14, boxShadow: "0 18px 50px rgba(13,30,53,0.3)", zIndex: 500, overflow: "hidden", fontFamily: "inherit", color: C.azulEscuro }}>
           <div style={{ display: "flex", borderBottom: `1px solid ${C.cinzaCard}` }}>
             {[["lembretes", `Lembretes (${total})`], ["tarefas", `Minhas tarefas (${minhas.length})`]].map(([k, r]) => (
               <button key={k} onClick={() => setAba(k)} style={{ flex: 1, background: "none", border: "none", borderBottom: `2px solid ${aba === k ? C.azulMedio : "transparent"}`, padding: "12px 8px", fontFamily: "inherit", fontWeight: aba === k ? 800 : 600, fontSize: 13, color: aba === k ? C.azulMedio : C.cinzaClaro, cursor: "pointer" }}>{r}</button>))}
           </div>
           <div style={{ maxHeight: 420, overflowY: "auto" }}>
             {aba === "lembretes" ? (
-              total === 0 ? <div style={{ padding: 28, textAlign: "center", color: C.cinzaClaro, fontSize: 13 }}>✨ Nada pendente por aqui.</div>
+              total === 0 ? <div style={{ padding: 28, textAlign: "center", color: C.cinzaClaro, fontSize: 13 }}>Nada pendente por aqui.</div>
                 : central.meus.map(l => <LinhaLembrete key={l.chave} l={l} onAbrir={lk => { setAberto(false); onAbrir(lk); }} onOcultar={central.ocultar} />)
             ) : (<>
               <div style={{ display: "flex", gap: 6, padding: 10, borderBottom: `1px solid ${C.cinzaFundo}` }}>
@@ -160,10 +162,10 @@ function LinhaTarefa({ t, projetos, usuarios, onConcluir, onEditar, compacta }) 
         <div style={{ fontSize: 13.5, fontWeight: 600, color: feita ? C.cinzaClaro : C.azulEscuro, textDecoration: feita ? "line-through" : "none" }}>{t.titulo}</div>
         {!compacta && t.descricao && <div style={{ fontSize: 12, color: "#5b6b82", marginTop: 2, whiteSpace: "pre-wrap" }}>{t.descricao}</div>}
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 3, fontSize: 11.5, color: C.cinzaClaro }}>
-          {t.vence_em && <span style={{ color: atrasada ? "#dc2626" : t.vence_em === hoje ? "#d97706" : C.cinzaClaro, fontWeight: atrasada || t.vence_em === hoje ? 700 : 400 }}>📅 {t.vence_em === hoje ? "Hoje" : fmtData(t.vence_em)}{t.hora ? " " + t.hora : ""}{atrasada ? " · atrasada" : ""}</span>}
+          {t.vence_em && <span style={{ color: atrasada ? "#dc2626" : t.vence_em === hoje ? "#d97706" : C.cinzaClaro, fontWeight: atrasada || t.vence_em === hoje ? 700 : 400 }}>{t.vence_em === hoje ? "Hoje" : fmtData(t.vence_em)}{t.hora ? " " + t.hora : ""}{atrasada ? " · atrasada" : ""}</span>}
           {t.prioridade !== "normal" && <span style={{ color: pr.cor, fontWeight: 700 }}>● {pr.rot}</span>}
-          {proj && <span>📁 {proj.codigo}</span>}
-          {!compacta && resp && <span>👤 {resp.nome}</span>}
+          {proj && <span>{proj.codigo}</span>}
+          {!compacta && resp && <span>{resp.nome}</span>}
         </div>
       </div>
     </div>);
@@ -177,12 +179,9 @@ function ModalTarefa({ tarefa, usuarios, projetos, user, onSalvar, onExcluir, on
   const rot = { fontSize: 11, fontWeight: 700, color: C.cinzaClaro, textTransform: "uppercase", letterSpacing: .6, marginBottom: 4, display: "block" };
   const salvar = () => { if (!f.titulo.trim()) return; onSalvar({ ...f, titulo: f.titulo.trim() }); };
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(15,25,50,0.7)", zIndex: 2100, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onMouseDown={e => e.target === e.currentTarget && onFechar()}>
-      <div style={{ background: "#fff", borderRadius: 16, width: "100%", maxWidth: 480, boxShadow: "0 24px 64px rgba(0,0,0,0.3)", overflow: "hidden", fontFamily: "'Segoe UI',system-ui,sans-serif" }}>
-        <div style={{ background: `linear-gradient(135deg,${C.azulEscuro},${C.azulMedio})`, padding: "14px 20px", display: "flex", alignItems: "center" }}>
-          <div style={{ color: "#fff", fontWeight: 800, fontSize: 16, flex: 1 }}>{tarefa ? "Editar tarefa" : "Nova tarefa"}</div>
-          <button onClick={onFechar} aria-label="Fechar" style={{ background: "rgba(255,255,255,0.12)", border: "none", color: "#fff", width: 30, height: 30, borderRadius: 8, cursor: "pointer", fontSize: 17 }}>×</button>
-        </div>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(10,25,55,.5)", backdropFilter: "blur(2px)", zIndex: 2100, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onMouseDown={e => e.target === e.currentTarget && onFechar()}>
+      <div style={{ background: "#fff", borderRadius: 18, width: "100%", maxWidth: 480, boxShadow: "0 24px 70px rgba(10,25,55,.28)", overflow: "hidden" }}>
+        <CabecalhoModal titulo={tarefa ? "Editar tarefa" : "Nova tarefa"} icone="tarefa" onFechar={onFechar} />
         <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
           <div><label style={rot} htmlFor="tf-t">Tarefa</label>
             <input id="tf-t" autoFocus value={f.titulo} onChange={e => s("titulo", e.target.value)} onKeyDown={e => e.key === "Enter" && salvar()} placeholder="Ex.: Ligar para o cliente sobre a sondagem" style={campo} /></div>
@@ -247,11 +246,11 @@ export function PaginaTarefas({ central, user, usuarios, projetos, gestor, taref
   const ordem = (a, b) => (a.vence_em || "").localeCompare(b.vence_em || "") || (a.hora || "").localeCompare(b.hora || "") || ({ alta: 0, normal: 1, baixa: 2 }[a.prioridade] - { alta: 0, normal: 1, baixa: 2 }[b.prioridade]);
   const chip = at => ({ padding: "6px 12px", borderRadius: 8, border: `1.5px solid ${at ? C.azulMedio : C.cinzaCard}`, background: at ? C.azulMedio : "#fff", color: at ? "#fff" : C.cinzaClaro, fontWeight: 700, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" });
   return (
-    <div style={{ maxWidth: 980, margin: "0 auto", fontFamily: "'Segoe UI',system-ui,sans-serif" }}>
+    <div style={{ maxWidth: 1080 }}>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 18 }}>
         <div style={{ flex: 1, minWidth: 220 }}>
-          <div style={{ fontSize: 22, fontWeight: 800, color: C.azulEscuro }}>✅ Tarefas</div>
-          <div style={{ fontSize: 13, color: C.cinzaClaro, marginTop: 2 }}>Tarefas da equipe com responsável e prazo. Os lembretes automáticos ficam no sino 🔔.</div>
+          <h1 style={{ margin: 0, fontSize: 30, fontWeight: 800, color: "#0a2557", letterSpacing: -.5 }}>Tarefas</h1>
+          <div style={{ fontSize: 14.5, color: "#6b7a90", marginTop: 6 }}>Tarefas da equipe com responsável e prazo. Os lembretes automáticos ficam no sino.</div>
         </div>
         <button style={btn("pri", { padding: "9px 18px", fontSize: 13.5 })} onClick={() => setModal("nova")} disabled={central.semTabela}>+ Nova tarefa</button>
       </div>

@@ -80,6 +80,7 @@ const TOPICOS = [
         "Projetos novos chegam pelo contrato assinado, pela importação do Drive (Dashboard) ou por \"+ Novo projeto\".",
         "Código no padrão NN.TT.MMAA. Status automático calcula Em andamento, Atrasado e Concluído pelas datas e pelo progresso.",
         "Aba Projeto: equipe por disciplina, pausas e datas. Aba Financeiro: parcelas e o que já foi pago.",
+        "Entrega por disciplina: em Equipe, cada disciplina tem ⏸ (pausar) e ✓ (entregar só ela). A entregue fica verde com a data (dá para corrigir a data abaixo); as outras seguem em desenvolvimento. O cartão mostra \"1/3 ENTREGUES\" e o portal do cliente lista o que já foi entregue. Quando todas são entregues, o projeto fica Concluído com a data da última entrega. ↺ desfaz.",
         "Aba Checklist: o checklist da obra ligado a este projeto. Aba Revisões: controle de revisão interna.",
         "Aba Portal Cliente: gere um link para o cliente acompanhar o andamento.",
       ]},
@@ -101,6 +102,8 @@ const TOPICOS = [
         "Clique em \"▶ Iniciar\" na barra superior, escolha Projeto ou Administrativa, descreva o que vai fazer e inicie.",
         "Para trocar de projeto use \"Mudar\"; para terminar o dia, \"🏁 Encerrar expediente\".",
         "Sessões fora do expediente contam como hora extra.",
+        "Modo escuro: botão da lua na barra superior (o sol volta ao claro). A escolha fica salva no navegador.",
+        "Gestores: em Banco de horas, \"+ Lançar horas\" registra horas de dias anteriores para qualquer colaborador (data, projeto ou atividade, entrada e saída). O sistema calcula a hora extra, impede horários sobrepostos e marca o registro como \"Manual\".",
         "Os registros ficam guardados no computador até o servidor confirmar. Se aparecer a faixa amarela de \"registros não salvos\", não feche o sistema e clique em \"Tentar agora\".",
       ]},
       { t:"Consultar", itens:[
@@ -122,6 +125,65 @@ const TOPICOS = [
       "Tarefas: crie tarefas com responsável, prazo e projeto; marque como concluídas.",
       "Ative as notificações do computador no sino para receber os avisos mesmo com o sistema fechado.",
     ]}]},
+  { id:"relatorios", icone:"📊", titulo:"Relatórios", aba:"relatorios",
+    resumo:"Relatórios gerais ou de um projeto, com as informações que você escolher, em PDF ou planilha.",
+    secoes:[{ t:"Gerar um relatório", itens:[
+      "Escolha Geral (todos os projetos, com filtros por situação, tipo e colaborador) ou Por projeto (busque e selecione o projeto).",
+      "Escolha o período: este mês, mês passado, últimos 90 dias, este ano, todo o período ou datas personalizadas.",
+      "Marque as informações que vão sair: resumo, andamento, entregas, financeiro, parcelas pendentes, horas, sessões detalhadas, tarefas, orçamentos e contratos, equipe. A escolha fica salva para a próxima vez.",
+      "A prévia mostra exatamente o que sai. Clique em Gerar PDF (na janela de impressão escolha Salvar como PDF) ou em Planilha (Excel).",
+      "Os valores financeiros vêm das parcelas de cada projeto. Horas, tarefas e entregas respeitam o período escolhido.",
+    ]}]},
+  { id:"calculadoras", icone:"📐", titulo:"Calculadoras e materiais de apoio", aba:"calculadoras",
+    resumo:"Ferramentas de cálculo técnico e guias de conferência de projeto (hidrossanitário e elétrico).",
+    secoes:[{ t:"Usar", itens:[
+      "Escolha a calculadora na grade (ou busque pelo nome). Os resultados atualizam enquanto você digita.",
+      "Sapata associada: preencha materiais, pilares e geometria; na etapa Resultados é possível baixar o desenho em DXF.",
+      "Na aba Materiais de apoio ficam os guias de conferência em PDF: leia dentro do sistema (com o sumário ao lado) ou baixe o arquivo. A busca encontra por assunto ou norma (ex.: NBR 5410).",
+      "Use o filtro ao lado da busca para ver só uma disciplina (hidrossanitário, elétrico, estrutural…).",
+      "Adicionar PDF envia um material novo para toda a equipe: o sistema lê a capa, o número de páginas e as normas citadas; confira o título, escolha a disciplina e salve. Antes do primeiro envio, rode no Supabase o arquivo supabase/materiais_apoio.sql.",
+    ]}]},
+  { id:"ifc", icone:"🧊", titulo:"Visualizador IFC e link do cliente", aba:"ifc",
+    resumo:"Abra modelos BIM, confira elementos e envie um link para o cliente ver o modelo 3D sem login.",
+    secoes:[
+      { t:"Visualizar", itens:[
+        "Clique em Abrir arquivo .ifc ou arraste o arquivo para a área 3D (IFC 2x3 e IFC 4: estrutural, arquitetônico, hidrossanitário, elétrico).",
+        "Arrastar gira, botão direito move, a roda aproxima. Clique num elemento para ver nome, pavimento, materiais e propriedades.",
+        "No painel Modelo, oculte disciplinas, categorias ou pavimentos. A barra inferior tem corte horizontal, raio-X, arestas, modo caminhar (W A S D) e imagem da vista.",
+        "Sobrepor modelo carrega outro arquivo junto (compatibilização). Use Cores → Por arquivo para diferenciar cada um.",
+      ]},
+      { t:"Vincular ao projeto e enviar ao cliente", itens:[
+        "Com o modelo aberto, vá na aba Link do painel, escolha o projeto, a disciplina e a versão e clique em Salvar no projeto e gerar link.",
+        "Copie o link ou envie pelo WhatsApp. O cliente abre no navegador ou no celular, sem login.",
+        "O modelo também aparece no Portal do cliente do projeto. Desative o link ou gere um novo quando quiser que o anterior pare de funcionar.",
+        "Modelos sobrepostos: em Modelos dos projetos use \"Sobrepor todos\" (ou Sobrepor em cada modelo). Na aba Link aparece o link com todos sobrepostos (copiar, WhatsApp, QR). \"Link de todos\" copia direto. O cliente liga e desliga cada modelo no olho; modelos com link desativado ficam de fora (máx. 10).",
+        "QR code: no botão QR code (aba Link, lista de modelos ou Portal do cliente) baixe o QR em PNG ou SVG, ou a etiqueta pronta com logo e legenda para colar na prancha. Se gerar um novo link, gere e troque o QR.",
+        "Em Modelos dos projetos ficam todos os modelos salvos, agrupados por projeto, para abrir de novo, sobrepor, copiar o link ou excluir.",
+        "Antes do primeiro uso, rode no Supabase o arquivo supabase/modelos_ifc_comparativos.sql (cria a tabela e a pasta de arquivos). Limite de 100 MB por arquivo (veja supabase/modelos_ifc_100mb.sql; no plano Free do Supabase o máximo é 50 MB).",
+      ]},
+    ]},
+  { id:"comparativo", icone:"⚖️", titulo:"Comparativo de modelos", aba:"comparativo",
+    resumo:"Compare aço, concreto, forma e custo de até 6 soluções estruturais e gere o PDF com o papel timbrado da WM.",
+    secoes:[
+      { t:"Preencher", itens:[
+        "Digite os quantitativos por elemento (Enter pula para a próxima célula) ou use Importar do Eberick com o Resumo de Materiais em .xlsx.",
+        "Ajuste o preço do aço por bitola e do concreto em cada modelo. Itens extras (movimento de terra, cubetas…) entram no total.",
+        "Duplique um modelo para testar variações. O resumo à direita mostra o mais econômico e a diferença dos demais.",
+        "Vincule a um projeto e clique em Salvar para continuar depois (Abrir salvo).",
+      ]},
+      { t:"Gerar o PDF", itens:[
+        "Clique em Gerar PDF: aparece a prévia em folhas A4 com o papel timbrado da WM.",
+        "Escolha o responsável, se quer o detalhamento de cada modelo e edite as considerações (o botão Sugerir texto escreve um resumo automático).",
+        "Clique em Baixar PDF e, na janela de impressão, escolha Salvar como PDF.",
+      ]},
+      { t:"Estimativa de custo das instalações (elétrico e hidrossanitário)", itens:[
+        "Na aba Instalações · estimativa de custo, importe a Lista de Materiais exportada pelo QiBuilder em .xlsx (pode importar o elétrico e o hidrossanitário juntos).",
+        "Cada item recebe o preço da composição SINAPI MG (set/2026, não desonerado) de fornecimento e instalação. Os selos mostram a origem: SINAPI, Estimado (equivalência de bitola ou peça), Incluído, Informado ou Sem preço.",
+        "Filtre Sem preço e informe os valores que faltam (acessórios de piscina, padrão de entrada, duchas…). Ao salvar, esses preços ficam guardados e são usados nas próximas estimativas.",
+        "Desmarque um sistema para tirá-lo do total, ajuste o BDI ou marque Somente materiais. Gere o PDF com o papel timbrado da WM, com ou sem o detalhamento dos itens.",
+        "Antes do primeiro uso, rode no Supabase o arquivo supabase/estimativa_instalacoes.sql.",
+      ]},
+    ]},
   { id:"financeiro", icone:"💰", titulo:"Financeiro", aba:"financeiro",
     resumo:"Valores contratados, recebidos e pendentes por projeto.",
     secoes:[{ t:"Usar", itens:[
@@ -165,10 +227,10 @@ export default function PaginaAjuda({ irPara }) {
   const atual = TOPICOS.find(t => t.id === sel) || TOPICOS[0];
 
   return (
-    <div style={{ maxWidth:1100, margin:"0 auto" }}>
+    <div style={{ maxWidth:1240 }}>
       <div style={{ marginBottom:18 }}>
-        <div style={{ fontSize:22, fontWeight:800, color:K.azul }}>❓ Ajuda e tutoriais</div>
-        <div style={{ fontSize:13, color:K.sub, marginTop:2 }}>Como usar cada parte do sistema e o fluxo de trabalho da WM</div>
+        <h1 style={{ margin:0, fontSize:30, fontWeight:800, color:"#0a2557", letterSpacing:-.5 }}>Ajuda e tutoriais</h1>
+        <div style={{ fontSize:14.5, color:K.sub, marginTop:6 }}>Como usar cada parte do sistema e o fluxo de trabalho da WM.</div>
       </div>
       <div style={{ display:"flex", gap:18, alignItems:"flex-start", flexWrap:"wrap" }}>
         <nav aria-label="Tópicos de ajuda" style={{ flex:"1 1 230px", maxWidth:300, background:"#fff", border:`1px solid ${K.borda}`, borderRadius:12, padding:10, position:"sticky", top:96 }}>

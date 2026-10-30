@@ -25,6 +25,7 @@ alter table public.sessoes_horas add column if not exists obs             text d
 alter table public.sessoes_horas add column if not exists obs_inicio      text default '';
 alter table public.sessoes_horas add column if not exists obs_fim         text default '';
 alter table public.sessoes_horas add column if not exists visivel_cliente boolean default true;
+alter table public.sessoes_horas add column if not exists lancado_por     text;  -- lançamento manual (gestor)
 
 -- 3) O sistema usa códigos de TEXTO: sessão "1760900000000", usuário "jonathan",
 --    projeto "08.CB.1026". Se alguma dessas colunas foi criada como uuid/número, o banco
