@@ -11,6 +11,7 @@ import { lerQiBuilder } from "./qibuilder.js";
 import { ORIGENS, calcularEstimativa, fmtN, fmtP, fmtR, novaEstimativa } from "./calculo.js";
 import { precosBase } from "./dados.js";
 import RelatorioEstimativa from "./RelatorioEstimativa.jsx";
+import { exportarEstimativaExcel } from "../excel.js";
 
 const K = { mar: "#0a2557", azul: "#1565d8", tx: "#0f1f3d", sub: "#6b7a90", borda: "#e6ecf4", fundo: "#f3f6fb" };
 const inp = { width: "100%", boxSizing: "border-box", border: `1px solid ${K.borda}`, borderRadius: 10, padding: "9px 11px", fontSize: 13.5, fontFamily: "inherit", color: K.tx, background: "#fff", outline: "none" };
@@ -27,7 +28,23 @@ function Selo({ origem, titulo }) {
   return <span title={titulo} style={{ display: "inline-block", fontSize: 10.5, fontWeight: 700, color: o.cor, background: o.fundo, borderRadius: 6, padding: "2px 7px", whiteSpace: "nowrap" }}>{o.rot}</span>;
 }
 
-function CartaoSistema({ s, aberto, onAlternar, onIncluir, precos, setPreco, filtro, busca }) {
+const numBR = v => { const n = parseFloat(String(v ?? "").trim().replace(/\./g, (m, i, t) => (t.includes(",") ? "" : m)).replace(",", ".")); return Number.isFinite(n) ? n : null; };
+const txtNum = n => (n == null || n === "" ? "" : String(Number(n)).replace(".", ","));
+
+// Quantidade editável: guarda o texto enquanto digita e grava o número válido
+function CampoQtd({ valor, onMudar, rotulo }) {
+  const [txt, setTxt] = useState(txtNum(valor));
+  const [foco, setFoco] = useState(false);
+  const mostrado = foco ? txt : txtNum(valor);
+  return (
+    <input value={mostrado} inputMode="decimal" aria-label={rotulo}
+      onFocus={() => { setTxt(txtNum(valor)); setFoco(true); }} onBlur={() => setFoco(false)}
+      onChange={e => { setTxt(e.target.value); const n = numBR(e.target.value); if (n != null && n >= 0) onMudar(n); }}
+      style={{ width: 70, height: 30, boxSizing: "border-box", border: `1px solid ${K.borda}`, borderRadius: 7, padding: "0 7px", fontSize: 12.5, textAlign: "right", fontFamily: "inherit", background: "#fff" }} />
+  );
+}
+
+function CartaoSistema({ s, aberto, onAlternar, onIncluir, precos, setPreco, filtro, busca, onEditar, onRestaurar, onRemover, onAdicionar }) {
   const cor = COR_DISC[s.disciplina] || K.azul;
   const q = busca.trim().toLowerCase();
   const itens = s.itens.filter(x => (filtro === "todos" || (filtro === "sem" && x.origem === "sem") || (filtro === "estimado" && x.origem === "estimado") || (filtro === "informado" && (x.origem === "informado" || x.origem === "base")))
@@ -57,11 +74,20 @@ function CartaoSistema({ s, aberto, onAlternar, onIncluir, precos, setPreco, fil
                 const editado = precos[x.id] != null && precos[x.id] !== "";
                 return (
                   <tr key={x.id} style={{ borderBottom: "1px solid #f0f3f8" }}>
-                    <td style={{ padding: "7px 10px", fontSize: 13, color: K.tx }}>
-                      <div style={{ fontWeight: 600 }}>{x.descricao}</div>
-                      <div style={{ fontSize: 11.5, color: K.sub }}>{[x.item, x.grupo].filter(Boolean).join(" · ")}</div>
+                    <td style={{ padding: "5px 10px", fontSize: 13, color: K.tx, minWidth: 240 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <input value={x.descricao} onChange={e => onEditar(x.id, { descricao: e.target.value })} aria-label="Nome do item" title="Clique para editar o nome"
+                          className="wm-est-nome" style={{ flex: 1, minWidth: 0, fontWeight: 600, fontSize: 13, color: K.tx, fontFamily: "inherit", border: "1px solid transparent", borderRadius: 6, padding: "3px 5px", background: "transparent" }} />
+                        {(x.manual || x.orig) && <span title={x.orig ? `Original: ${x.orig.descricao} — ${fmtN(x.orig.qtd)} ${x.orig.un || ""}` : "Item adicionado manualmente"}
+                          style={{ fontSize: 10, fontWeight: 700, color: x.manual ? "#7c3aed" : "#b45309", background: x.manual ? "#f3e8ff" : "#fef3c7", borderRadius: 5, padding: "1px 6px", whiteSpace: "nowrap" }}>{x.manual ? "adicionado" : "editado"}</span>}
+                        {x.orig && <button onClick={() => onRestaurar(x.id)} title="Voltar ao nome e à quantidade da planilha" aria-label="Restaurar item original" style={{ border: "none", background: "none", cursor: "pointer", color: K.sub, padding: 2, fontSize: 13 }}>↺</button>}
+                        <button onClick={() => onRemover(x)} title="Remover item" aria-label={`Remover ${x.descricao}`} style={{ border: "none", background: "none", cursor: "pointer", color: "#e11d48", padding: 2, opacity: .7 }}><Icone nome="lixeira" tam={13} /></button>
+                      </div>
+                      <div style={{ fontSize: 11.5, color: K.sub, paddingLeft: 6 }}>{[x.item, x.grupo].filter(Boolean).join(" · ")}</div>
                     </td>
-                    <td style={{ padding: "7px 10px", fontSize: 13, textAlign: "right", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{fmtN(x.qtd)} <span style={{ color: K.sub, fontSize: 11.5 }}>{x.un}</span></td>
+                    <td style={{ padding: "5px 10px", fontSize: 13, textAlign: "right", whiteSpace: "nowrap" }}>
+                      <CampoQtd valor={x.qtd} onMudar={v => onEditar(x.id, { qtd: v })} rotulo={`Quantidade de ${x.descricao}`} /> <span style={{ color: K.sub, fontSize: 11.5 }}>{x.un}</span>
+                    </td>
                     <td style={{ padding: "7px 10px", fontSize: 12, maxWidth: 260 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                         <Selo origem={x.origem} titulo={x.c?.nota} />
@@ -84,8 +110,50 @@ function CartaoSistema({ s, aberto, onAlternar, onIncluir, precos, setPreco, fil
               })}
             </tbody>
           </table>
+          <div style={{ padding: "8px 12px", borderTop: "1px solid #f0f3f8" }}>
+            <button onClick={onAdicionar} style={btn("sec", { padding: "6px 12px", fontSize: 12.5, borderStyle: "dashed" })}><Icone nome="mais" tam={14} />Adicionar item em {s.sistema}</button>
+          </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// Novo item (em um sistema existente ou num sistema novo)
+function ModalItem({ inicial, sistemas, onSalvar, onFechar }) {
+  const [f, setF] = useState({ sistema: "", disciplina: "Hidrossanitário", descricao: "", qtd: "", un: "un", preco: "", ...inicial });
+  const s = (k, v) => setF(x => ({ ...x, [k]: v }));
+  const qtd = numBR(f.qtd), preco = f.preco === "" ? null : numBR(f.preco);
+  const ok = f.sistema.trim() && f.descricao.trim() && qtd != null && qtd > 0 && (f.preco === "" || preco != null);
+  return (
+    <div style={fundoModal} onClick={e => { if (e.target === e.currentTarget) onFechar(); }}>
+      <div role="dialog" aria-modal="true" aria-label="Adicionar item" style={{ ...caixaModal, maxWidth: 560 }}>
+        <CabecalhoModal titulo="Adicionar item" subtitulo="O preço de referência é buscado pelo nome; se não houver, informe o unitário" icone="mais" onFechar={onFechar} />
+        <div style={{ padding: 18, display: "grid", gap: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 10 }}>
+            <div><label style={lbl}>Sistema</label>
+              <input list="wm-est-sistemas" value={f.sistema} onChange={e => { s("sistema", e.target.value); const ex = sistemas.find(x => x.sistema === e.target.value); if (ex) s("disciplina", ex.disciplina); }} placeholder="Ex.: Água fria" style={inp} />
+              <datalist id="wm-est-sistemas">{sistemas.map(x => <option key={x.chave} value={x.sistema}>{x.disciplina}</option>)}</datalist>
+            </div>
+            <div><label style={lbl}>Disciplina</label>
+              <select value={f.disciplina} onChange={e => s("disciplina", e.target.value)} style={{ ...inp, cursor: "pointer" }}>
+                <option>Hidrossanitário</option><option>Elétrico</option>
+              </select>
+            </div>
+          </div>
+          <div><label style={lbl}>Descrição do item</label><input value={f.descricao} onChange={e => s("descricao", e.target.value)} placeholder="Ex.: Tubo PVC soldável 25 mm" style={inp} autoFocus /></div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 0.7fr 1fr", gap: 10 }}>
+            <div><label style={lbl}>Quantidade</label><input value={f.qtd} onChange={e => s("qtd", e.target.value)} inputMode="decimal" placeholder="0" style={inp} /></div>
+            <div><label style={lbl}>Unidade</label><input value={f.un} onChange={e => s("un", e.target.value)} placeholder="un, m, kg" style={inp} /></div>
+            <div><label style={lbl}>Preço unitário (opcional)</label><input value={f.preco} onChange={e => s("preco", e.target.value)} inputMode="decimal" placeholder="busca no SINAPI" style={inp} /></div>
+          </div>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <button onClick={onFechar} style={btn("sec")}>Cancelar</button>
+            <button disabled={!ok} onClick={() => onSalvar({ sistema: f.sistema.trim(), disciplina: f.disciplina, descricao: f.descricao.trim(), qtd, un: f.un.trim(), preco })}
+              style={btn("pri", { opacity: ok ? 1 : 0.55, cursor: ok ? "pointer" : "not-allowed" })}><Icone nome="mais" tam={15} />Adicionar</button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -141,6 +209,30 @@ export function EstimativaInstalacoes({ projetos = [], usuarioAtual }) {
   const setParam = (k, v) => setEst(e => ({ ...e, params: { ...e.params, [k]: v } }));
   const setPreco = (id, v) => setEst(e => { const p = { ...e.precos }; if (v === "" || v == null) delete p[id]; else p[id] = v; return { ...e, precos: p }; });
 
+  // Edição dos itens importados (nome/quantidade), inclusão e remoção
+  const mapItens = fn => setEst(e => ({ ...e, listas: e.listas.map(l => ({ ...l, itens: fn(l.itens, l) })).filter(l => l.itens.length || !l.manual) }));
+  const editarItem = (id, campos) => mapItens(itens => itens.map(x => x.id !== id ? x : {
+    ...x, ...(x.manual || x.orig ? {} : { orig: { descricao: x.descricao, qtd: x.qtd, un: x.un } }), ...campos }));
+  const restaurarItem = id => mapItens(itens => itens.map(x => x.id !== id || !x.orig ? x : (({ orig, ...resto }) => ({ ...resto, ...orig }))(x)));
+  const removerItem = x => {
+    if (!window.confirm(`Remover "${x.descricao}" da estimativa?`)) return;
+    mapItens(itens => itens.filter(i => i.id !== x.id));
+    setPreco(x.id, "");
+  };
+  const adicionarItem = ({ sistema, disciplina, descricao, qtd, un, preco }) => {
+    const id = `manual#${Date.now()}${Math.floor(Math.random() * 1000)}`;
+    setEst(e => {
+      const listas = e.listas.some(l => l.manual) ? e.listas : [...e.listas, { arquivo: "Itens adicionados", manual: true, meta: {}, itens: [], disciplinaPrincipal: disciplina }];
+      return { ...e, listas: listas.map(l => l.manual ? { ...l, itens: [...l.itens, { id, sistema, grupo: "", disciplina, descricao, item: "", qtd, un, obs: "", manual: true }] } : l),
+        precos: preco != null ? { ...e.precos, [id]: preco } : e.precos };
+    });
+    setModal(null); avisar(`“${descricao}” adicionado em ${sistema}.`);
+  };
+  async function exportarExcel() {
+    try { await exportarEstimativaExcel(est, r, nomeArquivoPdf("Estimativa_Instalacoes_WM", est.info.projeto || est.info.cliente)); avisar("Planilha Excel gerada."); }
+    catch (e) { avisar(e.message || "Não foi possível gerar o Excel.", false); }
+  }
+
   async function importar(files) {
     const lista = [...(files || [])].filter(f => /\.xlsx?$/i.test(f.name));
     if (!lista.length) { avisar("Escolha a planilha .xlsx exportada pelo QiBuilder.", false); return; }
@@ -195,6 +287,7 @@ export function EstimativaInstalacoes({ projetos = [], usuarioAtual }) {
         <button onClick={novo} style={btn("sec")}>Nova</button>
         <button onClick={() => setModal("salvas")} style={btn("sec")}><Icone nome="pasta" tam={16} />Abrir salva</button>
         <button onClick={salvar} disabled={salvando || !tem} style={btn("sec", { opacity: salvando || !tem ? 0.6 : 1 })}><Icone nome="salvar" tam={16} />{salvando ? "Salvando…" : "Salvar"}</button>
+        <button onClick={exportarExcel} disabled={!tem} title="Baixar a estimativa em Excel (.xlsx)" style={btn("sec", { opacity: tem ? 1 : 0.55, cursor: tem ? "pointer" : "not-allowed" })}><Icone nome="grafico" tam={16} />Exportar Excel</button>
         <button onClick={() => { setOpcoesPdf(o => ({ ...o, conclusao: o.conclusao || sugerir() })); setModal("pdf"); }} disabled={!tem} style={btn("pri", { opacity: tem ? 1 : 0.55, cursor: tem ? "pointer" : "not-allowed" })}><Icone nome="documento" tam={16} />Gerar PDF</button>
       </div>
 
@@ -225,7 +318,9 @@ export function EstimativaInstalacoes({ projetos = [], usuarioAtual }) {
             Arraste ou escolha o .xlsx (elétrico, hidrossanitário ou os dois). Cada item recebe o preço da composição SINAPI {REFERENCIA.uf} ({REFERENCIA.mes}) de fornecimento e instalação; o que não tiver referência você informa.
           </div>
         </button>
-      ) : (
+      ) : null}
+      {!tem && <div style={{ textAlign: "center", marginTop: 10 }}><button onClick={() => setModal({ tipo: "item", inicial: {} })} style={btn("sec", { fontSize: 13 })}><Icone nome="mais" tam={15} />Ou começar adicionando itens manualmente</button></div>}
+      {tem && (
         <div className="wm-cmp-grade" style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 340px", gap: 16, alignItems: "start" }}>
           <div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 12 }}>
@@ -237,6 +332,7 @@ export function EstimativaInstalacoes({ projetos = [], usuarioAtual }) {
                 </span>
               ))}
               <button onClick={() => arquivoRef.current?.click()} disabled={lendo} style={btn("sec", { padding: "6px 12px", fontSize: 12.5, borderStyle: "dashed" })}><Icone nome="mais" tam={14} />{lendo ? "Lendo…" : "Importar outra lista"}</button>
+              <button onClick={() => setModal({ tipo: "item", inicial: {} })} style={btn("sec", { padding: "6px 12px", fontSize: 12.5, borderStyle: "dashed" })}><Icone nome="mais" tam={14} />Adicionar item</button>
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
               <select value={filtro} onChange={e => setFiltro(e.target.value)} aria-label="Filtrar itens" style={{ ...inp, width: "auto", cursor: "pointer" }}>
@@ -250,7 +346,8 @@ export function EstimativaInstalacoes({ projetos = [], usuarioAtual }) {
             </div>
             {r.porSistema.map(s => (
               <CartaoSistema key={s.chave} s={s} aberto={!!abertos[s.chave] || filtro !== "todos" || !!busca} onAlternar={() => setAbertos(a => { const n = { ...a }; if (n[s.chave]) delete n[s.chave]; else n[s.chave] = true; return n; })}
-                onIncluir={v => alternarSistema(s, v)} precos={est.precos} setPreco={setPreco} filtro={filtro} busca={busca} />
+                onIncluir={v => alternarSistema(s, v)} precos={est.precos} setPreco={setPreco} filtro={filtro} busca={busca}
+                onEditar={editarItem} onRestaurar={restaurarItem} onRemover={removerItem} onAdicionar={() => setModal({ tipo: "item", inicial: { sistema: s.sistema, disciplina: s.disciplina } })} />
             ))}
           </div>
 
@@ -299,6 +396,7 @@ export function EstimativaInstalacoes({ projetos = [], usuarioAtual }) {
         </div>
       )}
 
+      {modal?.tipo === "item" && <ModalItem inicial={modal.inicial} sistemas={r.porSistema} onSalvar={adicionarItem} onFechar={() => setModal(null)} />}
       {modal === "salvas" && <ModalSalvas onAbrir={abrir} onFechar={() => setModal(null)} />}
       {modal === "pdf" && (
         <ModalImpressao titulo="Estimativa de instalações" voltar="Voltar à estimativa" onFechar={() => setModal(null)}

@@ -12,6 +12,7 @@ import { comparativos } from "./dados.js";
 import RelatorioPDF from "./RelatorioPDF.jsx";
 import { ModalImpressao } from "./Timbrado.jsx";
 import { nomeArquivoPdf } from "./estilo.js";
+import { exportarComparativoExcel } from "./excel.js";
 
 const K = { mar: "#0a2557", azul: "#1565d8", tx: "#0f1f3d", sub: "#6b7a90", borda: "#e6ecf4", fundo: "#f3f6fb", verde: "#16a34a", ambar: "#b45309" };
 const inp = { width: "100%", boxSizing: "border-box", border: `1px solid ${K.borda}`, borderRadius: 10, padding: "9px 11px", fontSize: 13.5, fontFamily: "inherit", color: K.tx, background: "#fff", outline: "none" };
@@ -352,6 +353,10 @@ function ComparativoEstrutural({ projetos = [], usuarioAtual }) {
           <button onClick={novo} style={btn("sec")}>Novo</button>
           <button onClick={() => setModal("salvos")} style={btn("sec")}><Icone nome="pasta" tam={16} />Abrir salvo</button>
           <button onClick={salvar} disabled={salvando} style={btn("sec", { opacity: salvando ? 0.7 : 1 })}><Icone nome="salvar" tam={16} />{salvando ? "Salvando…" : "Salvar"}</button>
+          <button onClick={async () => { try { await exportarComparativoExcel(modelos, info, nomeArquivoPdf("Comparativo_Estrutural_WM", info.projeto || info.cliente)); avisar("Planilha Excel gerada."); } catch (e) { avisar(e.message || "Não foi possível gerar o Excel.", false); } }}
+            disabled={!r.temDados} title={r.temDados ? "Baixar o comparativo em Excel (.xlsx)" : "Preencha os quantitativos primeiro"} style={btn("sec", { opacity: r.temDados ? 1 : 0.55, cursor: r.temDados ? "pointer" : "not-allowed" })}>
+            <Icone nome="grafico" tam={16} />Exportar Excel
+          </button>
           <button onClick={() => setModal("pdf")} disabled={!r.temDados} title={r.temDados ? "Gerar relatório em PDF" : "Preencha os quantitativos primeiro"} style={btn("pri", { opacity: r.temDados ? 1 : 0.55, cursor: r.temDados ? "pointer" : "not-allowed" })}>
             <Icone nome="documento" tam={16} />Gerar PDF
           </button>

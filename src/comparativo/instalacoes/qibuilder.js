@@ -1,7 +1,7 @@
 // Leitura da "Lista de Materiais" exportada pelo QiBuilder (AltoQi) em .xlsx
 const XLSX_CDN = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
 
-function carregarXlsx() {
+export function carregarXlsx() {
   return new Promise((resolve, reject) => {
     if (window.XLSX) { resolve(window.XLSX); return; }
     const existente = document.querySelector(`script[src="${XLSX_CDN}"]`);
