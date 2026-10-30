@@ -12,7 +12,8 @@ const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY;
 const env = k => String(process.env[k] || "").trim().replace(/^["']|["']$/g, "");
 const MODELO_CLAUDE = env("ANTHROPIC_MODEL") || "claude-sonnet-5-5";
-const MODELO_GEMINI = env("GEMINI_MODEL") || "gemini-3.8-flash";
+// Modelos gratuitos tentados em ordem quando o anterior está sobrecarregado (erro 503/500)
+const MODELOS_GEMINI = [...new Set([env("GEMINI_MODEL") || "gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite"])];
 
 function provedor() {
   const g = env("GEMINI_API_KEY"), a = env("ANTHROPIC_API_KEY"), pref = env("PROVEDOR_IA").toLowerCase();
@@ -95,25 +96,44 @@ function esquemaGemini(sch) {
 
 const falha = (msg, status) => Object.assign(new Error(msg), { status });
 
+const esperar = ms => new Promise(r => setTimeout(r, ms));
+
+async function geminiUmModelo(modelo, chave, corpo) {
+  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelo)}:generateContent`, {
+    method: "POST", headers: { "content-type": "application/json", "x-goog-api-key": chave }, body: JSON.stringify(corpo),
+  });
+  const j = await r.json().catch(() => ({}));
+  return { r, j };
+}
+
 async function chamarGemini(chave, sistema, imagem, texto) {
   const partes = [];
   if (imagem) partes.push({ inline_data: { mime_type: "image/jpeg", data: imagem } });
   partes.push({ text: texto });
-  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(MODELO_GEMINI)}:generateContent`, {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-goog-api-key": chave },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: sistema }] },
-      contents: [{ role: "user", parts: partes }],
-      generationConfig: { temperature: 0.2, maxOutputTokens: 8000, responseMimeType: "application/json", responseSchema: esquemaGemini(FERRAMENTA.input_schema) },
-    }),
-  });
-  const j = await r.json().catch(() => ({}));
-  if (r.status === 429) throw falha("Limite gratuito do Gemini atingido (pedidos por minuto ou por dia). Aguarde um pouco e tente de novo.", 429);
-  if (!r.ok) throw falha(`O Gemini recusou a análise (${r.status}): ${j?.error?.message || "erro desconhecido"}`, 502);
-  const txt = (j.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
-  try { return { dados: JSON.parse(txt), modelo: MODELO_GEMINI, tokens: j.usageMetadata || null }; }
-  catch { throw falha("O Gemini devolveu uma resposta fora do formato esperado. Tente de novo.", 502); }
+  const corpo = {
+    systemInstruction: { parts: [{ text: sistema }] },
+    contents: [{ role: "user", parts: partes }],
+    generationConfig: { temperature: 0.2, maxOutputTokens: 8000, responseMimeType: "application/json", responseSchema: esquemaGemini(FERRAMENTA.input_schema) },
+  };
+  let ultimo = null;
+  // Sobrecarga (503/500): tenta o mesmo modelo de novo e depois os próximos modelos gratuitos
+  for (const modelo of MODELOS_GEMINI) {
+    for (let t = 0; t < 2; t++) {
+      const { r, j } = await geminiUmModelo(modelo, chave, corpo);
+      if (r.ok) {
+        const txt = (j.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
+        try { return { dados: JSON.parse(txt), modelo, tokens: j.usageMetadata || null }; }
+        catch { ultimo = falha("O Gemini devolveu uma resposta fora do formato esperado.", 502); break; }
+      }
+      ultimo = { status: r.status, msg: j?.error?.message || "erro desconhecido" };
+      if (r.status === 404 || r.status === 429) break;          // modelo indisponível ou cota deste modelo: vai para o próximo
+      if (r.status !== 503 && r.status !== 500) throw falha(`O Gemini recusou a análise (${r.status}): ${ultimo.msg}`, 502);
+      await esperar(2500 * (t + 1));
+    }
+  }
+  if (ultimo instanceof Error) throw ultimo;
+  if (ultimo?.status === 429) throw falha("Limite gratuito do Gemini atingido (pedidos por minuto ou por dia). Aguarde um pouco e tente de novo.", 429);
+  throw falha("Os modelos gratuitos do Gemini estão sobrecarregados agora. O sistema vai tentar de novo em instantes.", 503);
 }
 
 async function chamarClaude(chave, sistema, imagem, texto) {

@@ -201,7 +201,7 @@ export function PaginaVerificacao({ projetos = [], usuarioAtual }) {
             setRodando({ etapa: `IA analisando prancha ${i + 1} de ${paginas.length} (${pg.arquivo})`, frac: i / paginas.length });
             try {
               const r = await analisarComIA(pg, { token, contexto, total: paginas.filter(p => p.arquivo === pg.arquivo).length,
-                aoEsperar: s => setRodando(x => ({ ...x, etapa: `Limite gratuito da IA atingido: aguardando ${s} s para continuar (prancha ${i + 1} de ${paginas.length})` })) });
+                aoEsperar: (s, st) => setRodando(x => ({ ...x, etapa: `${st === 503 ? "IA do Google sobrecarregada" : "Limite gratuito da IA atingido"}: aguardando ${s} s para tentar de novo (prancha ${i + 1} de ${paginas.length})` })) });
               pg.resumo = r.resumo; pg.carimbo = r.carimbo; apont.push(...r.apontamentos); usouIA = true;
             } catch (e) {
               if (e.codigo === "sem_chave" || e.codigo === "indisponivel" || /sess[aã]o/i.test(e.message)) { setAvisoIA(e.message); break; }
