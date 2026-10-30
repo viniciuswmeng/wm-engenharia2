@@ -3,7 +3,7 @@ import { CartaoNumero, Abas, CabecalhoModal } from "../ui/ds.jsx";
 import { useState, useEffect, useMemo } from "react";
 import { db, portal } from "../supabase.js";
 import ModelosDoProjeto from "../ifc/ModelosDoProjeto.jsx";
-import { Badge, Btn, C, Card, DISCIPLINAS_CB, InpC, STATUS_CONFIG, SelC, TIPOS, TipoBadge, calcStatusAuto, diasAte, fmt, fmtData, obrasProgressoListeners, statusN } from "../nucleo.jsx";
+import { Badge, Btn, C, Card, DISCIPLINAS_CB, InpC, STATUS_CONFIG, SelC, TIPOS, TipoBadge, calcStatusAuto, diasAte, estaAtrasado, fmt, fmtData, obrasProgressoListeners, statusN } from "../nucleo.jsx";
 
 export function PainelDrive({drive,projetosExistentes,onImportar}){
   const [pastasNovo,setPN]=useState([]);
@@ -1336,9 +1336,10 @@ export function PainelAlertas({projetos, onAbrirProjeto}) {
   const ativos = projetos.filter(p => !["CONCLUÍDO","CANCELADO"].includes(statusN(p.status)));
   const semContrato  = ativos.filter(p => !p.temContrato);
   const semArt       = ativos.filter(p => !(p.obs||"").toLowerCase().includes("art") && !p.temContrato);
-  const atrasados    = ativos.filter(p => statusN(p.status) === "ATRASADO");
+  const atrasados    = ativos.filter(estaAtrasado);
   const vencendo     = ativos.filter(p => { const d=diasAte(p.dataEntregaPrevista); return d!==null&&d>=0&&d<=14; });
-  const vencidos     = ativos.filter(p => { const d=diasAte(p.dataEntregaPrevista); return d!==null&&d<0&&statusN(p.status)!=="ATRASADO"; });
+  // Prazo vencido sem entrar em "atrasados" (ex.: projeto pausado com a data já passada)
+  const vencidos     = ativos.filter(p => { const d=diasAte(p.dataEntregaPrevista); return d!==null&&d<0&&!estaAtrasado(p)&&!p.dataEntregaReal; });
 
   const total = semContrato.length + atrasados.length + vencendo.length + vencidos.length;
   const [filtro, setFiltro] = useState("todos");

@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { C, COR_TIPO, TIPOS, diasAte, fmt, statusN } from "../nucleo.jsx";
+import { C, COR_TIPO, TIPOS, diasAte, estaAtrasado, fmt, statusN } from "../nucleo.jsx";
 import { CardProjeto, PainelAlertas, PainelDrive, PainelEntregas } from "./projetos.jsx";
 import Icone from "../ui/Icone.jsx";
 import { Abas } from "../ui/ds.jsx";
@@ -155,12 +155,12 @@ export function Dashboard({ projetos, onAbrirProjeto, drive, onImportar, usuario
       novos30: ativos.filter(p => { const dt = dataLocal(p.dataContrato); return dt && dt >= mes30; }).length,
       concl30: concl.filter(p => { const dt = dataLocal(p.dataEntregaReal); return dt && dt >= mes30; }).length,
       barrasAtivos: porMes(visiveis, "dataContrato"), barrasConcl: porMes(concl, "dataEntregaReal"),
-      atrasados: ativos.filter(p => st(p) === "ATRASADO").length,
+      atrasados: ativos.filter(estaAtrasado).length,
       pausados: ativos.filter(p => st(p).startsWith("PAUSADO")).length,
       semContrato: ativos.filter(p => !p.temContrato).length,
     };
   }, [visiveis]);
-  const totalAlertas = d.ativos.filter(p => !p.temContrato || statusN(p.status) === "ATRASADO" || (() => { const x = diasAte(p.dataEntregaPrevista); return x !== null && x <= 14; })()).length;
+  const totalAlertas = d.ativos.filter(p => !p.temContrato || estaAtrasado(p) || (() => { const x = diasAte(p.dataEntregaPrevista); return x !== null && x <= 14; })()).length;
   const pctReceb = d.contratado ? Math.round((d.recebido / d.contratado) * 100) : 0;
   const varMes = d.anterior ? Math.round(((d.atual - d.anterior) / d.anterior) * 100) : null;
   const maxTipo = Math.max(1, ...Object.values(d.porTipo));

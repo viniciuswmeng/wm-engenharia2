@@ -167,7 +167,38 @@ export const USUARIOS_PADRAO = [
 export const fmt        = v => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(v||0);
 export const fmtData    = d => { if(!d) return "—"; const [y,m,dd]=d.split("-"); return `${dd}/${m}/${y}`; };
 export const fmtDuracao = mins => { if(!mins||mins<0) return "0h 0min"; return `${Math.floor(mins/60)}h ${mins%60}min`; };
-export const diasAte    = data => { if(!data) return null; return Math.ceil((new Date(data)-new Date())/86400000); };
+// Dias de calendário até a data (0 = hoje, negativo = já passou). Datas "AAAA-MM-DD" são
+// tratadas como data local (antes, a meia-noite UTC fazia o prazo vencer na véspera à noite).
+export const diasAte    = data => {
+  if(!data) return null;
+  const s = String(data).slice(0,10);
+  const alvo = /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(s+"T12:00:00") : new Date(data);
+  if (isNaN(alvo)) return null;
+  const hoje = new Date(); hoje.setHours(12,0,0,0); alvo.setHours(12,0,0,0);
+  return Math.round((alvo - hoje)/86400000);
+};
+// Dias parados por pausas do projeto (pausa em aberto conta até hoje)
+export const calcDiasPausados = (pausas) => {
+  let total = 0;
+  (pausas||[]).forEach(p => {
+    if (!p?.inicio) return;
+    const fim = p.fim ? new Date(p.fim + "T12:00:00") : new Date();
+    const ini = new Date(p.inicio + "T12:00:00");
+    total += Math.max(0, Math.round((fim - ini) / 86400000) + 1);
+  });
+  return total;
+};
+// Entrega prevista: a gravada no projeto ou, se faltar, data do contrato + prazo + dias pausados
+export const prazoEntrega = (p) => {
+  if (!p) return "";
+  if (p.dataEntregaPrevista) return p.dataEntregaPrevista;
+  const prazo = parseInt(p.prazo) || 0;
+  if (!p.dataContrato || prazo <= 0) return "";
+  const d = new Date(String(p.dataContrato).slice(0,10) + "T12:00:00");
+  if (isNaN(d)) return "";
+  d.setDate(d.getDate() + prazo + calcDiasPausados(p.pausas));
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+};
 export const statusN    = s => { if(!s) return "Novo/Definir"; if(s==="Concluído"||s==="CONCLUÍDO") return "CONCLUÍDO"; return s; };
 
 export const calcStatusAuto = (p) => {
@@ -189,13 +220,35 @@ export const calcStatusAuto = (p) => {
       if (todasDiscs.some(d=>d.pausada)) return "PAUSADO PARCIAL";
     }
   }
-  if (p.dataEntregaPrevista) {
-    const dias = Math.ceil((new Date(p.dataEntregaPrevista) - new Date()) / 86400000);
-    if (dias < 0) return "ATRASADO";
-  }
+  { const dias = diasAte(prazoEntrega(p)); if (dias !== null && dias < 0) return "ATRASADO"; }
   if (p.responsavel || p.temContrato || p.prazo || p.dataContrato) return "Em andamento";
   return "Novo/Definir";
 };
+// Projeto em atraso: ativo (não concluído/cancelado/pausado), sem entrega real e com o
+// prazo vencido ou marcado como ATRASADO. Vale também para projetos com status manual.
+export const estaAtrasado = (p) => {
+  const st = statusN(p?.status);
+  if (["CONCLUÍDO","CANCELADO"].includes(st) || st.startsWith("PAUSADO") || p?.dataEntregaReal) return false;
+  if (st === "ATRASADO") return true;
+  const dias = diasAte(prazoEntrega(p));
+  return dias !== null && dias < 0;
+};
+// Versão do projeto para as telas: entrega prevista preenchida e status automático recalculado
+// pela data de hoje (o banco só é atualizado quando o projeto é salvo).
+export const comPrazoAtual = (p) => {
+  const prev = prazoEntrega(p);
+  let n = prev && prev !== p.dataEntregaPrevista ? { ...p, dataEntregaPrevista: prev } : p;
+  if (n.statusAuto !== false) {
+    const st = calcStatusAuto(n), atual = statusN(n.status);
+    const manter =
+      (st === "Novo/Definir" && n.status) ||                                                   // sem dados para calcular
+      (atual.startsWith("PAUSADO") && !["CONCLUÍDO","CANCELADO"].includes(st)) ||             // pausa definida à mão
+      (atual === "ATRASADO" && !prev && st !== "CONCLUÍDO");                                  // atraso marcado sem prazo
+    if (st && st !== n.status && !manter) n = { ...n, status: st };
+  }
+  return n;
+};
+
 export const horaMin    = h => { if(!h) return 0; const [hh,mm]=h.split(":").map(Number); return hh*60+mm; };
 
 // Calcula horas diárias de trabalho baseado no expediente do usuário

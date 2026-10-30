@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from "react";
 import { db, supabase, authClient, iniciarRealtime, enviarEmail, chat } from "./supabase.js";
 import { SinoNotificacoes, PaginaTarefas } from "./lembretes/Central.jsx";
 import { useCentral, usePush, useAvisosAbertos } from "./lembretes/hooks.js";
 import * as syncHoras from "./sessoesSync.js";
-import { ACESSOS_GOOGLE, C, prepararFoto, CHECK_INTERVAL, TelaLogin, USUARIOS_PADRAO, calcStatusAuto, expedientePadrao, expedienteParaDiaSemana, fimExpediente, horaMin, normEmail, normNome, normalizarExpediente, notificarSistema, notificarUmaVez, obrasProgressoListeners, pedirPermissaoNotificacao, piscarTitulo, statusN, tocarSomChat, useGoogleDrive, verificarForaExpediente, verificarHoraExtra } from "./nucleo.jsx";
+import { ACESSOS_GOOGLE, C, prepararFoto, CHECK_INTERVAL, TelaLogin, USUARIOS_PADRAO, calcStatusAuto, comPrazoAtual, expedientePadrao, expedienteParaDiaSemana, fimExpediente, horaMin, normEmail, normNome, normalizarExpediente, notificarSistema, notificarUmaVez, obrasProgressoListeners, pedirPermissaoNotificacao, piscarTitulo, statusN, tocarSomChat, useGoogleDrive, verificarForaExpediente, verificarHoraExtra } from "./nucleo.jsx";
 import { ModalHoras } from "./paginas/ModalHoras.jsx";
 import Icone from "./ui/Icone.jsx";
 import { BuscaGlobal, MenuUsuario, CarregandoPagina, CabecalhoPagina } from "./ui/Topo.jsx";
@@ -54,7 +54,10 @@ const PaginaRelatorios = carregarPagina(() => import("./paginas/relatorios.jsx")
 
 export default function App(){
   const calendario = useCalendario();
-  const [projetos,  setProjetos]  = useState([]);
+  const [projetosBase, setProjetos] = useState([]);
+  // Telas usam a entrega prevista e o status automático recalculados pela data de hoje
+  const hojeChave = new Date().toDateString();
+  const projetos = useMemo(() => projetosBase.map(comPrazoAtual), [projetosBase, hojeChave]); // eslint-disable-line react-hooks/exhaustive-deps
   const [usuarios,  setUsuarios]  = useState(USUARIOS_PADRAO);
   const [registros, setRegistros] = useState([]);
   const [carregando,setCarregando]= useState(true);
