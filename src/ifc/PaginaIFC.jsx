@@ -56,6 +56,41 @@ function CaixaLink({ modelo, projeto, onAlterar }) {
   );
 }
 
+// Link único com vários modelos sobrepostos (só os de link ativo entram)
+function CaixaConjunto({ modelos, projeto, onQr }) {
+  const [copiado, setCopiado] = useState(false);
+  const ativos = modelos.filter(m => m.linkAtivo).slice(0, 10);
+  const fora = modelos.length - ativos.length;
+  const url = ativos.length ? modelosIfc.linkConjunto(ativos.map(m => m.token)) : "";
+  return (
+    <div style={{ border: `1.5px solid ${K.azul}`, borderRadius: 12, padding: 12, background: "#f5f9ff" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+        <span style={{ width: 30, height: 30, borderRadius: 9, background: K.azul, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icone nome="camadas" tam={16} /></span>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 700, fontSize: 13.5, color: K.mar }}>Link com os {ativos.length} modelos sobrepostos</div>
+          <div style={{ fontSize: 12, color: K.sub }}>O cliente abre todos juntos e liga/desliga cada um.</div>
+        </div>
+      </div>
+      {ativos.length < 2 ? (
+        <div style={{ fontSize: 12.5, color: "#9f1239" }}>São necessários pelo menos 2 modelos salvos com link ativo.</div>
+      ) : <>
+        <input readOnly value={url} onFocus={e => e.target.select()} aria-label="Link dos modelos sobrepostos" style={{ ...inp, fontSize: 12, color: K.azul, background: "#fff", fontFamily: "ui-monospace, Consolas, monospace" }} />
+        <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+          <button onClick={async () => { await copiar(url); setCopiado(true); setTimeout(() => setCopiado(false), 1800); }} style={btn("pri", { flex: 1, padding: "8px 10px", fontSize: 13 })}>
+            <Icone nome={copiado ? "check" : "copiar"} tam={15} />{copiado ? "Copiado" : "Copiar link"}
+          </button>
+          <a href={url} target="_blank" rel="noreferrer" style={{ ...btn("sec", { padding: "8px 10px", fontSize: 13 }), textDecoration: "none" }}><Icone nome="externo" tam={15} />Abrir</a>
+          <a href={`https://wa.me/?text=${encodeURIComponent(`Olá! Segue o link para visualizar os modelos 3D do seu projeto, todos sobrepostos (${ativos.map(m => m.disciplina || m.nome).join(", ")}): ${url}`)}`} target="_blank" rel="noreferrer"
+            style={{ ...btn("sec", { padding: "8px 10px", fontSize: 13 }), textDecoration: "none" }}>WhatsApp</a>
+          <button onClick={() => onQr({ id: "conjunto", nome: `Modelos sobrepostos (${ativos.length})`, disciplina: ativos.map(m => m.disciplina || m.nome).join(" + "), token: ativos.map(m => m.token).join("-"), linkAtivo: true, projetoId: projeto?.id })}
+            style={btn("sec", { padding: "8px 10px", fontSize: 13 })}><Icone nome="qrcode" tam={15} />QR code</button>
+        </div>
+      </>}
+      {fora > 0 && <div style={{ fontSize: 11.5, color: K.sub, marginTop: 6 }}>{fora} modelo(s) com link desativado ficam de fora.</div>}
+    </div>
+  );
+}
+
 function FormSalvar({ item, projetos, usuarioAtual, onSalvo }) {
   const [f, setF] = useState({ projetoId: "", nome: item.nome.replace(/\.ifc$/i, ""), disciplina: "Estrutural", versao: "R00", observacao: "" });
   const [salvando, setSalvando] = useState(false);
@@ -146,6 +181,18 @@ export function PaginaIFC({ projetos = [], usuarioAtual }) {
     } catch (e) { viz?.setCarregando(""); viz?.setErro(e.message); }
   }
 
+  // Abre todos os modelos de um projeto sobrepostos e vai para a aba Link
+  async function sobreporTodos(lista) {
+    for (let i = 0; i < lista.length; i++) await abrirSalvo(lista[i], i > 0);
+    avisar(`${lista.length} modelos sobrepostos. O link com todos está na aba Link do painel.`);
+  }
+
+  async function copiarLinkTodos(lista) {
+    const at = lista.filter(m => m.linkAtivo);
+    await copiar(modelosIfc.linkConjunto(at.map(m => m.token)));
+    avisar(`Link com ${Math.min(at.length, 10)} modelos sobrepostos copiado.`);
+  }
+
   async function alterar(modelo, campos) {
     try {
       const novo = await modelosIfc.atualizar(modelo.id, campos);
@@ -174,6 +221,12 @@ export function PaginaIFC({ projetos = [], usuarioAtual }) {
       <p style={{ color: K.sub, fontSize: 13, textAlign: "center", marginTop: 30 }}>Abra um modelo para vinculá-lo a um projeto e gerar o link do cliente.</p>
     ) : (
       <div style={{ display: "grid", gap: 14 }}>
+        {carregados.filter(c => c.salvo).length >= 2 && (
+          <CaixaConjunto modelos={carregados.filter(c => c.salvo).map(c => c.salvo)} projeto={projPorId[carregados.find(c => c.salvo)?.salvo.projetoId]} onQr={setQrModelo} />
+        )}
+        {carregados.length >= 2 && carregados.some(c => !c.salvo) && (
+          <div style={{ fontSize: 12, color: K.sub, background: K.fundo, borderRadius: 10, padding: "8px 12px" }}>Salve cada arquivo no projeto para ele entrar no link dos modelos sobrepostos.</div>
+        )}
         {carregados.map(item => (
           <div key={item.vizId} style={{ border: `1px solid ${K.borda}`, borderRadius: 12, padding: 12 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
@@ -252,6 +305,11 @@ export function PaginaIFC({ projetos = [], usuarioAtual }) {
                 <Icone nome="pasta" tam={17} cor={K.azul} />
                 <span style={{ fontWeight: 700, color: K.mar, fontSize: 14 }}>{rotProj(projPorId[pid])}</span>
                 <span style={{ fontSize: 12, color: K.sub }}>{lista.length} modelo{lista.length > 1 ? "s" : ""}</span>
+                {lista.length > 1 && <span style={{ marginLeft: "auto", display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  <button onClick={() => sobreporTodos(lista)} title="Abrir todos os modelos deste projeto sobrepostos" style={btn("sec", { padding: "6px 10px", fontSize: 12.5 })}><Icone nome="camadas" tam={15} />Sobrepor todos</button>
+                  {lista.filter(m => m.linkAtivo).length > 1 && <button onClick={() => copiarLinkTodos(lista)}
+                    title="Copiar link com todos os modelos de link ativo sobrepostos" style={btn("sec", { padding: "6px 10px", fontSize: 12.5 })}><Icone nome="link" tam={15} />Link de todos</button>}
+                </span>}
               </div>
               {lista.map((m, i) => (
                 <div key={m.id} className="wm-ifc-linha" style={{ display: "grid", gridTemplateColumns: "minmax(0,1.6fr) minmax(0,1fr) auto", gap: 14, alignItems: "center", padding: "12px 18px", borderTop: i ? `1px solid ${K.borda}` : "none" }}>

@@ -254,7 +254,12 @@ export default function Visualizador3D({ ref, altura = "calc(100vh - 230px)", pa
                   <div key={m.id} style={{ background: K.fundo, borderRadius: 12, padding: "10px 12px", marginBottom: 10 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       {modelos.length > 1 && <span style={{ width: 9, height: 9, borderRadius: "50%", background: hex(m.cor) }} />}
-                      <div style={{ fontWeight: 700, color: K.mar, fontSize: 13.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.nome}</div>
+                      <div style={{ fontWeight: 700, color: K.mar, fontSize: 13.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0, opacity: (filtros.modelos || []).includes(m.id) ? 0.5 : 1 }}>{m.nome}</div>
+                      {modelos.length > 1 && (() => {
+                        const oculto = (filtros.modelos || []).includes(m.id);
+                        return <button type="button" onClick={() => alternar("modelos", m.id)} title={oculto ? "Mostrar este modelo" : "Ocultar este modelo"} aria-label={oculto ? `Mostrar ${m.nome}` : `Ocultar ${m.nome}`} aria-pressed={!oculto}
+                          style={{ border: "none", background: "none", cursor: "pointer", color: oculto ? K.sub : K.azul, padding: 2, display: "flex" }}><Icone nome={oculto ? "olhoFechado" : "olho"} tam={17} /></button>;
+                      })()}
                     </div>
                     <div style={{ fontSize: 12, color: K.sub, marginTop: 3, lineHeight: 1.5 }}>
                       {m.schema} · {m.elementos} elementos{m.pavimentos.length ? ` · ${m.pavimentos.length} pavimento${m.pavimentos.length > 1 ? "s" : ""}` : ""}

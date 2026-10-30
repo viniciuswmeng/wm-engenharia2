@@ -28,29 +28,36 @@ const TIPOS = {
 
 const urlArquivo = path => `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${path.split('/').map(encodeURIComponent).join('/')}`;
 
+const publico = m => ({ nome: m.nome, disciplina: m.disciplina || '', versao: m.versao || '', observacao: m.observacao || '',
+  arquivo: m.arquivo || '', tamanhoKb: m.tamanho_kb || 0, criadoEm: m.created_at, token: m.token, url: urlArquivo(m.path_storage) });
+
+// /modelo/<token> abre um modelo; /modelo/<tokenA>-<tokenB>-... abre os modelos sobrepostos
 export default async function handler(req) {
-  const token = new URL(req.url).searchParams.get('token') || '';
-  if (!/^[a-f0-9]{16,64}$/i.test(token)) return json({ error: 'Link inválido' }, 400);
+  const param = new URL(req.url).searchParams.get('token') || '';
+  if (!/^[a-f0-9]{16,64}(-[a-f0-9]{16,64}){0,9}$/i.test(param)) return json({ error: 'Link inválido' }, 400);
+  const tokens = [...new Set(param.split('-'))];
 
   try {
-    const [m] = await supabaseGet('modelos_ifc', `token=eq.${token}&select=*`);
-    if (!m) return json({ error: 'Link inválido ou expirado' }, 404);
-    if (m.link_ativo === false) return json({ error: 'Este link foi desativado pelo escritório' }, 403);
+    const achados = await supabaseGet('modelos_ifc', `token=in.(${tokens.join(',')})&select=*`);
+    const porToken = new Map(achados.map(m => [m.token, m]));
+    const lista = tokens.map(t => porToken.get(t)).filter(Boolean);
+    const ativos = lista.filter(m => m.link_ativo !== false);
+    if (!lista.length) return json({ error: 'Link inválido ou expirado' }, 404);
+    if (!ativos.length) return json({ error: 'Este link foi desativado pelo escritório' }, 403);
+    const m = ativos[0];
 
     let projeto = null, outros = [];
     if (m.projeto_id) {
       const pid = encodeURIComponent(m.projeto_id);
       const [p] = await supabaseGet('projetos', `id=eq.${pid}&select=codigo,cliente,tipo`).catch(() => []);
       if (p) projeto = { codigo: p.codigo || '', cliente: p.cliente || '', tipo: TIPOS[p.tipo] || p.tipo || '' };
-      const lista = await supabaseGet('modelos_ifc', `projeto_id=eq.${pid}&link_ativo=eq.true&order=created_at.desc&select=nome,disciplina,versao,token,created_at`).catch(() => []);
-      outros = lista.filter(x => x.token !== token).map(x => ({ nome: x.nome, disciplina: x.disciplina || '', versao: x.versao || '', token: x.token }));
+      const doProjeto = await supabaseGet('modelos_ifc', `projeto_id=eq.${pid}&link_ativo=eq.true&order=created_at.desc&select=nome,disciplina,versao,token,created_at`).catch(() => []);
+      const usados = new Set(ativos.map(x => x.token));
+      outros = doProjeto.filter(x => !usados.has(x.token)).map(x => ({ nome: x.nome, disciplina: x.disciplina || '', versao: x.versao || '', token: x.token }));
     }
 
-    return json({
-      nome: m.nome, disciplina: m.disciplina || '', versao: m.versao || '', observacao: m.observacao || '',
-      arquivo: m.arquivo || '', tamanhoKb: m.tamanho_kb || 0, criadoEm: m.created_at,
-      url: urlArquivo(m.path_storage), projeto, outros,
-    });
+    // Campos do 1º modelo no topo (compatível com links antigos) + lista completa
+    return json({ ...publico(m), projeto, outros, modelos: ativos.map(publico), indisponiveis: tokens.length - ativos.length });
   } catch (err) {
     console.error('Erro modelo API:', err);
     return json({ error: 'Erro interno' }, 500);

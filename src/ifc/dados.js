@@ -79,4 +79,6 @@ export const modelosIfc = {
   },
 
   linkCliente(token) { return `${window.location.origin}/modelo/${token}`; },
+  // Vários modelos sobrepostos num só link (até 10)
+  linkConjunto(tokens) { return `${window.location.origin}/modelo/${[...new Set(tokens)].slice(0, 10).join("-")}`; },
 };

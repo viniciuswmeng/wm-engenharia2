@@ -29,13 +29,19 @@ export default function PaginaPublica() {
         if (!r.ok) throw new Error(d.error || "Não foi possível abrir este link.");
         if (!vivo) return;
         setDados(d);
-        document.title = `${d.nome} — Modelo 3D · WM Engenharia`;
-        const arq = await fetch(d.url);
-        if (!arq.ok) throw new Error("O arquivo do modelo não está disponível.");
-        const buf = await arq.arrayBuffer();
-        if (!vivo) return;
+        const lista = d.modelos?.length ? d.modelos : [d];
+        document.title = `${lista.length > 1 ? `Modelos sobrepostos (${lista.length})` : d.nome} — Modelo 3D · WM Engenharia`;
         viz.current?.limpar();
-        await viz.current?.carregar(buf, d.nome, "publico");
+        // Baixa e carrega um por um (sobrepostos na mesma cena)
+        for (let i = 0; i < lista.length; i++) {
+          const md = lista[i];
+          viz.current?.setCarregando(lista.length > 1 ? `Baixando ${md.nome} (${i + 1} de ${lista.length})…` : `Baixando ${md.nome}…`);
+          const arq = await fetch(md.url);
+          if (!arq.ok) throw new Error(`O arquivo do modelo "${md.nome}" não está disponível.`);
+          const buf = await arq.arrayBuffer();
+          if (!vivo) return;
+          await viz.current?.carregar(buf, md.nome, `publico_${i}`);
+        }
       } catch (e) { if (vivo) setErro(e.message); }
       finally { if (vivo) setBaixando(false); }
     })();
@@ -44,6 +50,9 @@ export default function PaginaPublica() {
 
   const trocar = t => { window.history.replaceState(null, "", `/modelo/${t}`); setToken(t); };
   const p = dados?.projeto;
+  const lista = dados?.modelos?.length ? dados.modelos : dados ? [dados] : [];
+  const varios = lista.length > 1;
+  const todosTokens = [...lista.map(x => x.token), ...(dados?.outros || []).map(x => x.token)].filter(Boolean).slice(0, 10);
 
   return (
     <div style={{ minHeight: "100dvh", display: "flex", flexDirection: "column", background: "#f3f6fb" }}>
@@ -53,8 +62,10 @@ export default function PaginaPublica() {
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.8, textTransform: "uppercase", color: "#9cc2ff" }}>Modelo 3D{p?.codigo ? ` · ${p.codigo}` : ""}</div>
           <div style={{ fontSize: 16, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {dados ? dados.nome : erro ? "Modelo indisponível" : "Carregando…"}
-            {dados && (dados.disciplina || dados.versao) && <span style={{ fontWeight: 500, color: "#c9dbf7", fontSize: 13.5 }}> · {[dados.disciplina, dados.versao].filter(Boolean).join(" · ")}</span>}
+            {varios ? `${lista.length} modelos sobrepostos` : dados ? dados.nome : erro ? "Modelo indisponível" : "Carregando…"}
+            {varios
+              ? <span style={{ fontWeight: 500, color: "#c9dbf7", fontSize: 13.5 }}> · {lista.map(x => x.disciplina || x.nome).join(" + ")}</span>
+              : dados && (dados.disciplina || dados.versao) && <span style={{ fontWeight: 500, color: "#c9dbf7", fontSize: 13.5 }}> · {[dados.disciplina, dados.versao].filter(Boolean).join(" · ")}</span>}
           </div>
           {p?.cliente && <div style={{ fontSize: 12.5, color: "#c9dbf7" }}>{p.cliente}{p.tipo ? ` · ${p.tipo}` : ""}</div>}
         </div>
@@ -62,6 +73,7 @@ export default function PaginaPublica() {
           <select value="" onChange={e => e.target.value && trocar(e.target.value)} aria-label="Outros modelos do projeto"
             style={{ background: "rgba(255,255,255,.12)", color: "#fff", border: "1px solid rgba(255,255,255,.25)", borderRadius: 10, padding: "8px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer", maxWidth: 260 }}>
             <option value="" style={{ color: "#000" }}>Outros modelos do projeto ({dados.outros.length})</option>
+            {todosTokens.length > 1 && <option value={todosTokens.join("-")} style={{ color: "#000" }}>Ver todos sobrepostos ({todosTokens.length})</option>}
             {dados.outros.map(o => <option key={o.token} value={o.token} style={{ color: "#000" }}>{o.nome}{o.disciplina ? ` — ${o.disciplina}` : ""}</option>)}
           </select>
         )}
