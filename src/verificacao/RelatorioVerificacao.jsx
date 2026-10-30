@@ -2,6 +2,7 @@
 import { Titulo, PaginasTimbradas } from "../comparativo/Timbrado.jsx";
 import { D } from "../comparativo/estilo.js";
 import { GRAVIDADES, ORIGENS, SISTEMAS, NORMAS, STATUS } from "./regras.js";
+import TrechoPlanilha from "./TrechoPlanilha.jsx";
 
 const th = { padding: "5px 7px", fontSize: 9, fontWeight: 700, color: "#fff", background: D.mar, textAlign: "right", whiteSpace: "nowrap" };
 const td = { padding: "4px 7px", fontSize: 9.5, color: D.tx, textAlign: "right", borderBottom: `1px solid ${D.borda}`, fontVariantNumeric: "tabular-nums" };
@@ -69,6 +70,11 @@ export default function RelatorioVerificacao({ resultado, avaliacoes, opcoes }) 
               {els.map((e, i) => <span key={i}>{i ? " · " : ""}{e.nome}{e.pavimento ? ` (${e.pavimento})` : ""}{e.declividade != null && isFinite(e.declividade) ? ` i=${fmt(e.declividade, 2)}%` : ""}{e.qtd != null ? ` — ${fmt(e.qtd, 2)} ${e.un || ""}` : ""}</span>)}
               {a.elementos.length > els.length ? ` · e mais ${a.elementos.length - els.length}` : ""}
             </div>}
+            {opcoes.imagens && a.imagem && <div style={{ marginTop: 5 }}>
+              <img src={a.imagem} alt="" style={{ display: "block", maxWidth: "100%", maxHeight: "72mm", objectFit: "contain", border: `1px solid ${D.borda}`, borderRadius: 4 }} />
+              {a.legendaImagem && <div style={{ fontSize: 7.5, color: D.sub, marginTop: 2 }}>{a.legendaImagem}</div>}
+            </div>}
+            {opcoes.imagens && a.linhasPlanilha?.length > 0 && resultado.planilha && <TrechoPlanilha compacto planilha={resultado.planilha.linhas} cabecalho={resultado.planilha.cabecalho} linhas={a.linhasPlanilha} arquivo={resultado.planilha.arquivo} maxLinhas={4} />}
             {(av.status && av.status !== "pendente" || av.obs) && <div style={{ fontSize: 9, marginTop: 3, color: STATUS[av.status || "pendente"].cor }}><b>{STATUS[av.status || "pendente"].rot}</b>{av.obs ? <span style={{ color: D.tx }}> — {av.obs}</span> : ""}</div>}
           </div>
         </div>

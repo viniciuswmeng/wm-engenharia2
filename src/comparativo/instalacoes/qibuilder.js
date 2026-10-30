@@ -33,7 +33,7 @@ export function interpretarLinhas(linhas, nomeArquivo = "") {
     if (typeof r[0] === "number" && !vazio(r[5])) {
       const qtd = typeof r[7] === "number" ? r[7] : parseFloat(String(r[7] ?? "").replace(",", ".")) || 0;
       itens.push({
-        id: `${nomeArquivo}#${++seq}`, sistema, grupo,
+        id: `${nomeArquivo}#${++seq}`, linha: i, sistema, grupo,
         fabricante: String(r[1] ?? "").trim(), codigo: String(r[4] ?? "").trim(),
         descricao: String(r[5]).trim(), item: String(r[6] ?? "").trim(), qtd, un: String(r[8] ?? "").trim(), obs: String(r[9] ?? "").trim(),
       });

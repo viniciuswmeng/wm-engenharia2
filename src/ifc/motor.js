@@ -75,6 +75,8 @@ export function criarVisualizador(el, { onSelecionar, onCaminharMudou } = {}) {
   let selecionado = null;
   let origem = null;
   const matSel = new THREE.MeshLambertMaterial({ color: COR_SELECAO, emissive: 0x0b5d2a, side: THREE.DoubleSide });
+  const matFoco = new THREE.MeshLambertMaterial({ color: 0xe11d48, emissive: 0x7f1d1d, side: THREE.DoubleSide });
+  const matFantasma = new THREE.MeshLambertMaterial({ color: 0x9aa8bd, transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide });
 
   function material(cor, alpha = 1) {
     const chave = cor + "_" + alpha.toFixed(2);
@@ -433,12 +435,45 @@ export function criarVisualizador(el, { onSelecionar, onCaminharMudou } = {}) {
     },
     setCaminhar, caminhando: () => fps.ativo,
     capturar() { renderer.render(scene, camera); return renderer.domElement.toDataURL("image/png"); },
+    // Destaca elementos (Map modeloId → Set de expressIDs) em vermelho, esmaece o entorno e enquadra.
+    // Usado pela Verificação de projetos para gerar as imagens dos apontamentos.
+    focar(alvos, { contexto = 2.5, vista = "iso" } = {}) {
+      const box = new THREE.Box3();
+      modelos.forEach((m, id) => m.meshes.forEach(x => {
+        x.userData.foco = !!alvos.get(id)?.has(x.userData.eid);
+        if (x.userData.foco) { if (!x.geometry.boundingBox) x.geometry.computeBoundingBox(); box.union(x.geometry.boundingBox); }
+      }));
+      if (box.isEmpty()) return false;
+      const ctx = box.clone().expandByScalar(contexto);
+      modelos.forEach(m => m.meshes.forEach(x => {
+        const u = x.userData;
+        if (!x.geometry.boundingBox) x.geometry.computeBoundingBox();
+        if (u.foco) { x.material = matFoco; x.visible = true; }
+        else { x.material = matFantasma; x.visible = u.categoria !== "Ambientes" && x.geometry.boundingBox.intersectsBox(ctx); }
+      }));
+      const c = box.getCenter(new THREE.Vector3()), sz = box.getSize(new THREE.Vector3());
+      const r = Math.max(sz.length() / 2, 0.6);
+      const vfov = (camera.fov * Math.PI) / 180, hfov = 2 * Math.atan(Math.tan(vfov / 2) * camera.aspect);
+      const dist = (r / Math.sin(Math.min(vfov, hfov) / 2)) * 1.1;
+      const dirs = { iso: [1, 0.85, 1.25], topo: [0, 1, 0.0001] };
+      const d = new THREE.Vector3(...(dirs[vista] || dirs.iso)).normalize();
+      if (fps.ativo) setCaminhar(false);
+      controls.target.copy(c); camera.position.copy(c).addScaledVector(d, dist);
+      camera.near = Math.max(0.01, r / 2000); camera.far = r * 80 + 50; camera.updateProjectionMatrix(); controls.update();
+      renderer.clippingPlanes = []; grade.visible = false; renderer.setClearColor(0xffffff, 1);
+      marcar();
+      return true;
+    },
+    limparFoco() {
+      modelos.forEach(m => m.meshes.forEach(x => { x.userData.foco = false; x.material = x.userData.matBase; }));
+      grade.visible = true; renderer.setClearColor(0x000000, 0); aplicarFiltros();
+    },
     dispose() {
       cancelAnimationFrame(raf); ro.disconnect(); controls.dispose();
       window.removeEventListener("keydown", kd); window.removeEventListener("keyup", ku);
       window.removeEventListener("pointermove", mm); window.removeEventListener("pointerup", mu);
       modelos.forEach(m => { m.meshes.forEach(x => x.geometry.dispose()); try { _api?.CloseModel(m.mid); } catch { /* ignora */ } });
-      modelos.clear(); materiais.forEach(m => m.dispose()); matSel.dispose(); renderer.dispose();
+      modelos.clear(); materiais.forEach(m => m.dispose()); matSel.dispose(); matFoco.dispose(); matFantasma.dispose(); renderer.dispose();
       renderer.domElement.remove();
     },
   };

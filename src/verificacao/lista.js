@@ -22,15 +22,18 @@ function interpretarGenerica(linhas, arquivo) {
     if (vazio) continue;
     if (d && (cQ < 0 || r[cQ] == null || String(r[cQ]).trim() === "") && r.filter(c => c != null && String(c).trim() !== "").length === 1) { sistema = d; continue; }
     if (!d) continue;
-    itens.push({ id: `${arquivo}#${i}`, sistema: cS >= 0 && r[cS] ? String(r[cS]).trim() : sistema, grupo: "", descricao: d, item: cI >= 0 ? String(r[cI] ?? "").trim() : "", qtd: numBR(r[cQ]), un: cU >= 0 ? String(r[cU] ?? "").trim() : "" });
+    itens.push({ id: `${arquivo}#${i}`, linha: i, sistema: cS >= 0 && r[cS] ? String(r[cS]).trim() : sistema, grupo: "", descricao: d, item: cI >= 0 ? String(r[cI] ?? "").trim() : "", qtd: numBR(r[cQ]), un: cU >= 0 ? String(r[cU] ?? "").trim() : "" });
   }
   if (!itens.length) throw new Error("A planilha não tem itens abaixo do cabeçalho.");
-  return { arquivo, meta: {}, itens };
+  return { arquivo, meta: {}, itens, cabecalho: h };
 }
 
 export function interpretarLista(linhas, arquivo = "lista") {
   let base;
   try { base = interpretarLinhas(linhas, arquivo); } catch { base = interpretarGenerica(linhas, arquivo); }
+  // guarda a planilha original para mostrar no relatório onde está cada problema
+  base.linhasPlanilha = linhas;
+  if (base.cabecalho == null) { const h = linhas.findIndex(r => /^n[º°o]$/i.test(String(r?.[0] ?? "").trim())); base.cabecalho = h >= 0 ? h : null; }
   base.itens = base.itens.map(it => {
     const tudo = `${it.grupo} ${it.descricao} ${it.item}`;
     const t = norm(tudo);
@@ -57,7 +60,7 @@ export async function lerLista(file) {
   return interpretarLista(linhas, file.name);
 }
 
-const refItem = it => ({ nome: [it.descricao, it.item].filter(Boolean).join(" — "), qtd: it.qtd, un: it.un, sistemaLista: it.sistema });
+const refItem = it => ({ nome: [it.descricao, it.item].filter(Boolean).join(" — "), qtd: it.qtd, un: it.un, sistemaLista: it.sistema, linha: it.linha });
 
 export function verificarLista(lista) {
   const ap = []; let seq = 0;
@@ -102,20 +105,22 @@ export function verificarLista(lista) {
 export function cruzarIfcLista(qIfc, lista) {
   const ap = []; let seq = 0;
   const add = a => ap.push({ id: `cruz-${++seq}`, origem: "cruz", disciplina: "Hidrossanitário", elementos: [], ...a });
+  let ref = { i: null, l: null }; // item do IFC e da lista do apontamento atual (para imagem e trecho da planilha)
+  const addRef = a => add({ ...a, alvosIfc: (ref.i?.els || []).slice(0, 400), linhasPlanilha: (ref.l?.linhas || []).slice(0, 12) });
   const qL = new Map();
-  const somar = (k, base, v) => { const x = qL.get(k) || { ...base, valor: 0 }; x.valor += v; qL.set(k, x); };
+  const somar = (k, base, v, it) => { const x = qL.get(k) || { ...base, valor: 0, linhas: [] }; x.valor += v; if (it.linha != null) x.linhas.push(it.linha); qL.set(k, x); };
   for (const it of lista.itens) {
     const dn = it.dn != null ? Math.round(it.dn) : null;
-    if (it.tipo === "tubo") somar(`tubo|${it.sistema}|${dn}`, { tipo: "tubo", sistema: it.sistema, dn }, /barra/i.test(it.un) ? it.qtd * 6 : it.qtd);
-    else if (it.tipo === "conexao") somar(`conexao|${it.sistema}|${dn}`, { tipo: "conexao", sistema: it.sistema, dn }, it.qtd);
-    else if (it.tipo === "aparelho" && it.aparelho) somar(`aparelho|${it.aparelho}`, { tipo: "aparelho", aparelho: it.aparelho }, it.qtd);
+    if (it.tipo === "tubo") somar(`tubo|${it.sistema}|${dn}`, { tipo: "tubo", sistema: it.sistema, dn }, /barra/i.test(it.un) ? it.qtd * 6 : it.qtd, it);
+    else if (it.tipo === "conexao") somar(`conexao|${it.sistema}|${dn}`, { tipo: "conexao", sistema: it.sistema, dn }, it.qtd, it);
+    else if (it.tipo === "aparelho" && it.aparelho) somar(`aparelho|${it.aparelho}`, { tipo: "aparelho", aparelho: it.aparelho }, it.qtd, it);
   }
   const qI = new Map(qIfc.map(x => [`${x.tipo}|${x.tipo === "aparelho" ? x.aparelho : `${x.sistema}|${x.dn}`}`, x]));
   const tabela = [];
   const listaTemAparelhos = [...qL.values()].some(x => x.tipo === "aparelho");
   const chaves = new Set([...qI.keys(), ...qL.keys()]);
   for (const k of chaves) {
-    const i = qI.get(k), l = qL.get(k); const b = i || l;
+    const i = qI.get(k), l = qL.get(k); const b = i || l; ref = { i, l };
     if (b.tipo === "aparelho" && !listaTemAparelhos) continue;
     if (b.tipo !== "aparelho" && (b.sistema === "??" || b.dn == null)) continue;
     const vi = i?.valor || 0, vl = l?.valor || 0;
@@ -124,10 +129,10 @@ export function cruzarIfcLista(qIfc, lista) {
     const dif = vl - vi, rel = Math.max(vi, vl) ? Math.abs(dif) / Math.max(vi, vl) : 0;
     tabela.push({ chave: k, rot, tipo: b.tipo, sistema: b.sistema, dn: b.dn, ifc: vi, lista: vl, un, dif, rel });
     if (b.tipo === "tubo") {
-      if (!vi || !vl) add({ gravidade: "atencao", sistema: b.sistema, titulo: `${rot}: ${vi ? "no modelo e não na lista" : "na lista e não no modelo"}`, descricao: `Modelo: ${fmt(vi)} m · Lista: ${fmt(vl)} m.`, sugestao: "Conferir se a lista foi gerada do mesmo modelo/revisão." });
-      else if (rel > LIMITES.toleranciaComprimento && Math.abs(dif) > 1) add({ gravidade: "atencao", sistema: b.sistema, titulo: `${rot}: diferença de ${fmt(rel * 100, 0)} % entre modelo e lista`, descricao: `Modelo: ${fmt(vi)} m · Lista: ${fmt(vl)} m (diferença ${dif > 0 ? "+" : ""}${fmt(dif)} m). Tolerância usada: ${LIMITES.toleranciaComprimento * 100} %.`, sugestao: "Conferir trechos faltando ou sobrando e se a lista considera perdas." });
-    } else if (b.tipo === "aparelho" && vi !== vl) add({ gravidade: "atencao", titulo: `${rot}: ${fmt(vi, 0)} no modelo e ${fmt(vl, 0)} na lista`, descricao: "A quantidade de aparelhos difere entre o modelo e a lista.", sugestao: "Conferir." });
-    else if (b.tipo === "conexao" && (!vi || !vl) && Math.max(vi, vl) >= 3) add({ gravidade: "info", sistema: b.sistema, titulo: `${rot}: ${vi ? "no modelo e não na lista" : "na lista e não no modelo"}`, descricao: `Modelo: ${fmt(vi, 0)} un · Lista: ${fmt(vl, 0)} un.` });
+      if (!vi || !vl) addRef({ gravidade: "atencao", sistema: b.sistema, titulo: `${rot}: ${vi ? "no modelo e não na lista" : "na lista e não no modelo"}`, descricao: `Modelo: ${fmt(vi)} m · Lista: ${fmt(vl)} m.`, sugestao: "Conferir se a lista foi gerada do mesmo modelo/revisão." });
+      else if (rel > LIMITES.toleranciaComprimento && Math.abs(dif) > 1) addRef({ gravidade: "atencao", sistema: b.sistema, titulo: `${rot}: diferença de ${fmt(rel * 100, 0)} % entre modelo e lista`, descricao: `Modelo: ${fmt(vi)} m · Lista: ${fmt(vl)} m (diferença ${dif > 0 ? "+" : ""}${fmt(dif)} m). Tolerância usada: ${LIMITES.toleranciaComprimento * 100} %.`, sugestao: "Conferir trechos faltando ou sobrando e se a lista considera perdas." });
+    } else if (b.tipo === "aparelho" && vi !== vl) addRef({ gravidade: "atencao", titulo: `${rot}: ${fmt(vi, 0)} no modelo e ${fmt(vl, 0)} na lista`, descricao: "A quantidade de aparelhos difere entre o modelo e a lista.", sugestao: "Conferir." });
+    else if (b.tipo === "conexao" && (!vi || !vl) && Math.max(vi, vl) >= 3) addRef({ gravidade: "info", sistema: b.sistema, titulo: `${rot}: ${vi ? "no modelo e não na lista" : "na lista e não no modelo"}`, descricao: `Modelo: ${fmt(vi, 0)} un · Lista: ${fmt(vl, 0)} un.` });
   }
   tabela.sort((a, b) => (a.tipo + a.sistema).localeCompare(b.tipo + b.sistema) || (a.dn || 0) - (b.dn || 0));
   return { apontamentos: ap, tabela };

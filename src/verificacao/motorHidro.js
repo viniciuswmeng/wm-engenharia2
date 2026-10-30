@@ -186,12 +186,12 @@ export function verificarHidroIfc(modelo) {
 // Quantitativos do IFC para cruzar com a lista: comprimento de tubo e nº de peças por sistema + DN
 export function quantitativosIfc(modelos) {
   const q = new Map();
-  const somar = (k, base, valor) => { const x = q.get(k) || { ...base, valor: 0, n: 0 }; x.valor += valor; x.n++; q.set(k, x); };
+  const somar = (k, base, valor, e, m) => { const x = q.get(k) || { ...base, valor: 0, n: 0, els: [] }; x.valor += valor; x.n++; x.els.push({ modelo: m.nome, eid: e.eid }); q.set(k, x); };
   for (const m of modelos) for (const e of m.elementos) {
     const dn = e.dn != null ? Math.round(e.dn) : null;
-    if (e.classe === "tubo") somar(`tubo|${e.sistema}|${dn}`, { tipo: "tubo", sistema: e.sistema, dn, un: "m" }, e.comprimento || 0);
-    else if (e.classe === "conexao") somar(`conexao|${e.sistema}|${dn}`, { tipo: "conexao", sistema: e.sistema, dn, un: "un" }, 1);
-    else if (e.classe === "terminal" && e.aparelho) somar(`aparelho|${e.aparelho}`, { tipo: "aparelho", aparelho: e.aparelho, un: "un" }, 1);
+    if (e.classe === "tubo") somar(`tubo|${e.sistema}|${dn}`, { tipo: "tubo", sistema: e.sistema, dn, un: "m" }, e.comprimento || 0, e, m);
+    else if (e.classe === "conexao") somar(`conexao|${e.sistema}|${dn}`, { tipo: "conexao", sistema: e.sistema, dn, un: "un" }, 1, e, m);
+    else if (e.classe === "terminal" && e.aparelho) somar(`aparelho|${e.aparelho}`, { tipo: "aparelho", aparelho: e.aparelho, un: "un" }, 1, e, m);
   }
   return [...q.values()];
 }

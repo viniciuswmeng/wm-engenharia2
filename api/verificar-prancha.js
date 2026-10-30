@@ -72,6 +72,11 @@ const FERRAMENTA = {
             norma: { type: "string", description: "Norma e item, quando houver (ex.: NBR 8160)." },
             sugestao: { type: "string" },
             confianca: { type: "string", enum: ["alta", "media", "baixa"] },
+            regiao: {
+              type: "object",
+              description: "Região aproximada do problema na imagem, em frações de 0 a 1 (x0,y0 = canto superior esquerdo; x1,y1 = canto inferior direito). Omita se o problema não tiver lugar definido.",
+              properties: { x0: { type: "number" }, y0: { type: "number" }, x1: { type: "number" }, y1: { type: "number" } },
+            },
           },
           required: ["gravidade", "titulo", "descricao"],
         },
@@ -168,6 +173,7 @@ Regras:
 - Seja específico: cite o trecho, ambiente, diâmetro, declividade ou campo do carimbo.
 - Não repita o mesmo problema várias vezes; agrupe ocorrências iguais em um apontamento.
 - Escreva em português do Brasil, linguagem técnica e direta.
+- Sempre que o problema estiver num ponto da prancha (trecho, ambiente, detalhe, carimbo), informe a região aproximada na imagem.
 Checklist de referência:${CHECKLIST[disciplina] || CHECKLIST["Hidrossanitário"]}`;
 
   const ctx = [

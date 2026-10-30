@@ -13,6 +13,8 @@ import { verificarHidroIfc, quantitativosIfc } from "./motorHidro.js";
 import { lerLista, verificarLista, cruzarIfcLista } from "./lista.js";
 import { lerPranchas, verificarTextoPrancha, resumoListaParaIA, analisarComIA } from "./pranchas.js";
 import RelatorioVerificacao from "./RelatorioVerificacao.jsx";
+import TrechoPlanilha from "./TrechoPlanilha.jsx";
+import { capturarIfc, recortarPrancha } from "./capturas.js";
 
 const K = { mar: "#0a2557", azul: "#1565d8", tx: "#0f1f3d", sub: "#6b7a90", borda: "#e6ecf4", fundo: "#f3f6fb", verde: "#16a34a" };
 const inp = { width: "100%", boxSizing: "border-box", border: `1px solid ${K.borda}`, borderRadius: 10, padding: "9px 11px", fontSize: 13.5, fontFamily: "inherit", color: K.tx, background: "#fff", outline: "none" };
@@ -67,7 +69,7 @@ function Selo({ g }) {
   return <span style={{ fontSize: 10.5, fontWeight: 800, color: G.cor, background: G.fundo, border: `1px solid ${G.cor}33`, borderRadius: 6, padding: "2px 7px", whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: 0.3 }}>{G.curto}</span>;
 }
 
-function CartaoApontamento({ a, av, onAvaliar }) {
+function CartaoApontamento({ a, av, onAvaliar, planilha }) {
   const [aberto, setAberto] = useState(false);
   const G = GRAVIDADES[a.gravidade];
   const st = av?.status || "pendente";
@@ -92,6 +94,13 @@ function CartaoApontamento({ a, av, onAvaliar }) {
           {a.local && <p style={{ margin: "0 0 6px" }}><b>Local:</b> {a.local}</p>}
           {a.sugestao && <p style={{ margin: "0 0 6px" }}><b>Ação sugerida:</b> {a.sugestao}</p>}
           {a.confianca && <p style={{ margin: "0 0 6px", fontSize: 12, color: K.sub }}>Confiança da IA: {a.confianca}</p>}
+          {a.imagem && (
+            <figure style={{ margin: "8px 0", maxWidth: 760 }}>
+              <img src={a.imagem} alt={a.legendaImagem || "Local do apontamento"} style={{ width: "100%", display: "block", borderRadius: 10, border: `1px solid ${K.borda}`, background: "#fff" }} />
+              {a.legendaImagem && <figcaption style={{ fontSize: 11.5, color: K.sub, marginTop: 4 }}>{a.legendaImagem}</figcaption>}
+            </figure>
+          )}
+          {a.linhasPlanilha?.length > 0 && planilha && <TrechoPlanilha planilha={planilha.linhas} cabecalho={planilha.cabecalho} linhas={a.linhasPlanilha} arquivo={planilha.arquivo} />}
           {a.elementos?.length > 0 && (
             <div style={{ overflowX: "auto", border: `1px solid ${K.borda}`, borderRadius: 10, margin: "8px 0" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
@@ -139,7 +148,7 @@ export function PaginaVerificacao({ projetos = [], usuarioAtual }) {
   const [filtroO, setFiltroO] = useState("todos");
   const [busca, setBusca] = useState("");
   const [pdf, setPdf] = useState(false);
-  const [opPdf, setOpPdf] = useState({ responsavel: usuarioAtual?.nome || "", observacoes: true, aceitos: false, elementos: true, cruzamento: true, conclusao: "" });
+  const [opPdf, setOpPdf] = useState({ responsavel: usuarioAtual?.nome || "", observacoes: true, aceitos: false, elementos: true, imagens: true, cruzamento: true, conclusao: "" });
 
   const projeto = projetos.find(p => String(p.id) === String(projetoId));
   useEffect(() => {
@@ -159,7 +168,7 @@ export function PaginaVerificacao({ projetos = [], usuarioAtual }) {
 
   async function verificar() {
     setErro(""); setAvisoIA(""); setRes(null); setAvaliacoes({});
-    const apont = []; const modelos = []; const arquivos = []; const paginas = [];
+    const apont = []; const modelos = []; const arquivos = []; const paginas = []; const buffers = [];
     let lista = null, cruzamento = null, usouIA = false;
     try {
       if (ifcs.length) {
@@ -170,7 +179,7 @@ export function PaginaVerificacao({ projetos = [], usuarioAtual }) {
           setRodando({ etapa: `Lendo modelo IFC ${i + 1} de ${ifcs.length}: ${f.name}`, frac: 0 });
           const buf = f.salvo ? await modelosIfc.baixar(f.modelo) : await f.arrayBuffer();
           const m = await extrairIfc(api, buf, { nome: f.name.replace(/\.ifc$/i, ""), aoProgredir: frac => setRodando(r => ({ ...r, frac })) });
-          modelos.push(m); arquivos.push({ nome: f.name, tipo: "IFC" });
+          modelos.push(m); arquivos.push({ nome: f.name, tipo: "IFC" }); buffers.push({ nome: m.nome, buffer: buf });
           apont.push(...verificarHidroIfc(m));
         }
       }
@@ -209,12 +218,30 @@ export function PaginaVerificacao({ projetos = [], usuarioAtual }) {
             }
           }
         }
+        // Recortes das pranchas com o trecho marcado (antes de descartar as imagens das páginas)
+        setRodando({ etapa: "Marcando os trechos nas pranchas", frac: 0.5 });
+        for (const a of apont) {
+          if (a.paginaRef && a.caixasPrancha?.length) {
+            a.imagem = await recortarPrancha(a.paginaRef.imagem, a.caixasPrancha, { aproximado: a.caixaAproximada });
+            if (a.imagem) a.legendaImagem = `${a.paginaRef.arquivo} · pág. ${a.paginaRef.n}${a.caixaAproximada ? " — região aproximada indicada pela IA" : " — trecho marcado em vermelho"}`;
+          }
+        }
         paginas.forEach(p => { delete p.imagem; });
+      }
+      apont.forEach(a => { delete a.paginaRef; delete a.caixasPrancha; });
+      // Linhas da planilha de cada apontamento da lista
+      apont.forEach(a => { if (a.origem === "lista") { const ls = (a.elementos || []).map(e => e.linha).filter(n => n != null); if (ls.length) a.linhasPlanilha = ls; } });
+      // Imagens 3D dos elementos do IFC
+      if (buffers.length) {
+        setRodando({ etapa: "Gerando as imagens 3D dos apontamentos", frac: 0 });
+        try { await capturarIfc(buffers, apont, { max: 30, aoProgredir: frac => setRodando(r => ({ ...r, frac })) }); }
+        catch (e) { console.warn("Imagens 3D não geradas:", e); }
       }
       setRes({
         info: { disciplina: "Hidrossanitário", projeto: projeto ? rotProj(projeto) : "", cliente: projeto?.cliente || "" },
         apontamentos: apont, cruzamento, arquivos, modelos: modelos.map(m => ({ nome: m.nome, schema: m.schema, aplicativo: m.aplicativo, elementos: m.elementos.length, tubos: m.elementos.filter(e => e.classe === "tubo").length, temPortas: m.temPortas })),
         lista: lista ? { arquivo: lista.arquivo, itens: lista.itens.length } : null, paginas, usouIA,
+        planilha: lista ? { linhas: lista.linhasPlanilha, cabecalho: lista.cabecalho, arquivo: lista.arquivo } : null,
       });
     } catch (e) {
       console.error(e); setErro(e.message || String(e));
@@ -308,7 +335,7 @@ export function PaginaVerificacao({ projetos = [], usuarioAtual }) {
             </select>
             <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar" aria-label="Buscar apontamentos" style={{ ...inp, width: 200 }} />
           </div>
-          {filtrados.length ? filtrados.map(a => <CartaoApontamento key={a.id} a={a} av={avaliacoes[a.id]} onAvaliar={c => avaliar(a.id, c)} />)
+          {filtrados.length ? filtrados.map(a => <CartaoApontamento key={a.id} a={a} av={avaliacoes[a.id]} onAvaliar={c => avaliar(a.id, c)} planilha={res.planilha} />)
             : <div style={{ padding: 24, textAlign: "center", color: K.sub, fontSize: 13.5 }}>{res.apontamentos.length ? "Nenhum apontamento com esses filtros." : "Nenhum problema encontrado nas regras verificadas."}</div>}
         </div>
 
@@ -357,7 +384,7 @@ export function PaginaVerificacao({ projetos = [], usuarioAtual }) {
           nomeArquivo={nomeArquivoPdf("Verificacao_Hidrossanitario_WM", res.info.projeto || "projeto")}
           opcoes={<>
             <div><label style={lbl}>Verificado por</label><input value={opPdf.responsavel} onChange={e => setOpPdf(o => ({ ...o, responsavel: e.target.value }))} style={inp} /></div>
-            {[["observacoes", "Incluir observações", "Apontamentos informativos."], ["aceitos", "Incluir itens aceitos", "Apontamentos marcados como aceitos (sem ação)."], ["elementos", "Listar elementos", "Até 8 elementos por apontamento."], ["cruzamento", "Tabela IFC × lista", "Comprimentos de tubo por sistema e diâmetro."]].map(([k, t, s]) => (
+            {[["observacoes", "Incluir observações", "Apontamentos informativos."], ["aceitos", "Incluir itens aceitos", "Apontamentos marcados como aceitos (sem ação)."], ["imagens", "Mostrar onde está cada problema", "Vista 3D do IFC, recorte da prancha e trecho da planilha."], ["elementos", "Listar elementos", "Até 8 elementos por apontamento."], ["cruzamento", "Tabela IFC × lista", "Comprimentos de tubo por sistema e diâmetro."]].map(([k, t, s]) => (
               <label key={k} style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", fontSize: 13.5, color: K.tx }}>
                 <input type="checkbox" checked={opPdf[k]} onChange={e => setOpPdf(o => ({ ...o, [k]: e.target.checked }))} style={{ width: 17, height: 17, accentColor: K.azul, marginTop: 1 }} />
                 <span><b>{t}</b><br /><span style={{ fontSize: 12.5, color: K.sub }}>{s}</span></span>

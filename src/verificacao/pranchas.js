@@ -8,16 +8,27 @@ async function pdfjs() {
   return lib;
 }
 
-// Agrupa os textos da página em linhas (pela altura), da esquerda para a direita
-export function linhasDoTexto(items) {
-  const pts = items.filter(i => i.str && i.str.trim()).map(i => ({ s: i.str, x: i.transform[4], y: i.transform[5], h: Math.abs(i.transform[3]) || 8 }));
+// Agrupa os textos da página em linhas (pela altura), da esquerda para a direita.
+// Com o viewport, devolve também a caixa de cada linha em pixels da imagem da página.
+export function linhasDoTexto(items, vp) {
+  const pts = items.filter(i => i.str && i.str.trim()).map(i => ({ s: i.str, x: i.transform[4], y: i.transform[5], h: Math.abs(i.transform[3]) || 8, w: i.width || i.str.length * 4 }));
   pts.sort((a, b) => b.y - a.y || a.x - b.x);
   const linhas = [];
   for (const p of pts) {
     const l = linhas.find(q => Math.abs(q.y - p.y) < Math.max(2, p.h * 0.5));
     if (l) l.itens.push(p); else linhas.push({ y: p.y, itens: [p] });
   }
-  return linhas.map(l => l.itens.sort((a, b) => a.x - b.x).map(i => i.s).join(" ").replace(/\s+/g, " ").trim());
+  return linhas.map(l => {
+    const it = l.itens.sort((a, b) => a.x - b.x);
+    const texto = it.map(i => i.s).join(" ").replace(/\s+/g, " ").trim();
+    let caixa = null;
+    if (vp) {
+      const xs = [], ys = [];
+      it.forEach(i => { const r = vp.convertToViewportRectangle([i.x, i.y - i.h * 0.25, i.x + i.w, i.y + i.h]); xs.push(r[0], r[2]); ys.push(r[1], r[3]); });
+      caixa = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+    }
+    return { texto, caixa };
+  });
 }
 
 const LONGO = 1568; // lado maior da imagem enviada à IA (px)
@@ -28,16 +39,17 @@ export async function lerPranchas(file, { aoProgredir } = {}) {
   for (let n = 1; n <= doc.numPages; n++) {
     const pg = await doc.getPage(n);
     const tc = await pg.getTextContent();
-    const linhas = linhasDoTexto(tc.items);
     const vp1 = pg.getViewport({ scale: 1 });
     const esc = LONGO / Math.max(vp1.width, vp1.height);
     const vp = pg.getViewport({ scale: esc });
+    const objs = linhasDoTexto(tc.items, vp);
+    const linhas = objs.map(o => o.texto), caixas = objs.map(o => o.caixa);
     const cv = document.createElement("canvas"); cv.width = Math.round(vp.width); cv.height = Math.round(vp.height);
     const ctx = cv.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, cv.width, cv.height);
     await pg.render({ canvasContext: ctx, viewport: vp }).promise;
     const imagem = cv.toDataURL("image/jpeg", 0.82);
     const mini = (() => { const c2 = document.createElement("canvas"); const k = 260 / Math.max(cv.width, cv.height); c2.width = cv.width * k; c2.height = cv.height * k; c2.getContext("2d").drawImage(cv, 0, 0, c2.width, c2.height); return c2.toDataURL("image/jpeg", 0.7); })();
-    paginas.push({ n, arquivo: file.name, linhas, texto: linhas.join("\n"), imagem, mini, formato: `${Math.round(vp1.width * 25.4 / 72)}×${Math.round(vp1.height * 25.4 / 72)} mm` });
+    paginas.push({ n, arquivo: file.name, linhas, caixas, largura: cv.width, altura: cv.height, texto: linhas.join("\n"), imagem, mini, formato: `${Math.round(vp1.width * 25.4 / 72)}×${Math.round(vp1.height * 25.4 / 72)} mm` });
     pg.cleanup();
     aoProgredir?.(n / doc.numPages);
   }
@@ -67,7 +79,7 @@ export function verificarTextoPrancha(pg, { dnsLista } = {}) {
 
   // Declividades indicadas (i = x %) com o diâmetro na mesma linha
   const baixas = [];
-  for (const linha of pg.linhas) {
+  for (const [li, linha] of pg.linhas.entries()) {
     const l = norm(linha); const is = [...l.matchAll(RE_I)].map(m => parseFloat(m[1].replace(",", ".")));
     if (!is.length) continue;
     const dns = [...linha.matchAll(RE_DN)].map(m => +m[1]);
@@ -75,12 +87,12 @@ export function verificarTextoPrancha(pg, { dnsLista } = {}) {
     for (const i of is) {
       const dn = dns[0];
       const min = pluvial ? LIMITES.pluvialDeclivMin : dn != null ? (dn <= 75 ? LIMITES.esgotoDeclivMinPequeno : LIMITES.esgotoDeclivMinGrande) : LIMITES.esgotoDeclivMinGrande;
-      if (i < min - 1e-6) baixas.push({ nome: linha.slice(0, 120), dn, i, min, pluvial });
+      if (i < min - 1e-6) baixas.push({ nome: linha.slice(0, 120), dn, i, min, pluvial, caixa: pg.caixas?.[li] });
     }
   }
   if (baixas.length) add({ gravidade: "erro", norma: baixas.some(b => b.pluvial) ? "NBR 10844" : "NBR 8160", titulo: `Declividade indicada abaixo do mínimo (${baixas.length} ocorrência${baixas.length > 1 ? "s" : ""})`,
     descricao: `Esgoto: mínimo ${LIMITES.esgotoDeclivMinPequeno} % (DN ≤ 75) e ${LIMITES.esgotoDeclivMinGrande} % (DN ≥ 100). Pluvial: mínimo ${LIMITES.pluvialDeclivMin} %. Textos: ` + baixas.slice(0, 6).map(b => `"${b.nome}"`).join("; "),
-    sugestao: "Corrigir a declividade ou o diâmetro.", elementos: baixas.map(b => ({ nome: b.nome })) });
+    sugestao: "Corrigir a declividade ou o diâmetro.", elementos: baixas.map(b => ({ nome: b.nome })), caixasPrancha: baixas.map(b => b.caixa).filter(Boolean), paginaRef: pg });
   if (/esgoto|sanitario|ralo|caixa sifonada/.test(t) && !/\bi\s*[=:]\s*\d/.test(t)) add({ gravidade: "atencao", norma: "NBR 8160", titulo: "Nenhuma declividade indicada (i = x %)", descricao: "A prancha tem esgoto, mas não encontrei indicações de declividade no texto.", sugestao: "Indicar a declividade de todos os trechos horizontais de esgoto e pluvial." });
 
   // Normas citadas
@@ -92,7 +104,10 @@ export function verificarTextoPrancha(pg, { dnsLista } = {}) {
   if (dnsLista?.size) {
     const dnsPr = new Set([...pg.texto.matchAll(RE_DN)].map(m => +m[1]).filter(d => d >= 15 && d <= 200));
     const fora = [...dnsPr].filter(d => !dnsLista.has(d)).sort((a, b) => a - b);
-    if (fora.length) add({ gravidade: "atencao", titulo: `Diâmetros na prancha que não aparecem na lista: ${fora.map(d => "Ø" + d).join(", ")}`, descricao: "A prancha indica diâmetros sem material correspondente na lista de materiais.", sugestao: "Conferir se a lista é da mesma revisão das pranchas." });
+    if (fora.length) {
+      const caixas = pg.linhas.map((l, i) => [...l.matchAll(RE_DN)].some(m => fora.includes(+m[1])) ? pg.caixas?.[i] : null).filter(Boolean);
+      add({ gravidade: "atencao", titulo: `Diâmetros na prancha que não aparecem na lista: ${fora.map(d => "Ø" + d).join(", ")}`, descricao: "A prancha indica diâmetros sem material correspondente na lista de materiais.", sugestao: "Conferir se a lista é da mesma revisão das pranchas.", caixasPrancha: caixas, paginaRef: pg });
+    }
   }
   return ap;
 }
@@ -128,6 +143,9 @@ export async function analisarComIA(pg, { token, contexto, total, aoEsperar }) {
       id: `ia-${pg.arquivo}-${pg.n}-${++seq}`, origem: "prancha", ia: true, disciplina: "Hidrossanitário", prancha: `${pg.arquivo} · pág. ${pg.n}`, elementos: [],
       gravidade: ["erro", "atencao", "info"].includes(a.gravidade) ? a.gravidade : "info",
       titulo: a.titulo, descricao: a.descricao, local: a.local, norma: a.norma, sugestao: a.sugestao, confianca: a.confianca,
+      paginaRef: pg, caixaAproximada: true,
+      caixasPrancha: a.regiao && [a.regiao.x0, a.regiao.y0, a.regiao.x1, a.regiao.y1].every(v => typeof v === "number" && v >= 0 && v <= 1) && a.regiao.x1 > a.regiao.x0 && a.regiao.y1 > a.regiao.y0
+        ? [[a.regiao.x0 * pg.largura, a.regiao.y0 * pg.altura, a.regiao.x1 * pg.largura, a.regiao.y1 * pg.altura]] : null,
     })),
   };
 }
