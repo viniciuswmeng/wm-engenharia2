@@ -1,6 +1,7 @@
 // Pranchas em PDF: leitura do texto (regras sem IA) e preparo das páginas para a análise por IA
 import { norm, LIMITES, SISTEMAS } from "./regras.js";
 import { IZ_B1, SECOES, reservaMinima, LIMITES_E, secaoDoTexto } from "./regrasEletrica.js";
+import { FCK_MIN, COBRIMENTO_MIN, CAA } from "./regrasOutras.js";
 
 async function pdfjs() {
   const lib = await import("pdfjs-dist");
@@ -62,7 +63,7 @@ export async function lerPranchas(file, { aoProgredir } = {}) {
 const RE_DN = /(?:ø|Ø|⌀|dn|d\s*=|diam\.?)\s*(\d{2,3})(?!\d)/gi;
 const RE_I = /\bi\s*[=:]\s*(\d+(?:[.,]\d+)?)\s*%/gi;
 
-export function verificarTextoPrancha(pg, { dnsLista, disciplina = "Hidrossanitário" } = {}) {
+export function verificarTextoPrancha(pg, { dnsLista, disciplina = "Hidrossanitário", caa = "II" } = {}) {
   const ap = []; let seq = 0;
   const add = a => ap.push({ id: `pr-${pg.arquivo}-${pg.n}-${++seq}`, origem: "prancha", disciplina, prancha: `${pg.arquivo} · pág. ${pg.n}`, elementos: [], ...a });
   const t = norm(pg.texto);
@@ -79,6 +80,8 @@ export function verificarTextoPrancha(pg, { dnsLista, disciplina = "Hidrossanit�
   if (faltando.length) add({ gravidade: faltando.length >= 3 ? "atencao" : "info", titulo: `Carimbo: não encontrei ${faltando.join(", ")}`, local: "Carimbo", descricao: "Busca feita no texto do PDF. Se o carimbo for imagem ou bloco explodido, confira visualmente.", sugestao: "Completar o carimbo." });
 
   if (disciplina === "Elétrico") { verificarTextoEletrico(pg, t, add); return ap; }
+  if (disciplina === "Estrutural") { verificarTextoEstrutural(pg, t, add, caa); return ap; }
+  if (disciplina === "Arquitetônico" || disciplina === "Interiores") return ap;
 
   // Declividades indicadas (i = x %) com o diâmetro na mesma linha
   const baixas = [];
@@ -155,6 +158,38 @@ function verificarTextoEletrico(pg, t, add) {
       descricao: "Nos circuitos terminais, a queda de tensão não deve superar 4 % a partir do quadro (NBR 5410, 6.2.7.1). Valores lidos na coluna de queda de tensão: " + altos.slice(0, 6).map(c => `C${c.id}: ${c.pct.filter(p => p > LIMITES_E.quedaTensaoMax).map(p => String(p).replace(".", ",")).join("/")} %`).join("; "),
       sugestao: "Aumentar a seção ou redistribuir os circuitos.", elementos: altos.map(c => ({ nome: c.linha.slice(0, 120) })), caixasPrancha: altos.map(caixa).filter(Boolean), paginaRef: pg });
   }
+}
+
+// ── Pranchas estruturais: fck, classe de agressividade e cobrimentos nas notas ──
+function verificarTextoEstrutural(pg, t, add, caaInformada) {
+  if (!/6118/.test(t)) add({ gravidade: "info", titulo: "Notas sem referência à NBR 6118", local: "Notas gerais", descricao: "As notas gerais não citam a NBR 6118.", sugestao: "Incluir a norma nas notas gerais." });
+  const mCaa = t.match(/(?:\bcaa\b|classe de agressividade(?: ambiental)?)\s*[:=-]?\s*(iv|iii|ii|i)\b/);
+  const caaTexto = mCaa ? mCaa[1].toUpperCase() : null;
+  const caa = caaTexto || caaInformada;
+  const fcks = [...t.matchAll(/fck\s*[=≥:>]*\s*(\d{2})\s*mpa|\bc\s?-?(\d{2})\b(?=[^\n]{0,30}(mpa|concreto|fck))|concreto\s+c\s?-?(\d{2})\b/g)].map(m => +(m[1] || m[2] || m[4])).filter(v => v >= 10 && v <= 90);
+  const temNotas = /nota|especifica|concreto|aco ca|cobrimento/.test(t);
+  if (!temNotas) return;
+  if (caaTexto && caaInformada && caaTexto !== caaInformada) add({ gravidade: "atencao", norma: "NBR 6118", local: "Notas gerais", titulo: `A prancha indica CAA ${caaTexto}; a verificação foi feita com CAA ${caaInformada}`, descricao: "A classe de agressividade escolhida na verificação difere da indicada nas notas da prancha.", sugestao: "Confirmar a classe de agressividade do local da obra." });
+  if (!caaTexto && /concreto|fck/.test(t)) add({ gravidade: "atencao", norma: "NBR 6118", local: "Notas gerais", titulo: "Notas sem a classe de agressividade ambiental (CAA)", descricao: "A CAA define o fck mínimo, a relação a/c e os cobrimentos (NBR 6118, seção 6 e 7) e deve constar nas notas.", sugestao: "Indicar a CAA nas notas gerais." });
+  if (/concreto|armadura/.test(t) && !fcks.length) add({ gravidade: "atencao", norma: "NBR 6118", local: "Notas gerais", titulo: "Notas sem a resistência do concreto (fck)", descricao: "Não encontrei o fck nas notas da prancha.", sugestao: "Indicar o fck (ex.: fck = 25 MPa)." });
+  const baixos = [...new Set(fcks.filter(f => f < FCK_MIN[caa]))];
+  if (baixos.length) add({ gravidade: "erro", norma: "NBR 6118", local: "Notas gerais", titulo: `fck de ${baixos.join(", ")} MPa abaixo do mínimo de ${FCK_MIN[caa]} MPa para CAA ${caa}`, descricao: "Classe mínima do concreto armado: CAA I C20, II C25, III C30, IV C40 (NBR 6118, Tabela 7.1).", sugestao: `Adotar fck ≥ ${FCK_MIN[caa]} MPa.`,
+    caixasPrancha: pg.linhas.map((l, i) => /fck|concreto/i.test(l) && baixos.some(b => l.includes(String(b))) ? pg.caixas?.[i] : null).filter(Boolean), paginaRef: pg });
+  // Cobrimentos: linhas com "cobrimento" e o tipo de elemento
+  const baixosC = [];
+  pg.linhas.forEach((linha, i) => {
+    const l = norm(linha); if (!/cobrimento|\bc\s*=\s*\d/.test(l)) return;
+    const vals = [...l.matchAll(/(\d+(?:[.,]\d+)?)\s*(cm|mm)/g)].map(m => parseFloat(m[1].replace(",", ".")) * (m[2] === "cm" ? 10 : 1));
+    if (!vals.length) return;
+    const tipo = /solo|fundac|sapata|bloco|baldrame|radier/.test(l) ? "solo" : /laje/.test(l) ? "laje" : /viga/.test(l) ? "viga" : /pilar/.test(l) ? "pilar" : null;
+    if (!tipo) return;
+    const min = COBRIMENTO_MIN[tipo][caa];
+    if (Math.min(...vals) < min - 0.1) baixosC.push({ linha, i, tipo, v: Math.min(...vals), min });
+  });
+  if (baixosC.length) add({ gravidade: "erro", norma: "NBR 6118", local: "Notas gerais", titulo: `Cobrimento abaixo do mínimo para CAA ${caa} (${baixosC.map(b => `${b.tipo} ${String(b.v / 10).replace(".", ",")} cm`).join("; ")})`,
+    descricao: `Cobrimento nominal mínimo (Δc = 10 mm), NBR 6118, Tabela 7.2 — CAA ${caa}: laje ${COBRIMENTO_MIN.laje[caa] / 10} cm; viga/pilar ${COBRIMENTO_MIN.viga[caa] / 10} cm; elementos em contato com o solo ${COBRIMENTO_MIN.solo[caa] / 10} cm.`,
+    sugestao: "Corrigir os cobrimentos.", elementos: baixosC.map(b => ({ nome: b.linha.slice(0, 120) })), caixasPrancha: baixosC.map(b => pg.caixas?.[b.i]).filter(Boolean), paginaRef: pg });
+  void CAA;
 }
 
 // Resumo da lista para dar contexto à IA: "Esgoto: 40, 50, 100 · Água fria: 20, 25"

@@ -58,6 +58,43 @@ CHECKLIST["Elétrico"] = `
 - Quadro de cargas e diagrama unifilar: potência por circuito, seção, disjuntor, fase, queda de tensão ≤ 4 % nos terminais, equilíbrio entre fases, espaço de reserva (Tabela 59).
 - Eletrodutos com diâmetro indicado; coerência entre planta, quadro de cargas, unifilar e lista de materiais; erros de grafia.`;
 
+CHECKLIST["Estrutural"] = `
+- Carimbo/selo completo (título, obra, responsável técnico com CREA, ART, escala, data, revisão, prancha x/y).
+- Notas gerais: ABNT NBR 6118, classe de agressividade ambiental (CAA), fck do concreto, aço (CA-50/CA-60), cobrimentos por elemento, fator a/c, módulo de elasticidade se usado.
+- fck mínimo por CAA (Tabela 7.1): I C20, II C25, III C30, IV C40. Cobrimentos mínimos (Tabela 7.2, Δc = 10 mm): laje 2,0/2,5/3,5/4,5 cm; viga e pilar 2,5/3,0/4,0/5,0 cm; contato com solo 3,0/3,0/4,0/5,0 cm (CAA I/II/III/IV).
+- Dimensões: pilares com menor lado ≥ 19 cm (14 a 19 cm só com γn) e área ≥ 360 cm²; vigas com largura ≥ 12 cm; lajes maciças ≥ 7 cm (cobertura), 8 cm (piso), 10 cm (balanço).
+- Detalhamento: armaduras com posição, bitola, quantidade, espaçamento, comprimento; ancoragens e emendas; estribos com espaçamento; tabela/resumo de aço por bitola com massa; quantitativo de concreto e formas.
+- Coerência: mesma peça com dimensões diferentes entre formas e armação; numeração de pilares/vigas coerente entre plantas; níveis indicados; furos/passagens em vigas indicados.`;
+
+CHECKLIST["Arquitetônico"] = `
+- Carimbo/selo completo (título, obra, endereço, responsável técnico com CAU/CREA, RRT/ART, escala, data, revisão, prancha x/y).
+- Plantas com cotas totais e parciais, níveis, nome e área dos ambientes, indicação de cortes e fachadas, norte.
+- Portas com vão livre ≥ 0,80 m em acessos e rotas acessíveis (NBR 9050); pé-direito ≥ 2,50 m (2,30 m em banheiros, halls e corredores — NBR 15575); iluminação natural ≥ 1/6 da área do piso em ambientes de permanência prolongada (referência de códigos de obras).
+- Escadas: espelho 16 a 18 cm, piso 28 a 32 cm, 63 ≤ p + 2e ≤ 65 cm; corrimão e guarda-corpo ≥ 1,10 m (NBR 14718); rampas ≤ 8,33 % (NBR 9050).
+- Quadro de esquadrias coerente com a planta; especificação de materiais e acabamentos; coerência entre plantas, cortes e fachadas (alturas, níveis, aberturas).`;
+
+CHECKLIST["Interiores"] = `
+- Carimbo/selo completo; planta de layout cotada; vistas/elevações de cada parede com cotas.
+- Especificação de materiais e acabamentos (fornecedor, código, cor, espessura do MDF), ferragens e iluminação.
+- Alturas: bancada de cozinha 85 a 95 cm, bancada de banheiro 78 a 92 cm, mesas 70 a 78 cm; em uso acessível, conforme NBR 9050.
+- Circulação livre ≥ 80 cm entre móveis e na frente de portas; portas de armários e gavetas sem bater em portas, janelas ou outros móveis.
+- Pontos elétricos (tomadas sobre bancadas, pontos de TV, iluminação de marcenaria) e hidráulicos (cuba, filtro, máquina) compatíveis com o layout; tomadas não escondidas atrás de móveis.
+- Paginação de pisos/revestimentos, forro/gesso com níveis; coerência entre planta, vistas e lista de materiais.`;
+
+const ADICIONAL = {
+  prefeitura: `
+PROJETO LEGAL (aprovação na prefeitura) — confira também:
+- Peças exigidas: planta de situação, planta de implantação/locação com recuos cotados, plantas baixas, ao menos dois cortes, fachadas, planta de cobertura, quadro de áreas.
+- Quadro de áreas: área do terreno, área de projeção, área construída por pavimento e total, taxa de ocupação, coeficiente de aproveitamento, taxa de permeabilidade — com contas coerentes.
+- Recuos frontal, laterais e de fundos cotados; altura/gabarito; vagas de estacionamento; campos de assinatura do proprietário e do responsável técnico; indicação de RRT/ART.`,
+  bombeiros: `
+CORPO DE BOMBEIROS (CBMMG / NBR 9077, 12693, 10898, 13434) — confira também:
+- Extintores locados em todos os pavimentos, com tipo/capacidade e distância máxima de caminhamento (15/20/25 m conforme o risco).
+- Iluminação de emergência e sinalização de rotas de fuga, saídas, extintores e hidrantes.
+- Saídas de emergência: largura das escadas e portas (mínimo 1,10 m em escadas e 0,80 m em portas), corrimãos, guarda-corpos ≥ 1,10 m, sentido de abertura das portas.
+- Hidrantes/mangotinhos, alarme e central de GLP quando exigidos pela área, altura e ocupação.`,
+};
+
 const FERRAMENTA = {
   name: "registrar_verificacao",
   description: "Registra o resultado da verificação da prancha.",
@@ -182,7 +219,7 @@ Regras:
 - Não repita o mesmo problema várias vezes; agrupe ocorrências iguais em um apontamento.
 - Escreva em português do Brasil, linguagem técnica e direta.
 - Sempre que o problema estiver num ponto da prancha (trecho, ambiente, detalhe, carimbo), informe a região aproximada na imagem.
-Checklist de referência:${CHECKLIST[disciplina] || CHECKLIST["Hidrossanitário"]}`;
+Checklist de referência:${CHECKLIST[disciplina] || CHECKLIST["Hidrossanitário"]}${contexto.modo === "prefeitura" ? ADICIONAL.prefeitura : ""}${contexto.bombeiros ? ADICIONAL.bombeiros : ""}${contexto.caa ? `\nClasse de agressividade ambiental informada: CAA ${contexto.caa}.` : ""}`;
 
   const ctx = [
     contexto.projeto && `Projeto: ${contexto.projeto}`,

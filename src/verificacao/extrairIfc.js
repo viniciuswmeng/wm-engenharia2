@@ -49,7 +49,8 @@ export async function materiais(api, mid, eid) {
     if (o.Name && (o.Category !== undefined || o.type === W.IFCMATERIAL)) { const n = txt(o.Name); if (n) nomes.add(n); }
     Object.values(o).forEach(x => { if (x && typeof x === "object") varrer(x, d + 1); });
   };
-  try { varrer(await api.properties.getMaterialsProperties(mid, eid, true, true)); } catch { /* sem material */ }
+  try { varrer(await api.properties.getMaterialsProperties(mid, eid, true)); } catch { /* sem material */ }
+  if (!nomes.size) try { varrer(await api.properties.getMaterialsProperties(mid, eid, true, true)); } catch { /* sem material do tipo */ }
   return [...nomes];
 }
 

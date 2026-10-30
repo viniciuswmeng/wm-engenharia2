@@ -1,8 +1,9 @@
 // Relatório em PDF da verificação de projeto (papel timbrado WM)
 import { Titulo, PaginasTimbradas } from "../comparativo/Timbrado.jsx";
 import { D } from "../comparativo/estilo.js";
-import { GRAVIDADES, ORIGENS, SISTEMAS, NORMAS, STATUS } from "./regras.js";
-import { SISTEMAS_E, NORMAS_ELETRICA } from "./regrasEletrica.js";
+import { GRAVIDADES, ORIGENS, SISTEMAS, STATUS } from "./regras.js";
+import { SISTEMAS_E } from "./regrasEletrica.js";
+import { DISCIPLINAS } from "./disciplinas.js";
 import TrechoPlanilha from "./TrechoPlanilha.jsx";
 
 const th = { padding: "5px 7px", fontSize: 9, fontWeight: 700, color: "#fff", background: D.mar, textAlign: "right", whiteSpace: "nowrap" };
@@ -17,13 +18,15 @@ export default function RelatorioVerificacao({ resultado, avaliacoes, opcoes }) 
     .sort((a, b) => GRAVIDADES[a.gravidade].ordem - GRAVIDADES[b.gravidade].ordem);
   const cont = g => apontamentos.filter(a => a.gravidade === g).length;
   const eletrica = info.disciplina === "Elétrico";
+  const cfg = DISCIPLINAS[info.disc] || DISCIPLINAS.hidro;
+  const normas = { ...cfg.normas, ...(cfg.normasExtras ? cfg.normasExtras(info.op || {}) : {}) };
   const blocos = [];
 
   blocos.push(
     <div key="cab">
       <div style={{ fontSize: 9.5, fontWeight: 800, color: D.azul, letterSpacing: 1.4 }}>VERIFICAÇÃO DE PROJETO · {String(info.disciplina).toUpperCase()}</div>
       <h1 style={{ margin: "3px 0 2px", fontSize: 22, fontWeight: 800, color: D.mar, letterSpacing: -0.3, lineHeight: 1.15 }}>Relatório de verificação do projeto {info.disciplina.toLowerCase()}</h1>
-      <div style={{ fontSize: 11, color: D.sub }}>Conferência automática de modelo IFC, lista de materiais e pranchas, com base nas normas ABNT</div>
+      <div style={{ fontSize: 11, color: D.sub }}>Conferência automática de modelo IFC, lista de materiais e pranchas, com base nas normas ABNT{info.subtitulo ? ` — ${info.subtitulo}` : ""}</div>
       <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1.2fr 0.8fr 1fr", gap: "8px 14px", background: D.fundo, borderRadius: 8, padding: "10px 12px", marginTop: 12 }}>
         {[["Projeto", info.projeto], ["Cliente", info.cliente], ["Emissão", new Date().toLocaleDateString("pt-BR")], ["Verificado por", opcoes.responsavel]].map(([a, b]) => (
           <div key={a}><div style={{ fontSize: 8.5, fontWeight: 700, color: D.sub, textTransform: "uppercase", letterSpacing: 0.6 }}>{a}</div><div style={{ fontSize: 11, fontWeight: 700, marginTop: 1 }}>{b || "—"}</div></div>
@@ -107,12 +110,20 @@ export default function RelatorioVerificacao({ resultado, avaliacoes, opcoes }) 
     <div key="prem">
       <Titulo>Critérios e limitações</Titulo>
       <ul style={{ margin: 0, paddingLeft: 16, fontSize: 9.5, color: D.sub, lineHeight: 1.65 }}>
-        <li>Normas de referência: {Object.values(eletrica ? NORMAS_ELETRICA : NORMAS).join("; ")}.</li>
+        <li>Normas de referência: {Object.values(normas).join("; ")}.</li>
         <li>Declividades e comprimentos lidos das propriedades do IFC ou, na falta delas, calculados pela geometria dos tubos. Associação aparelho–tubo pelas conexões do IFC ou, quando o arquivo não as traz, pela proximidade (indicado em cada apontamento).</li>
-        {eletrica ? <>
+        {info.disc === "hidro" && <li>Pressões estimadas pela diferença de cota entre o reservatório superior e os pontos de utilização, sem perdas de carga: servem como alerta, não substituem o memorial de cálculo.</li>}
+        {eletrica && <>
           <li>Quantidade mínima de tomadas e pontos de luz conferida por cômodo, com os ambientes (IfcSpace) do IFC; área e perímetro lidos das propriedades ou, na falta delas, estimados pela caixa envolvente do ambiente.</li>
           <li>Coordenação disjuntor × condutor verificada com a capacidade de condução do método B1, 2 condutores carregados, 30 °C (Tabela 36), sem fatores de agrupamento: serve como alerta, não substitui o dimensionamento.</li>
-        </> : <li>Pressões estimadas pela diferença de cota entre o reservatório superior e os pontos de utilização, sem perdas de carga: servem como alerta, não substituem o memorial de cálculo.</li>}
+        </>}
+        {info.disc === "estrutura" && <li>Dimensões das seções lidas pelos eixos principais da geometria de cada elemento; volumes das propriedades do IFC ou estimados pelas dimensões. Classe de agressividade adotada: CAA {info.op?.caa}. A verificação não substitui o cálculo estrutural.</li>}
+        {info.disc === "arquitetura" && <>
+          <li>Áreas, pés-direitos e vãos lidos do IFC (propriedades ou geometria). Áreas mínimas e proporção de iluminação seguem referências usuais de códigos de obras; prevalece a lei do município.</li>
+          {info.op?.modo === "prefeitura" && <li>Projeção e área construída estimadas pela planta dos ambientes e lajes de piso (grade de 10 cm), comparadas aos parâmetros urbanísticos informados e ao quadro de áreas das pranchas.</li>}
+          {info.op?.bombeiros && <li>Quesitos do Corpo de Bombeiros conferidos pela presença e posição de extintores, iluminação e sinalização de emergência no modelo e pelas dimensões das saídas; distâncias em linha reta. Não substitui o PSCIP.</li>}
+        </>}
+        {info.disc === "interiores" && <li>Conflitos calculados pelas caixas envolventes dos elementos (móveis, paredes alinhadas aos eixos, portas, pontos elétricos). Alturas de mobiliário comparadas a referências ergonômicas usuais.</li>}
         {resultado.usouIA && <li>Apontamentos marcados “(IA)” foram gerados por análise automática das pranchas e devem ser confirmados pelo projetista.</li>}
         <li>Esta verificação é uma ferramenta de apoio à revisão e não substitui a análise do responsável técnico.</li>
       </ul>
