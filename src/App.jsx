@@ -24,6 +24,7 @@ const CABECALHOS = {
   financeiro: { titulo:"Financeiro",    subtitulo:"Valores contratados, recebidos e pendentes por projeto." },
   horas:      { titulo:"Horas",         subtitulo:"Banco de horas, horas extras e produtividade da equipe." },
   agenda:     { titulo:"Agenda",        subtitulo:"Calendário, feriados, recessos e escalas." },
+  verificacao:{ titulo:"Verificação de projetos", subtitulo:"Confere modelo IFC, lista de materiais e pranchas e aponta inconsistências e erros normativos." },
   config:     { titulo:"Configurações", subtitulo:"Usuários, perfis, especialidades e expediente." },
 };
 import { useCalendario } from "./calendario.js";
@@ -51,6 +52,7 @@ const PaginaCalculadoras = carregarPagina(() => import("./calculadoras/Calculado
 const PaginaIFC = carregarPagina(() => import("./ifc/PaginaIFC.jsx"), "PaginaIFC");
 const PaginaComparativo = carregarPagina(() => import("./comparativo/PaginaComparativo.jsx"), "PaginaComparativo");
 const PaginaRelatorios = carregarPagina(() => import("./paginas/relatorios.jsx"), "PaginaRelatorios");
+const PaginaVerificacao = carregarPagina(() => import("./verificacao/PaginaVerificacao.jsx"), "PaginaVerificacao");
 
 export default function App(){
   const calendario = useCalendario();
@@ -1009,6 +1011,7 @@ export default function App(){
     {id:"calculadoras", label:"Calculadoras e materiais de apoio", linhas:["Calculadoras","e materiais de apoio"], icone:"regua", grupo:"principal"},
     {id:"ifc",        label:"Visualizador IFC", icone:"cubo",     grupo:"principal"},
     {id:"comparativo", label:"Comparativo",  icone:"balanca",     grupo:"principal"},
+    {id:"verificacao", label:"Verificação de projetos", linhas:["Verificação","de projetos"], icone:"verificar", grupo:"principal"},
     {id:"relatorios", label:"Relatórios",    icone:"relatorio",   grupo:"principal"},
     {id:"config",     label:"Configurações", icone:"config",      grupo:"config"},
     {id:"ajuda",      label:"Ajuda",         icone:"ajuda",       grupo:"config"},
@@ -1122,6 +1125,7 @@ export default function App(){
         {aba==="calculadoras" && <PaginaCalculadoras usuarioAtual={user}/>}
         {aba==="ifc" && <PaginaIFC projetos={projetos} usuarioAtual={user}/>}
         {aba==="comparativo" && <PaginaComparativo projetos={projetos} usuarioAtual={user}/>}
+        {aba==="verificacao" && <PaginaVerificacao projetos={projetos} usuarioAtual={user}/>}
         {aba==="relatorios" && <PaginaRelatorios projetos={projetos} usuarios={usuarios} registros={registros} tarefas={central.tarefas||[]} usuarioAtual={user}/>}
         {aba==="tarefas" && <PaginaTarefas central={central} user={user} usuarios={usuarios} projetos={projetos}
           gestor={["admin","gestor"].includes(user.perfil)} tarefaFoco={tarefaFoco} onFocoUsado={()=>setTarefaFoco(null)}/>}
