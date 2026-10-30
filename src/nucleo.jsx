@@ -201,6 +201,22 @@ export const prazoEntrega = (p) => {
 };
 export const statusN    = s => { if(!s) return "Novo/Definir"; if(s==="Concluído"||s==="CONCLUÍDO") return "CONCLUÍDO"; return s; };
 
+// Disciplinas do projeto, uma linha por (pessoa, disciplina): aceita o formato novo
+// [{usuarioNome, disciplinas:[], discPausadas:{}, discEntregues:{id:data}}] e o antigo [{id, responsavel, pausada}]
+export const listaDisciplinas = (p) => {
+  const disc = p?.disciplinas || [];
+  if (disc.length && disc[0]?.usuarioNome !== undefined)
+    return disc.filter(m => m?.usuarioNome).flatMap(m => (m.disciplinas || []).map(id => ({
+      id, usuarioNome: m.usuarioNome, pausada: !!(m.discPausadas || {})[id], entregue: (m.discEntregues || {})[id] || null })));
+  return disc.filter(d => d?.id).map(d => ({ id: d.id, usuarioNome: d.responsavel || "", pausada: !!d.pausada, entregue: d.entregue || null }));
+};
+export const resumoEntregas = (p) => {
+  const lista = listaDisciplinas(p);
+  const entregues = lista.filter(d => d.entregue);
+  const ultima = entregues.map(d => d.entregue).sort().pop() || null;
+  return { total: lista.length, entregues: entregues.length, lista, ultima, todas: lista.length > 0 && entregues.length === lista.length };
+};
+
 export const calcStatusAuto = (p) => {
   if (!p) return 'Novo/Definir';
   const atual = statusN(p.status);
@@ -209,16 +225,13 @@ export const calcStatusAuto = (p) => {
   if (atual==="CONCLUÍDO") return atual;
   if (atual==="PAUSADO") return "PAUSADO";
   if ((p.progresso||0) >= 100) return "CONCLUÍDO";
-  // CB: verificar pausas parciais nas disciplinas dos membros
-  if (p.tipo==="CB") {
-    const membros = (p.disciplinas||[]).filter(d=>d.usuarioNome);
-    if (membros.length > 0) {
-      // Todas as disciplinas de todos os membros pausadas = PAUSADO geral
-      const todasDiscs = membros.flatMap(m=>(m.disciplinas||[]).map(dId=>({dId,pausada:(m.discPausadas||{})[dId]})));
-      if (todasDiscs.length > 0 && todasDiscs.every(d=>d.pausada)) return "PAUSADO";
-      // Pelo menos uma disciplina pausada = PAUSADO PARCIAL
-      if (todasDiscs.some(d=>d.pausada)) return "PAUSADO PARCIAL";
-    }
+  // Disciplinas da equipe: todas entregues = concluído; pausas contam só entre as que faltam entregar
+  {
+    const discs = listaDisciplinas(p);
+    if (discs.length > 0 && discs.every(d=>d.entregue)) return "CONCLUÍDO";
+    const pendentes = discs.filter(d=>!d.entregue);
+    if (pendentes.length > 0 && pendentes.every(d=>d.pausada)) return "PAUSADO";
+    if (pendentes.some(d=>d.pausada)) return "PAUSADO PARCIAL";
   }
   { const dias = diasAte(prazoEntrega(p)); if (dias !== null && dias < 0) return "ATRASADO"; }
   if (p.responsavel || p.temContrato || p.prazo || p.dataContrato) return "Em andamento";

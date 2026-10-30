@@ -3,7 +3,7 @@ import { CartaoNumero, Abas, CabecalhoModal } from "../ui/ds.jsx";
 import { useState, useEffect, useMemo } from "react";
 import { db, portal } from "../supabase.js";
 import ModelosDoProjeto from "../ifc/ModelosDoProjeto.jsx";
-import { Badge, Btn, C, Card, DISCIPLINAS_CB, InpC, STATUS_CONFIG, SelC, TIPOS, TipoBadge, calcStatusAuto, diasAte, estaAtrasado, fmt, fmtData, obrasProgressoListeners, statusN } from "../nucleo.jsx";
+import { Badge, Btn, C, Card, DISCIPLINAS_CB, InpC, STATUS_CONFIG, SelC, TIPOS, TipoBadge, calcStatusAuto, diasAte, estaAtrasado, fmt, fmtData, resumoEntregas, obrasProgressoListeners, statusN } from "../nucleo.jsx";
 
 export function PainelDrive({drive,projetosExistentes,onImportar}){
   const [pastasNovo,setPN]=useState([]);
@@ -382,6 +382,7 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}
                   if(!mapa[nome]) mapa[nome] = {usuarioNome:nome, disciplinas:[], obs:d.obs||"", discPausadas:{}};
                   if(d.id) mapa[nome].disciplinas.push(d.id);
                   if(d.id && d.pausada) mapa[nome].discPausadas[d.id] = true;
+                  if(d.id && d.entregue) { mapa[nome].discEntregues = mapa[nome].discEntregues || {}; mapa[nome].discEntregues[d.id] = d.entregue; }
                 });
                 membros = Object.values(mapa);
               }
@@ -410,6 +411,12 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}
               const setObs = (mIdx, obs) => {
                 s("disciplinas", membros.map((m,i)=>i!==mIdx?m:{...m,obs}));
               };
+              // Recalcula o status automático depois de pausar/entregar disciplinas
+              const recalcular = (novos, extra={}) => {
+                if(!form.statusAuto) return;
+                const st = calcStatusAuto({...form, ...extra, disciplinas:novos, status: statusN(form.status).startsWith("PAUSADO") ? "Em andamento" : form.status});
+                s("status", st==="Novo/Definir" ? "Em andamento" : st);
+              };
               // Pausar/retomar uma disciplina específica de um membro
               const togglePausaDisc = (mIdx, discId) => {
                 const novos = membros.map((m,i)=>{
@@ -419,15 +426,27 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}
                   return {...m, discPausadas:dp};
                 });
                 s("disciplinas", novos);
-                // Recalcular status automaticamente
-                if(form.statusAuto){
-                  // Contar disciplinas pausadas de todos os membros
-                  const todasDiscs = novos.flatMap(m=>(m.disciplinas||[]).map(dId=>({dId,pausada:(m.discPausadas||{})[dId]})));
-                  if(todasDiscs.length>0 && todasDiscs.every(d=>d.pausada)) s("status","PAUSADO");
-                  else if(todasDiscs.some(d=>d.pausada)) s("status","PAUSADO PARCIAL");
-                  else s("status","Em andamento");
-                }
+                recalcular(novos);
               };
+              // Entregar uma disciplina (as outras seguem em desenvolvimento) ou desfazer a entrega
+              const hojeISO = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
+              const definirEntregaDisc = (mIdx, discId, data) => {
+                const novos = membros.map((m,i)=>{
+                  if(i!==mIdx) return m;
+                  const de = {...(m.discEntregues||{})};
+                  if(data) de[discId] = data; else delete de[discId];
+                  const dp = {...(m.discPausadas||{})}; if(data) delete dp[discId];
+                  return {...m, discEntregues:de, discPausadas:dp};
+                });
+                s("disciplinas", novos);
+                const r = resumoEntregas({disciplinas:novos});
+                // Última disciplina entregue: o projeto inteiro fica entregue nessa data
+                let extra = {};
+                if(r.todas && !form.dataEntregaReal){ extra = {dataEntregaReal:r.ultima}; s("dataEntregaReal", r.ultima); }
+                if(!r.todas && form.dataEntregaReal && !data){ extra = {dataEntregaReal:""}; s("dataEntregaReal",""); }
+                recalcular(novos, extra);
+              };
+              const entregaGeral = resumoEntregas({disciplinas:membros});
 
               return (
                 <div style={{display:"flex",flexDirection:"column",gap:12}}>
@@ -455,6 +474,13 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}
                       );
                     })}
                   </div>
+                  {entregaGeral.total>0&&(
+                    <div style={{display:"flex",alignItems:"center",gap:10,fontSize:12,color:C.cinzaMedio}}>
+                      <span><b style={{color:entregaGeral.todas?C.verde:C.azulMedio}}>{entregaGeral.entregues} de {entregaGeral.total}</b> disciplina(s) entregue(s)</span>
+                      <div style={{flex:1,maxWidth:200,height:6,background:C.cinzaCard,borderRadius:4,overflow:"hidden"}}><div style={{width:`${(entregaGeral.entregues/entregaGeral.total)*100}%`,height:"100%",background:C.verde}}/></div>
+                      <span style={{fontSize:11,color:C.cinzaClaro}}>⏸ pausa · ✓ entrega só a disciplina</span>
+                    </div>
+                  )}
                   {membros.length===0&&<span style={{fontSize:11,color:C.cinzaClaro,fontStyle:"italic"}}>
                     Nenhum colaborador adicionado ao projeto ainda
                   </span>}
@@ -495,6 +521,18 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}
                                   {d.icone} {d.id}
                                 </button>
                               );
+                              const entregue = (m.discEntregues||{})[d.id];
+                              if(entregue) return(
+                                <div key={d.id} style={{display:"flex",alignItems:"center",borderRadius:14,border:`1.5px solid ${C.verde}`,background:"#dcfce7",overflow:"hidden"}}
+                                  title={`Entregue em ${fmtData(entregue)}`}>
+                                  <span style={{display:"flex",alignItems:"center",gap:4,padding:"4px 10px",color:"#166534",fontSize:11,fontWeight:700}}>
+                                    {d.icone} {d.id} · entregue {fmtData(entregue).slice(0,5)}
+                                  </span>
+                                  <button onClick={()=>{ if(window.confirm(`Desfazer a entrega de ${d.label}?`)) definirEntregaDisc(mIdx,d.id,null); }}
+                                    title="Desfazer entrega" aria-label={`Desfazer entrega de ${d.label}`}
+                                    style={{padding:"4px 7px",background:C.verde,border:"none",color:"white",cursor:"pointer",fontSize:11,lineHeight:1,display:"flex",alignItems:"center"}}>↺</button>
+                                </div>
+                              );
                               return(
                                 <div key={d.id} style={{display:"flex",alignItems:"center",gap:0,
                                   borderRadius:14,border:`1.5px solid ${pausada?"#d97706":d.cor}`,
@@ -517,6 +555,11 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}
                                       display:"flex",alignItems:"center"}}>
                                     {pausada?"▶":"⏸"}
                                   </button>
+                                  {/* Entregar só esta disciplina */}
+                                  <button onClick={()=>definirEntregaDisc(mIdx,d.id,hojeISO())}
+                                    title="Marcar esta disciplina como entregue" aria-label={`Entregar ${d.label}`}
+                                    style={{padding:"4px 7px",background:"rgba(22,163,74,.9)",border:"none",borderLeft:"1px solid rgba(255,255,255,0.3)",
+                                      color:"white",cursor:"pointer",fontSize:11,fontWeight:800,lineHeight:1,display:"flex",alignItems:"center"}}>✓</button>
                                 </div>
                               );
                             })}
@@ -529,6 +572,19 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}
                                 const d=DISCIPLINAS_CB.find(x=>x.id===k);
                                 return d?`${d.icone} ${d.id}`:k;
                               }).join(", ")} pausada(s)
+                            </div>
+                          )}
+                          {Object.keys(m.discEntregues||{}).filter(k=>(m.disciplinas||[]).includes(k)).length>0&&(
+                            <div style={{display:"flex",flexWrap:"wrap",gap:8,alignItems:"center",fontSize:11,color:"#166534",background:"#f0fdf4",padding:"6px 10px",borderRadius:6,border:"1px solid #bbf7d0"}}>
+                              <span style={{fontWeight:700}}>Entregues:</span>
+                              {Object.entries(m.discEntregues||{}).filter(([k])=>(m.disciplinas||[]).includes(k)).map(([k,dt])=>{
+                                const d=DISCIPLINAS_CB.find(x=>x.id===k);
+                                return <label key={k} style={{display:"inline-flex",alignItems:"center",gap:5}}>
+                                  {d?`${d.icone} ${d.id}`:k}
+                                  <input type="date" value={dt} max={hojeISO()} onChange={e=>e.target.value&&definirEntregaDisc(mIdx,k,e.target.value)} aria-label={`Data de entrega de ${d?.label||k}`}
+                                    style={{border:"1px solid #bbf7d0",borderRadius:6,padding:"2px 6px",fontSize:11,fontFamily:"inherit",color:"#166534",background:"#fff"}}/>
+                                </label>;
+                              })}
                             </div>
                           )}
                           <input value={m.obs||""} onChange={e=>setObs(mIdx,e.target.value)}
@@ -919,6 +975,7 @@ export function CardProjeto({p,onClick}){
         <span style={{fontSize:12,color:C.cinzaMedio,fontWeight:600}}>{p.codigo}</span>
         {temDrive&&<span style={{fontSize:10.5,fontWeight:700,color:C.azulMedio,background:"#e9f1fd",borderRadius:6,padding:"2px 6px"}}>DRIVE</span>}
         {!p.temContrato&&<span style={{fontSize:10.5,fontWeight:700,color:"#b45309",background:"#fef3c7",borderRadius:6,padding:"2px 6px"}}>SEM CONTRATO</span>}
+        {(()=>{ const r=resumoEntregas(p); return r.entregues>0&&!r.todas&&<span title={r.lista.filter(d=>d.entregue).map(d=>`${d.id} entregue em ${fmtData(d.entregue)}`).join("\n")} style={{fontSize:10.5,fontWeight:700,color:"#166534",background:"#dcfce7",borderRadius:6,padding:"2px 6px"}}>{r.entregues}/{r.total} ENTREGUES</span>; })()}
         <span style={{marginLeft:"auto"}}><Badge status={p.status}/></span>
       </div>
       <div style={{fontSize:14.5,fontWeight:800,color:C.marinho,lineHeight:1.3,textTransform:"uppercase",overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{p.cliente}</div>

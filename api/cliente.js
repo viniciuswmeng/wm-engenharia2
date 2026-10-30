@@ -89,6 +89,18 @@ export default async function handler(req) {
       dataEntregaPrevista:  projeto.data_entrega_prevista || null,
       dataEntregaReal:      projeto.data_entrega_real || null,
       driveEntregaveis:      projeto.drive_entregaveis || '',
+      // Disciplinas e o que já foi entregue (entrega parcial por disciplina)
+      disciplinas: (() => {
+        const NOMES = { PE:'Projeto Estrutural', PR:'Projeto de Reforço', LT:'Laudo Técnico', EL:'Projeto Elétrico', PH:'Projeto Hidrossanitário',
+          PA:'Projeto Arquitetônico', PF:'Projeto de Fundação', CT:'Consultoria', CB:'Compatibilização' };
+        const disc = Array.isArray(projeto.disciplinas) ? projeto.disciplinas : [];
+        const linhas = disc.length && disc[0]?.usuarioNome !== undefined
+          ? disc.flatMap(m => (m.disciplinas || []).map(id => ({ id, entregue: (m.discEntregues || {})[id] || null, pausada: !!(m.discPausadas || {})[id] })))
+          : disc.filter(d => d?.id).map(d => ({ id: d.id, entregue: d.entregue || null, pausada: !!d.pausada }));
+        const porId = new Map();
+        linhas.forEach(l => { const a = porId.get(l.id); if (!a || (l.entregue && !a.entregue)) porId.set(l.id, l); });
+        return [...porId.values()].map(l => ({ nome: NOMES[l.id] || l.id, entregue: l.entregue, situacao: l.entregue ? 'entregue' : l.pausada ? 'pausada' : 'andamento' }));
+      })(),
       // Modelos 3D
       modelos3d: (modelos3d || []).map(m => ({ nome: m.nome, disciplina: m.disciplina || '', versao: m.versao || '', link: `/modelo/${m.token}`, data: m.created_at })),
       // Portal

@@ -80,6 +80,7 @@ const TOPICOS = [
         "Projetos novos chegam pelo contrato assinado, pela importação do Drive (Dashboard) ou por \"+ Novo projeto\".",
         "Código no padrão NN.TT.MMAA. Status automático calcula Em andamento, Atrasado e Concluído pelas datas e pelo progresso.",
         "Aba Projeto: equipe por disciplina, pausas e datas. Aba Financeiro: parcelas e o que já foi pago.",
+        "Entrega por disciplina: em Equipe, cada disciplina tem ⏸ (pausar) e ✓ (entregar só ela). A entregue fica verde com a data (dá para corrigir a data abaixo); as outras seguem em desenvolvimento. O cartão mostra \"1/3 ENTREGUES\" e o portal do cliente lista o que já foi entregue. Quando todas são entregues, o projeto fica Concluído com a data da última entrega. ↺ desfaz.",
         "Aba Checklist: o checklist da obra ligado a este projeto. Aba Revisões: controle de revisão interna.",
         "Aba Portal Cliente: gere um link para o cliente acompanhar o andamento.",
       ]},
