@@ -200,7 +200,8 @@ export function PaginaVerificacao({ projetos = [], usuarioAtual }) {
             const pg = paginas[i];
             setRodando({ etapa: `IA analisando prancha ${i + 1} de ${paginas.length} (${pg.arquivo})`, frac: i / paginas.length });
             try {
-              const r = await analisarComIA(pg, { token, contexto, total: paginas.filter(p => p.arquivo === pg.arquivo).length });
+              const r = await analisarComIA(pg, { token, contexto, total: paginas.filter(p => p.arquivo === pg.arquivo).length,
+                aoEsperar: s => setRodando(x => ({ ...x, etapa: `Limite gratuito da IA atingido: aguardando ${s} s para continuar (prancha ${i + 1} de ${paginas.length})` })) });
               pg.resumo = r.resumo; pg.carimbo = r.carimbo; apont.push(...r.apontamentos); usouIA = true;
             } catch (e) {
               if (e.codigo === "sem_chave" || e.codigo === "indisponivel" || /sess[aã]o/i.test(e.message)) { setAvisoIA(e.message); break; }
@@ -266,7 +267,7 @@ export function PaginaVerificacao({ projetos = [], usuarioAtual }) {
           arquivos={pdfs} onAdicionar={addPdf} onRemover={i => setPdfs(a => a.filter((_, k) => k !== i))}>
           <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12.5, color: K.tx, cursor: "pointer" }}>
             <input type="checkbox" checked={usarIA} onChange={e => setUsarIA(e.target.checked)} style={{ width: 16, height: 16, accentColor: K.azul, marginTop: 1 }} />
-            <span><b>Analisar pranchas com IA</b><br /><span style={{ color: K.sub }}>Lê carimbo, notas, diâmetros e declividades de cada página. Sem IA, só as regras de texto.</span></span>
+            <span><b>Analisar pranchas com IA</b><br /><span style={{ color: K.sub }}>Lê carimbo, notas, diâmetros e declividades de cada página. Sem IA, só as regras de texto. Na cota gratuita do Gemini, o Google pode usar o conteúdo enviado para melhorar os produtos dele.</span></span>
           </label>
         </CaixaArquivos>
       </div>

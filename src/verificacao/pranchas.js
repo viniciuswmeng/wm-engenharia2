@@ -105,13 +105,20 @@ export function resumoListaParaIA(lista) {
   return [...m.entries()].map(([s, d]) => `${SISTEMAS[s]?.nome || s}: ${[...d].sort((a, b) => a - b).join(", ")}`).join(" · ");
 }
 
-export async function analisarComIA(pg, { token, contexto, total }) {
-  const r = await fetch("/api/verificar-prancha", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-    body: JSON.stringify({ imagem: pg.imagem, texto: pg.texto, pagina: pg.n, totalPaginas: total, arquivo: pg.arquivo, disciplina: "Hidrossanitário", contexto }),
-  });
-  let j = {}; try { j = await r.json(); } catch { /* resposta vazia */ }
+const esperar = ms => new Promise(r => setTimeout(r, ms));
+export async function analisarComIA(pg, { token, contexto, total, aoEsperar }) {
+  let r, j = {};
+  // Cota gratuita do Gemini limita pedidos por minuto: em caso de limite, espera e tenta de novo (até 3 vezes)
+  for (let tentativa = 0; tentativa < 4; tentativa++) {
+    r = await fetch("/api/verificar-prancha", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify({ imagem: pg.imagem, texto: pg.texto, pagina: pg.n, totalPaginas: total, arquivo: pg.arquivo, disciplina: "Hidrossanitário", contexto }),
+    });
+    j = {}; try { j = await r.json(); } catch { /* resposta vazia */ }
+    if (r.status !== 429 || tentativa === 3) break;
+    const s = 20 * (tentativa + 1); aoEsperar?.(s); await esperar(s * 1000);
+  }
   if (r.status === 404) { const e = new Error("O serviço de IA não está disponível neste endereço (rode pela Vercel ou com `vercel dev`)."); e.codigo = "indisponivel"; throw e; }
   if (!r.ok) { const e = new Error(j.erro || `Erro ${r.status} na análise por IA`); e.codigo = j.codigo; throw e; }
   let seq = 0;

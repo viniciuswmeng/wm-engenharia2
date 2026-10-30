@@ -1,6 +1,9 @@
 // api/verificar-prancha.js
 // Analisa UMA prancha (imagem + texto extraído do PDF) com IA e devolve apontamentos estruturados.
-// Variáveis de ambiente: ANTHROPIC_API_KEY (obrigatória) e ANTHROPIC_MODEL (opcional).
+// Provedores de IA (variáveis de ambiente na Vercel):
+//   Gemini (cota gratuita):  GEMINI_API_KEY    · GEMINI_MODEL (opcional, padrão gemini-3.8-flash)
+//   Claude (pago):           ANTHROPIC_API_KEY · ANTHROPIC_MODEL (opcional)
+//   PROVEDOR_IA = "gemini" | "anthropic" escolhe quando as duas chaves existem (padrão: gemini).
 // Só aceita chamadas de usuários logados no sistema (token de sessão do Supabase).
 
 export const config = { maxDuration: 120 };
@@ -8,7 +11,16 @@ export const config = { maxDuration: 120 };
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY;
 const env = k => String(process.env[k] || "").trim().replace(/^["']|["']$/g, "");
-const MODELO = env("ANTHROPIC_MODEL") || "claude-sonnet-5-5";
+const MODELO_CLAUDE = env("ANTHROPIC_MODEL") || "claude-sonnet-5-5";
+const MODELO_GEMINI = env("GEMINI_MODEL") || "gemini-3.8-flash";
+
+function provedor() {
+  const g = env("GEMINI_API_KEY"), a = env("ANTHROPIC_API_KEY"), pref = env("PROVEDOR_IA").toLowerCase();
+  if (pref === "anthropic" && a) return { nome: "anthropic", chave: a };
+  if (g) return { nome: "gemini", chave: g };
+  if (a) return { nome: "anthropic", chave: a };
+  return null;
+}
 
 async function usuarioLogado(req) {
   const tok = String(req.headers.authorization || "").replace(/^Bearer\s+/i, "");
@@ -68,10 +80,61 @@ const FERRAMENTA = {
   },
 };
 
+// Esquema JSON → formato do Gemini (tipos em maiúsculas)
+function esquemaGemini(sch) {
+  if (!sch || typeof sch !== "object") return sch;
+  const o = {};
+  for (const [k, v] of Object.entries(sch)) {
+    if (k === "type") o.type = String(v).toUpperCase();
+    else if (k === "properties") o.properties = Object.fromEntries(Object.entries(v).map(([n, x]) => [n, esquemaGemini(x)]));
+    else if (k === "items") o.items = esquemaGemini(v);
+    else o[k] = v;
+  }
+  return o;
+}
+
+const falha = (msg, status) => Object.assign(new Error(msg), { status });
+
+async function chamarGemini(chave, sistema, imagem, texto) {
+  const partes = [];
+  if (imagem) partes.push({ inline_data: { mime_type: "image/jpeg", data: imagem } });
+  partes.push({ text: texto });
+  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(MODELO_GEMINI)}:generateContent`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-goog-api-key": chave },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: sistema }] },
+      contents: [{ role: "user", parts: partes }],
+      generationConfig: { temperature: 0.2, maxOutputTokens: 8000, responseMimeType: "application/json", responseSchema: esquemaGemini(FERRAMENTA.input_schema) },
+    }),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 429) throw falha("Limite gratuito do Gemini atingido (pedidos por minuto ou por dia). Aguarde um pouco e tente de novo.", 429);
+  if (!r.ok) throw falha(`O Gemini recusou a análise (${r.status}): ${j?.error?.message || "erro desconhecido"}`, 502);
+  const txt = (j.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
+  try { return { dados: JSON.parse(txt), modelo: MODELO_GEMINI, tokens: j.usageMetadata || null }; }
+  catch { throw falha("O Gemini devolveu uma resposta fora do formato esperado. Tente de novo.", 502); }
+}
+
+async function chamarClaude(chave, sistema, imagem, texto) {
+  const conteudo = [];
+  if (imagem) conteudo.push({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: imagem } });
+  conteudo.push({ type: "text", text: texto + "\n\nRegistre o resultado com a ferramenta." });
+  const r = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-api-key": chave, "anthropic-version": "2023-06-01" },
+    body: JSON.stringify({ model: MODELO_CLAUDE, max_tokens: 4000, system: sistema, tools: [FERRAMENTA], tool_choice: { type: "tool", name: FERRAMENTA.name }, messages: [{ role: "user", content: conteudo }] }),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 429) throw falha("Limite de uso da API da Anthropic atingido. Aguarde um pouco.", 429);
+  if (!r.ok) throw falha(`A IA recusou a análise (${r.status}): ${j?.error?.message || "erro desconhecido"}`, 502);
+  return { dados: j.content?.find(c => c.type === "tool_use")?.input || {}, modelo: MODELO_CLAUDE, tokens: j.usage || null };
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ erro: "Use POST" });
-  const chave = env("ANTHROPIC_API_KEY");
-  if (!chave) return res.status(503).json({ erro: "A análise por IA não está configurada: falta a variável ANTHROPIC_API_KEY na Vercel.", codigo: "sem_chave" });
+  const prov = provedor();
+  if (!prov) return res.status(503).json({ erro: "A análise por IA não está configurada: cadastre a variável GEMINI_API_KEY (gratuita) ou ANTHROPIC_API_KEY na Vercel.", codigo: "sem_chave" });
   const u = await usuarioLogado(req).catch(() => null);
   if (!u) return res.status(401).json({ erro: "Sessão expirada. Entre novamente no sistema." });
 
@@ -92,30 +155,18 @@ Checklist de referência:${CHECKLIST[disciplina] || CHECKLIST["Hidrossanitário"
     contexto.lista && `Diâmetros presentes na lista de materiais, por sistema: ${contexto.lista}`,
     contexto.modelo && `Resumo do modelo IFC: ${contexto.modelo}`,
   ].filter(Boolean).join("\n");
-
-  const conteudo = [];
-  if (imagem) conteudo.push({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: String(imagem).replace(/^data:image\/\w+;base64,/, "") } });
-  conteudo.push({ type: "text", text: `Arquivo: ${arquivo} — página ${pagina} de ${totalPaginas}.\n${ctx}\n\nTexto extraído do PDF desta página (pode estar fora de ordem):\n"""\n${String(texto).slice(0, 18000)}\n"""\n\nRevise a prancha e registre o resultado com a ferramenta.` });
+  const img = imagem ? String(imagem).replace(/^data:image\/\w+;base64,/, "") : null;
+  const textoUsuario = `Arquivo: ${arquivo} — página ${pagina} de ${totalPaginas}.\n${ctx}\n\nTexto extraído do PDF desta página (pode estar fora de ordem):\n"""\n${String(texto).slice(0, 18000)}\n"""\n\nRevise a prancha e devolva o resultado no formato pedido.`;
 
   try {
-    const r = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-api-key": chave, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({
-        model: MODELO, max_tokens: 4000, system: sistema,
-        tools: [FERRAMENTA], tool_choice: { type: "tool", name: FERRAMENTA.name },
-        messages: [{ role: "user", content: conteudo }],
-      }),
-    });
-    const j = await r.json();
-    if (!r.ok) return res.status(502).json({ erro: `A IA recusou a análise (${r.status}): ${j?.error?.message || "erro desconhecido"}` });
-    const uso = j.content?.find(c => c.type === "tool_use")?.input || {};
+    const r = prov.nome === "gemini" ? await chamarGemini(prov.chave, sistema, img, textoUsuario) : await chamarClaude(prov.chave, sistema, img, textoUsuario);
+    const d = r.dados || {};
     return res.status(200).json({
-      resumo: uso.resumo || "", carimbo: uso.carimbo || {},
-      apontamentos: Array.isArray(uso.apontamentos) ? uso.apontamentos.slice(0, 40) : [],
-      modelo: MODELO, tokens: j.usage || null,
+      resumo: d.resumo || "", carimbo: d.carimbo || {},
+      apontamentos: Array.isArray(d.apontamentos) ? d.apontamentos.slice(0, 40) : [],
+      provedor: prov.nome, modelo: r.modelo, tokens: r.tokens,
     });
   } catch (e) {
-    return res.status(500).json({ erro: `Falha ao chamar a IA: ${e.message}` });
+    return res.status(e.status || 500).json({ erro: e.status ? e.message : `Falha ao chamar a IA: ${e.message}`, codigo: e.status === 429 ? "limite" : undefined });
   }
 }
