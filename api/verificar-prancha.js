@@ -13,7 +13,8 @@ const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY;
 const env = k => String(process.env[k] || "").trim().replace(/^["']|["']$/g, "");
 const MODELO_CLAUDE = env("ANTHROPIC_MODEL") || "claude-sonnet-5-5";
 // Modelos gratuitos tentados em ordem quando o anterior está sobrecarregado (erro 503/500)
-const MODELOS_GEMINI = [...new Set([env("GEMINI_MODEL") || "gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite"])];
+// (o 3.8 Flash com raciocínio baixo; o Flash-Lite é rápido e entra logo em seguida)
+const MODELOS_GEMINI = [...new Set([env("GEMINI_MODEL") || "gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.6-flash"])];
 
 function provedor() {
   const g = env("GEMINI_API_KEY"), a = env("ANTHROPIC_API_KEY"), pref = env("PROVEDOR_IA").toLowerCase();
@@ -108,25 +109,29 @@ async function chamarGemini(chave, sistema, imagem, texto, tentativa = 0) {
   const partes = [];
   if (imagem) partes.push({ inline_data: { mime_type: "image/jpeg", data: imagem } });
   partes.push({ text: texto });
-  const ctl = new AbortController(); const tempo = setTimeout(() => ctl.abort(), 50000);
-  let r, j;
-  try {
-    r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelo)}:generateContent`, {
-      method: "POST", signal: ctl.signal,
-      headers: { "content-type": "application/json", "x-goog-api-key": chave },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: sistema }] },
-        contents: [{ role: "user", parts: partes }],
-        generationConfig: { temperature: 0.2, maxOutputTokens: 6000, responseMimeType: "application/json", responseSchema: esquemaGemini(FERRAMENTA.input_schema) },
-      }),
-    });
-    j = await r.json().catch(() => ({}));
-  } catch (e) {
-    if (e.name === "AbortError") throw Object.assign(falha(`O Gemini (${modelo}) demorou demais para responder.`, 504), { tentar: true });
-    throw e;
-  } finally { clearTimeout(tempo); }
+  const config = { temperature: 0.2, maxOutputTokens: 6000, responseMimeType: "application/json", responseSchema: esquemaGemini(FERRAMENTA.input_schema) };
+  if (!/lite/.test(modelo)) config.thinkingConfig = { thinkingLevel: "low" }; // sem isso o Flash pensa por mais de 50 s
+  const enviar = async cfg => {
+    const ctl = new AbortController(); const tempo = setTimeout(() => ctl.abort(), 50000);
+    try {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelo)}:generateContent`, {
+        method: "POST", signal: ctl.signal,
+        headers: { "content-type": "application/json", "x-goog-api-key": chave },
+        body: JSON.stringify({ systemInstruction: { parts: [{ text: sistema }] }, contents: [{ role: "user", parts: partes }], generationConfig: cfg }),
+      });
+      return { r, j: await r.json().catch(() => ({})) };
+    } catch (e) {
+      if (e.name === "AbortError") throw Object.assign(falha(`O Gemini (${modelo}) demorou demais para responder.`, 504), { tentar: true });
+      throw e;
+    } finally { clearTimeout(tempo); }
+  };
+  let { r, j } = await enviar(config);
+  // modelo que não aceita o ajuste de raciocínio: repete sem ele
+  if (r.status === 400 && config.thinkingConfig && /think/i.test(j?.error?.message || "")) {
+    delete config.thinkingConfig; ({ r, j } = await enviar(config));
+  }
   if (r.status === 429) throw Object.assign(falha("Limite gratuito do Gemini atingido (pedidos por minuto ou por dia). Aguarde um pouco e tente de novo.", 429), { tentar: true });
-  if ([500, 503, 404].includes(r.status)) throw Object.assign(falha(`O Gemini (${modelo}) está sobrecarregado ou indisponível agora.`, 503), { tentar: true });
+  if ([500, 503, 404].includes(r.status)) throw Object.assign(falha(`O Gemini (${modelo}) está sobrecarregado ou indisponível agora (${r.status}: ${String(j?.error?.message || "").slice(0, 120)}).`, 503), { tentar: true });
   if (!r.ok) throw falha(`O Gemini recusou a análise (${r.status}): ${j?.error?.message || "erro desconhecido"}`, 502);
   const txt = (j.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("");
   try { return { dados: JSON.parse(txt), modelo, tokens: j.usageMetadata || null }; }
