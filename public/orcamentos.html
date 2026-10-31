@@ -794,9 +794,12 @@ async function enviarWhatsApp(){
   render();
   if(document.getElementById('docStack').style.display==='none'){ toast('Preencha os dados do orçamento primeiro.'); return; }
   const teste=new File(['x'],'t.pdf',{type:'application/pdf'});
-  const podeCompartilhar=!!(navigator.canShare && navigator.canShare({files:[teste]}));
-  // no computador abre a aba do WhatsApp já no clique (senão o navegador bloqueia a janela)
-  const janela=podeCompartilhar?null:window.open('about:blank','_blank');
+  // compartilhar com anexo só no celular; no computador usa o WhatsApp Web
+  const celular=/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints>1 && /Macintosh/.test(navigator.userAgent));
+  const podeCompartilhar=celular && !!(navigator.canShare && navigator.canShare({files:[teste]}));
+  // no computador abre a aba do WhatsApp Web já no clique (senão o navegador bloqueia a janela);
+  // usa sempre a mesma aba, para não abrir uma nova a cada envio
+  const janela=podeCompartilhar?null:window.open('','wm_whatsapp_web');
   btn.disabled=true; rotulo.textContent='Gerando PDF…';
   try{
     marcarEnviado();
@@ -813,14 +816,17 @@ async function enviarWhatsApp(){
   }catch(e){ console.error(e); if(janela) janela.close(); toast('Não foi possível gerar o PDF: '+(e.message||e)); }
   finally{ btn.disabled=false; if(!window._pdfPronto) rotulo.textContent='Enviar pelo WhatsApp'; }
 }
-// Computador: baixa o PDF e abre a conversa no WhatsApp com a mensagem pronta
+// Computador: baixa o PDF e abre a conversa no WhatsApp Web com a mensagem pronta
 function baixarEAbrir(arquivo,msg,janela){
   const url=URL.createObjectURL(arquivo);
   const a=document.createElement('a'); a.href=url; a.download=arquivo.name; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),5000);
-  const link='https://wa.me/'+numeroWhats(document.getElementById('whats').value)+'?text='+encodeURIComponent(msg);
-  if(janela){ try{ janela.opener=null; }catch(e){} janela.location.href=link; } else window.open(link,'_blank','noopener');
-  toast('PDF baixado: "'+arquivo.name+'". Na conversa do WhatsApp, clique no clipe (ou arraste o arquivo) para anexar.');
+  const num=numeroWhats(document.getElementById('whats').value);
+  const link='https://web.whatsapp.com/send?'+(num?'phone='+num+'&':'')+'text='+encodeURIComponent(msg);
+  if(janela){ try{ janela.opener=null; }catch(e){} janela.location.href=link; } else window.open(link,'wm_whatsapp_web');
+  toast(num
+    ? 'PDF baixado: "'+arquivo.name+'". No WhatsApp Web, arraste o arquivo para a conversa (ou use o clipe) e envie.'
+    : 'PDF baixado. Sem número do cliente: escolha a conversa no WhatsApp Web, cole a mensagem e anexe o arquivo.');
 }
 
 
