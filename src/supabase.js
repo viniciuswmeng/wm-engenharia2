@@ -101,13 +101,29 @@ export const db = {
     },
     async salvar(usuario) {
       const row = toUsuarioBack(usuario);
-      const { data, error } = await supabase
-        .from('usuarios')
-        .upsert(row, { onConflict: 'id' })
-        .select()
-        .single();
-      if (error) throw error;
-      return toUsuarioFront(data);
+      // A foto é gravada à parte (salvarFoto); aqui não se envia para não depender da coluna
+      const salvo = await upsertTolerante('usuarios', row);
+      return salvo ? toUsuarioFront(salvo) : usuario;
+    },
+    // Foto do usuário (imagem pequena em data URL). Exige a coluna "foto" (supabase/usuarios_foto.sql)
+    async salvarFoto(id, foto, usuario) {
+      const explicar = e => {
+        const m = (e && e.message) || '';
+        if (/foto/.test(m) && /column|schema cache/i.test(m)) return new Error('Falta a coluna "foto" na tabela usuarios. Rode supabase/usuarios_foto.sql no Supabase.');
+        if (e && (e.code === '42501' || /row-level security|permission/i.test(m))) return new Error('O banco recusou a gravação (permissão na tabela usuarios). Rode supabase/usuarios_foto.sql no Supabase.');
+        return e;
+      };
+      // update + select: sem o select, o Supabase responde "ok" mesmo quando nenhuma linha foi alterada
+      const { data, error } = await supabase.from('usuarios').update({ foto: foto || null }).eq('id', id).select('id,foto');
+      if (error) throw explicar(error);
+      if (data && data.length) return;
+      // Nenhuma linha: o usuário não está no banco com esse id (ou o banco bloqueou). Grava o cadastro completo.
+      if (usuario) {
+        const { data: d2, error: e2 } = await supabase.from('usuarios').upsert({ ...toUsuarioBack(usuario), foto: foto || null }, { onConflict: 'id' }).select('id,foto');
+        if (e2) throw explicar(e2);
+        if (d2 && d2.length) return;
+      }
+      throw new Error('A foto não foi gravada: o banco não alterou nenhum cadastro (permissão na tabela usuarios). Rode supabase/usuarios_foto.sql no Supabase.');
     },
   },
 
@@ -340,6 +356,7 @@ function toUsuarioFront(r) {
     salario:        r.salario || 0,
     especialidades: r.especialidades || [],
     expediente:     normalizarExpediente(r.expediente),
+    foto:           r.foto || '',
   };
 }
 
@@ -402,6 +419,7 @@ function toSessaoFront(r) {
     obsInicio:      r.obs_inicio || r.obs || '',
     obsFim:         r.obs_fim    || '',
     visivelCliente: r.visivel_cliente !== false,
+    lancadoPor:     r.lancado_por || null,
   };
 }
 
@@ -421,6 +439,7 @@ function toSessaoBack(s) {
     obs_inicio:       s.obsInicio || s.obs || '',
     obs_fim:          s.obsFim || '',
     visivel_cliente:  s.visivelCliente !== false,
+    ...(s.lancadoPor ? { lancado_por: s.lancadoPor } : {}),
   };
 }
 

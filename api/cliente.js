@@ -49,15 +49,27 @@ export default async function handler(req) {
       });
     }
 
-    // Buscar atualizações manuais do projeto
+    // Buscar atualizações manuais do projeto (se a tabela falhar, o portal abre mesmo assim)
     const atualizacoes = await supabaseGet('atualizacoes_projeto',
-      `projeto_id=eq.${projeto.id}&order=created_at.desc&select=*`
-    );
+      `projeto_id=eq.${encodeURIComponent(projeto.id)}&order=created_at.desc&select=*`
+    ).catch(e => { console.error('atualizacoes_projeto:', e.message); return []; });
 
-    // Buscar sessões do banco de horas deste projeto (apenas encerradas)
+    // Sessões do banco de horas deste projeto (apenas encerradas). Os nomes vêm de uma
+    // consulta separada: a tabela de sessões não tem chave estrangeira para usuarios,
+    // então o "join" usuarios(nome) derrubava o portal inteiro.
     const sessoes = await supabaseGet('sessoes_horas',
-      `projeto_id=eq.${projeto.id}&hora_fim=not.is.null&order=created_at.desc&select=*,usuarios(nome)`
-    );
+      `projeto_id=eq.${encodeURIComponent(projeto.id)}&hora_fim=not.is.null&order=created_at.desc&select=*`
+    ).catch(e => { console.error('sessoes_horas:', e.message); return []; });
+    const idsUsuarios = [...new Set(sessoes.map(x => x.usuario_id).filter(Boolean))];
+    const listaUsuarios = idsUsuarios.length
+      ? await supabaseGet('usuarios', `id=in.(${idsUsuarios.map(i => `"${String(i).replace(/"/g, '')}"`).join(',')})&select=id,nome`).catch(() => [])
+      : [];
+    const nomeUsuario = Object.fromEntries(listaUsuarios.map(u => [String(u.id), u.nome]));
+
+    // Modelos 3D (IFC) com link ativo — tabela opcional (ignora se ainda não existir)
+    const modelos3d = await supabaseGet('modelos_ifc',
+      `projeto_id=eq.${encodeURIComponent(projeto.id)}&link_ativo=eq.true&order=created_at.desc&select=nome,disciplina,versao,token,created_at`
+    ).catch(() => []);
 
     // Retornar apenas dados públicos (sem financeiro, sem dados internos)
     const dadosPublicos = {
@@ -77,6 +89,20 @@ export default async function handler(req) {
       dataEntregaPrevista:  projeto.data_entrega_prevista || null,
       dataEntregaReal:      projeto.data_entrega_real || null,
       driveEntregaveis:      projeto.drive_entregaveis || '',
+      // Disciplinas e o que já foi entregue (entrega parcial por disciplina)
+      disciplinas: (() => {
+        const NOMES = { PE:'Projeto Estrutural', PR:'Projeto de Reforço', LT:'Laudo Técnico', EL:'Projeto Elétrico', PH:'Projeto Hidrossanitário',
+          PA:'Projeto Arquitetônico', PF:'Projeto de Fundação', CT:'Consultoria', CB:'Compatibilização' };
+        const disc = Array.isArray(projeto.disciplinas) ? projeto.disciplinas : [];
+        const linhas = disc.length && disc[0]?.usuarioNome !== undefined
+          ? disc.flatMap(m => (m.disciplinas || []).map(id => ({ id, entregue: (m.discEntregues || {})[id] || null, pausada: !!(m.discPausadas || {})[id] })))
+          : disc.filter(d => d?.id).map(d => ({ id: d.id, entregue: d.entregue || null, pausada: !!d.pausada }));
+        const porId = new Map();
+        linhas.forEach(l => { const a = porId.get(l.id); if (!a || (l.entregue && !a.entregue)) porId.set(l.id, l); });
+        return [...porId.values()].map(l => ({ nome: NOMES[l.id] || l.id, entregue: l.entregue, situacao: l.entregue ? 'entregue' : l.pausada ? 'pausada' : 'andamento' }));
+      })(),
+      // Modelos 3D
+      modelos3d: (modelos3d || []).map(m => ({ nome: m.nome, disciplina: m.disciplina || '', versao: m.versao || '', link: `/modelo/${m.token}`, data: m.created_at })),
       // Portal
       progresso:            projeto.progresso || 0,
       obs:                  projeto.obs_cliente || '',
@@ -98,7 +124,7 @@ export default async function handler(req) {
 
         // Sessões do banco de horas como linha do tempo
         const sessoesTimeline = (sessoes || []).filter(s => s.visivel_cliente !== false).map(s => {
-          const nomeColaborador = s.usuarios?.nome || 'Equipe WM';
+          const nomeColaborador = nomeUsuario[String(s.usuario_id)] || 'Equipe WM';
           const hIni  = s.hora_inicio || '';
           const hFim  = s.hora_fim    || '';
           const durMin= s.duracao_min || 0;

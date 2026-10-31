@@ -1,4 +1,5 @@
 // Escolher um orçamento salvo para preencher o contrato
+import { CabecalhoModal } from "../ui/ds.jsx";
 import { useState, useEffect } from "react";
 
 const K = { azul:"#0d1e35", azulM:"#1a4a7a", borda:"#dde3ec", sub:"#64748b", verde:"#16a34a" };
@@ -27,13 +28,9 @@ export default function SeletorOrcamento({ supabase, onEscolher, onFechar }) {
 
   return (
     <div onClick={e => { if (e.target === e.currentTarget) onFechar(); }}
-      style={{ position:"fixed", inset:0, background:"rgba(13,30,53,.55)", zIndex:1000, display:"flex", alignItems:"flex-start", justifyContent:"center", overflowY:"auto", padding:"32px 16px" }}>
+      style={{ position:"fixed", inset:0, background:"rgba(10,25,55,.5)", zIndex:1000, display:"flex", alignItems:"flex-start", justifyContent:"center", overflowY:"auto", padding:"32px 16px" }}>
       <div role="dialog" aria-label="Escolher orçamento" style={{ background:"#fff", borderRadius:14, width:"100%", maxWidth:680, boxShadow:"0 20px 60px rgba(0,0,0,.3)", overflow:"hidden" }}>
-        <div style={{ background:K.azul, color:"#fff", padding:"16px 20px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-          <div><div style={{ fontWeight:800, fontSize:16 }}>📋 Novo contrato a partir de orçamento</div>
-            <div style={{ fontSize:12, opacity:.75, marginTop:2 }}>Cliente, disciplinas, área, valor e prazo vêm preenchidos</div></div>
-          <button onClick={onFechar} aria-label="Fechar" style={{ background:"none", border:"none", color:"#fff", fontSize:22, cursor:"pointer" }}>×</button>
-        </div>
+        <CabecalhoModal titulo="Novo contrato a partir de orçamento" subtitulo={'Cliente, disciplinas, área, valor e prazo vêm preenchidos'} icone="calculadora" onFechar={() => onFechar()} />
         <div style={{ padding:"14px 20px", borderBottom:`1px solid ${K.borda}`, display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" }}>
           {["fechado", "enviado", "aberto", "todos"].map(f => (
             <button key={f} onClick={() => setFiltro(f)} style={{ border:`1.5px solid ${filtro === f ? K.azulM : K.borda}`, background:filtro === f ? K.azulM : "#fff", color:filtro === f ? "#fff" : K.sub, borderRadius:20, padding:"5px 12px", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
