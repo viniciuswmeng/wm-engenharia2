@@ -306,3 +306,85 @@ export async function exportarComparativoExcel(modelos, info, nome) {
 
   await salvar(wb, nome);
 }
+
+// ─── Estudo de custo pelo CUB/m² ──────────────────────────────────────────────
+export async function exportarCubExcel(est, r, nome) {
+  const { OBS_CUB, OBS_DESONERADO, FONTE_CUB, SIGLAS, PROJETOS_PADRAO, COEFICIENTES_AREA, rotMes } = await import("./cub/baseCub.js");
+  const { wb, logo } = await novoLivro();
+  const ed = est.edificacao;
+  const refTxt = r.ref ? `${r.ref.sinduscon} (${r.ref.uf}) · ${rotMes(r.ref.ano, r.ref.mes)}` : "—";
+  const sub = [est.info.projeto, est.info.cliente].filter(Boolean).join(" · ") || "Estudo preliminar de viabilidade";
+  const C = 6;
+  const ws = wb.addWorksheet("Estudo CUB", { properties: { tabColor: { argb: W.mar } } });
+  ws.columns = [{ width: 40 }, { width: 30 }, { width: 16 }, { width: 10 }, { width: 18 }, { width: 18 }];
+  let l = cabecalho(wb, ws, logo, { titulo: "Estimativa de custo de construção · CUB/m²", subtitulo: sub, colunas: C });
+  l = blocoInfo(ws, l, [
+    ["Cliente", est.info.cliente], ["Empreendimento", est.info.projeto], ["Local da obra", est.info.obs],
+    ["Tipologia", ed.tipologia], ["Pavimentos / unidades", `${ed.pavimentos || "—"} pav. · ${ed.unidades || "—"} un.`], ["Sistema construtivo", ed.sistema],
+    ["Descrição", ed.descricao], ["Projeto base", est.projetoPdf?.nome],
+  ], C);
+  const desc = ws.getCell(l - 3, 2); desc.alignment = { wrapText: true, vertical: "top" };
+  if (ed.descricao) ws.getRow(l - 3).height = Math.min(120, 16 * Math.ceil(ed.descricao.length / 90));
+
+  l = secao(ws, l, "Referência do CUB/m²", C);
+  l = blocoInfo(ws, l, [
+    ["Sinduscon / mês", refTxt], ["Encargos", est.referencia.desonerado ? "Com desoneração" : "Sem desoneração"],
+    ["Projeto-padrão", `${est.referencia.sigla} — ${r.padrao?.nome || ""}`],
+    ["CUB/m² utilizado", `R$ ${r.cub.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${r.manual ? " (informado pela equipe)" : ""}`],
+  ], C);
+
+  l = secao(ws, l, "Quadro de áreas (NBR 12721)", C);
+  const areas = r.areas.filter(a => a.areaN > 0);
+  const nomeCoef = id => COEFICIENTES_AREA.find(c => c.id === id)?.nome || "";
+  let t = tabela(ws, l, { cabecalhos: ["Ambiente / pavimento", "Tipo de área", "Área real (m²)", "Coef.", "Equivalente (m²)"], formatos: { 2: NUM, 3: NUM, 4: NUM },
+    linhas: areas.map(a => [a.nome || "—", nomeCoef(a.coefId), a.areaN, Number(a.coef), null]),
+    estiloLinha: (row, k) => { const n = row.number; row.getCell(5).value = { formula: `C${n}*D${n}`, result: areas[k].equivalente }; } });
+  const aIni = t.inicio, aFim = t.fim;
+  const linhaAreaTot = t.proxima;
+  l = linhaTotal(ws, t.proxima, ["Total", "", { formula: `SUM(C${aIni}:C${aFim})`, result: r.areaReal }, "", { formula: `SUM(E${aIni}:E${aFim})`, result: r.areaEq }], C - 1, { 2: NUM, 4: NUM });
+  l++;
+
+  l = secao(ws, l, "Composição do custo", C);
+  const cubLinha = l + 1;
+  t = tabela(ws, l, { cabecalhos: ["Parcela", "Base de cálculo", "Parâmetro", "", "Valor"], formatos: { 2: NUM, 4: MOEDA },
+    linhas: [["Custo básico (CUB/m² × área equivalente)", "CUB/m² (R$)", r.cub, "", null], ...r.adicionais.map(a => [a.nome, a.modo === "pct" ? "% do custo básico" : "valor informado (R$)", Number(String(a.valor).replace(",", ".")) || 0, "", null])],
+    estiloLinha: (row, k) => {
+      const n = row.number;
+      if (k === 0) row.getCell(5).value = { formula: `C${n}*E${linhaAreaTot}`, result: r.custoBasico };
+      else { const a = r.adicionais[k - 1]; row.getCell(5).value = a.modo === "pct" ? { formula: `E${cubLinha}*C${n}/100`, result: a.total } : { formula: `C${n}`, result: a.total }; }
+      row.getCell(1).alignment = { wrapText: true, vertical: "middle" };
+    } });
+  const cIni = t.inicio, cFim = t.fim;
+  l = linhaTotal(ws, t.proxima, ["CUSTO TOTAL ESTIMADO", "", "", "", { formula: `SUM(E${cIni}:E${cFim})`, result: r.total }], C - 1, { 4: MOEDA }, true);
+  const linhaTot = l - 1;
+  l = linhaTotal(ws, l, ["Custo por m² de área real", "", "", "", { formula: `IFERROR(E${linhaTot}/C${linhaAreaTot},0)`, result: r.porM2Real }], C - 1, { 4: MOEDA });
+  const mg = ws.getCell(l, 3); mg.value = r.margem * 100; mg.numFmt = '0"%"';
+  ws.getCell(l, 1).value = "Faixa de precisão (±)"; ws.getCell(l, 1).font = { name: FONTE, size: 10, bold: true, color: { argb: W.sub } };
+  l++;
+  l = linhaTotal(ws, l, ["Mínimo", "", "", "", { formula: `E${linhaTot}*(1-C${l - 1}/100)`, result: r.minimo }], C - 1, { 4: MOEDA });
+  l = linhaTotal(ws, l, ["Máximo", "", "", "", { formula: `E${linhaTot}*(1+C${l - 2}/100)`, result: r.maximo }], C - 1, { 4: MOEDA });
+  l++;
+
+  l = secao(ws, l, "Observações", C);
+  [...OBS_CUB, ...(est.referencia.desonerado ? [OBS_DESONERADO] : []),
+    "Este documento é um estudo preliminar de viabilidade e não substitui o orçamento analítico da obra, que depende dos projetos executivos, das especificações de acabamento e de cotações locais.",
+    `Fonte: ${FONTE_CUB}.`].forEach(o => {
+    const c = ws.getCell(l, 1); c.value = o; c.font = { name: FONTE, size: 9.5, color: { argb: W.tx } };
+    c.alignment = { wrapText: true, vertical: "top" }; ws.mergeCells(l, 1, l, C);
+    ws.getRow(l).height = Math.max(18, 13.5 * Math.ceil(o.length / 150)); l++;
+  });
+  rodape(ws, l, C);
+  configurarPagina(ws, { paisagem: false });
+
+  if (r.tabela) {
+    const wt = wb.addWorksheet("Tabela CUB", { properties: { tabColor: { argb: W.azul } } });
+    wt.columns = [{ width: 12 }, { width: 16 }, { width: 52 }, { width: 16 }, { width: 16 }, { width: 16 }];
+    let m = cabecalho(wb, wt, logo, { titulo: "Tabela do CUB/m²", subtitulo: `${refTxt} · ${est.referencia.desonerado ? "com" : "sem"} desoneração`, colunas: 6 });
+    const tt = tabela(wt, m, { cabecalhos: ["Sigla", "Grupo", "Projeto-padrão", "Área real (m²)", "Área equiv. (m²)", "R$/m²"], formatos: { 3: NUM, 4: NUM, 5: MOEDA },
+      linhas: SIGLAS.map(s => [s, PROJETOS_PADRAO[s].grupo, PROJETOS_PADRAO[s].nome, PROJETOS_PADRAO[s].areaReal || null, PROJETOS_PADRAO[s].areaEq || null, r.tabela[s] ?? null]),
+      estiloLinha: (row, k) => { if (SIGLAS[k] === est.referencia.sigla) row.eachCell(c => { c.fill = fill(W.azulClaro); c.font = { ...c.font, bold: true, color: { argb: W.mar } }; }); } });
+    rodape(wt, tt.proxima + 1, 6, `Fonte: ${FONTE_CUB}.`);
+    configurarPagina(wt, { paisagem: false });
+  }
+  await salvar(wb, nome);
+}

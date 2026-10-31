@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Icone from "../ui/Icone.jsx";
 import { fundoModal, caixaModal, CabecalhoModal, Abas } from "../ui/ds.jsx";
 import { EstimativaInstalacoes } from "./instalacoes/EstimativaInstalacoes.jsx";
+import { EstudoCub } from "./cub/EstudoCub.jsx";
 import {
   ELEMS_CMP, PRECO_FORMA_M2, calcModelo, corModelo, fmtC, fmtR, fmtPct, limparModelos, nomeModelo,
   normalizarModelo, novoExtra, novoModelo, numC, resumoComparativo, sugerirConclusao,
@@ -253,7 +254,7 @@ function ModalImportar({ modelos, onImportar, onFechar }) {
 function ModalSalvos({ projetos, onAbrir, onFechar }) {
   const [lista, setLista] = useState(null);
   const [erro, setErro] = useState("");
-  useEffect(() => { comparativos.listar().then(l => setLista(l.filter(c => c.dados?.tipo !== "instalacoes"))).catch(e => { setErro(e.message); setLista([]); }); }, []);
+  useEffect(() => { comparativos.listar().then(l => setLista(l.filter(c => !["instalacoes", "cub"].includes(c.dados?.tipo)))).catch(e => { setErro(e.message); setLista([]); }); }, []);
   const proj = id => projetos.find(p => String(p.id) === String(id));
   return (
     <div style={fundoModal} onClick={e => { if (e.target === e.currentTarget) onFechar(); }}>
@@ -421,15 +422,18 @@ export function PaginaComparativo({ projetos = [], usuarioAtual }) {
         <h1 style={{ margin: 0, fontSize: 30, fontWeight: 800, color: K.mar, letterSpacing: -0.5, lineHeight: 1.15 }}>Comparativo e estimativas</h1>
         <p style={{ margin: "6px 0 0", fontSize: 14.5, color: K.sub }}>
           {modo === "estrutural" ? "Compare quantitativos e custos entre soluções estruturais e gere o relatório para o cliente"
+            : modo === "cub" ? "Estudo preliminar de viabilidade: custo de construção estimado pelo CUB/m² (ABNT NBR 12721)"
             : "Estime o custo das instalações elétricas e hidrossanitárias a partir da lista de materiais do QiBuilder"}
         </p>
       </div>
       <Abas valor={modo} onChange={setModo} style={{ marginBottom: 6 }} itens={[
         { id: "estrutural", label: "Estrutural · comparativo de modelos", icone: "balanca" },
         { id: "instalacoes", label: "Instalações · estimativa de custo", icone: "calculadora" },
+        { id: "cub", label: "Custo de construção · CUB", icone: "capacete" },
       ]} />
       <div style={{ display: modo === "estrutural" ? "block" : "none" }}><ComparativoEstrutural projetos={projetos} usuarioAtual={usuarioAtual} /></div>
       <div style={{ display: modo === "instalacoes" ? "block" : "none" }}><EstimativaInstalacoes projetos={projetos} usuarioAtual={usuarioAtual} /></div>
+      <div style={{ display: modo === "cub" ? "block" : "none" }}><EstudoCub projetos={projetos} usuarioAtual={usuarioAtual} /></div>
     </div>
   );
 }
