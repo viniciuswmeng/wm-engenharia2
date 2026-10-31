@@ -385,6 +385,12 @@
   .panel .btn-print{background:#1565d8;box-shadow:0 1px 2px rgba(21,101,216,.25)}
   .panel .btn-print:hover{background:#1257be}
   .panel .btn-save{background:#16a34a}
+  .panel .btn-whats{background:#fff;color:#128c4a;border:1.5px solid #25d366;margin-top:6px}
+  .panel .btn-whats:hover{background:#effcf3}
+  .panel .btn-whats[disabled]{opacity:.6;cursor:wait}
+  /* captura do PDF para o WhatsApp: mesma aparência da impressão */
+  body.gerando-pdf .page{box-shadow:none!important;border-radius:0!important;width:210mm!important;height:297mm!important;min-height:297mm!important;padding:15mm 14mm!important;overflow:hidden!important}
+  body.gerando-pdf .page-num{position:absolute!important;bottom:7mm!important;right:14mm!important}
   .panel .btn-ghost,.panel .btn-saved{border:1px solid #e6ecf4;color:#334866}
   .panel .btn-saved .badge{background:#eef1f6;color:#6b7a90}
   .modal-bg{background:rgba(10,25,55,.5);backdrop-filter:blur(2px)}
@@ -434,6 +440,9 @@
 
       <label class="field"><span class="lbl">Cidade / UF da obra</span>
         <input type="text" id="local" placeholder="Ex: Chapada dos Guimarães / MT" oninput="render()"></label>
+
+      <label class="field"><span class="lbl">WhatsApp do cliente</span>
+        <input type="text" id="whats" inputmode="tel" placeholder="Ex: (33) 99999-9999"></label>
 
       <label class="field"><span class="lbl">Tipo de projeto</span>
         <input type="text" id="tipo" placeholder="Ex: residência unifamiliar com dois pavimentos" oninput="render()"></label>
@@ -505,6 +514,7 @@
       </div>
 
       <button class="btn btn-print" onclick="imprimirPDF()">Gerar / Imprimir PDF</button>
+      <button class="btn btn-whats" id="btnWhats" onclick="enviarWhatsApp()"><svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor" style="vertical-align:-3px;margin-right:6px"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91C21.95 6.45 17.5 2 12.04 2zm5.8 14.01c-.24.68-1.42 1.3-1.95 1.34-.5.05-.97.23-3.27-.68-2.77-1.09-4.52-3.92-4.66-4.1-.13-.18-1.11-1.48-1.11-2.82 0-1.34.7-2 .95-2.27.25-.27.54-.34.72-.34h.52c.17 0 .39-.06.61.47.24.56.79 1.93.86 2.07.07.14.11.3.02.48-.09.18-.14.3-.27.46-.14.16-.29.36-.41.48-.14.14-.28.29-.12.56.16.27.71 1.17 1.52 1.9 1.05.93 1.93 1.22 2.2 1.36.27.14.43.11.59-.07.16-.18.68-.79.86-1.06.18-.27.36-.23.61-.14.25.09 1.59.75 1.86.89.27.14.45.2.52.32.07.11.07.66-.17 1.33z"/></svg>Enviar pelo WhatsApp</button>
       <button class="btn btn-save" onclick="salvarOrcamento()">Salvar orçamento</button>
       <button class="btn btn-saved" onclick="abrirSalvos()">Orçamentos salvos <span class="badge" id="savedBadge">0</span></button>
       <button class="btn btn-ghost" onclick="limpar()">Limpar / Novo</button>
@@ -687,43 +697,132 @@ const PRICES = {
 };
 const MESES=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 
-// Monta o nome padrão: "ORÇAMENTO WM - NOME DO CLIENTE.CIDADE.ESTADO"
+// Monta o nome padrão: "Orçamento Nome do cliente - Cidade-UF - WM Engenharia"
 function nomeArquivo(cliente, local){
   cliente=(cliente||'').trim();
   local=(local||'').trim();
   let cidade='', estado='';
   if(local){
     // aceita "Cidade / UF", "Cidade - UF", "Cidade/UF" ou "Cidade, UF"
-    const m=local.split(/[\/,\-]/).map(s=>s.trim()).filter(Boolean);
+    const m=local.split(/\s*[\/,]\s*|\s+-\s+|-(?=[A-Za-z]{2}$)/).map(s=>s.trim()).filter(Boolean);
     cidade=m[0]||'';
-    estado=m[1]||'';
+    estado=(m[1]||'').toUpperCase();
   }
-  let base='ORÇAMENTO WM';
-  if(cliente) base+=' - '+cliente.toUpperCase();
-  const loc=[cidade,estado].filter(Boolean).join('.').toUpperCase();
-  if(loc) base+='.'+loc;
+  const partes=['Orçamento'+(cliente?' '+cliente:'')];
+  const loc=[cidade,estado].filter(Boolean).join('-');
+  if(loc) partes.push(loc);
+  partes.push('WM Engenharia');
   // remove caracteres inválidos para nome de arquivo
-  return base.replace(/[\\/:*?"<>|]/g,'').replace(/\s+/g,' ').trim();
+  return partes.join(' - ').replace(/[\\/:*?"<>|]/g,'').replace(/\s+/g,' ').trim();
 }
 
-function imprimirPDF(){
-  render();
-  // Gerar o PDF para o cliente salva o orçamento e marca como "Enviado"
+// Salva o orçamento e marca como "Enviado" (ao gerar o PDF para o cliente)
+function marcarEnviado(){
   const est0=coletarEstado();
   if(est0.cliente || est0.discs.length){
     salvarOrcamento(true);
     const arr=lerSalvos(); const o=arr.find(x=>x.id===window._editId);
     if(o && (!o.status || o.status==='aberto')){ o.status='enviado'; o.atualizadoEm=Date.now(); gravarSalvos(arr); }
   }
-  const cliente=document.getElementById('cliente').value;
-  const local=document.getElementById('local').value;
+}
+
+function imprimirPDF(){
+  render();
+  if(document.getElementById('docStack').style.display==='none'){ toast('Preencha os dados do orçamento primeiro.'); return; }
+  marcarEnviado();
+  const nome=nomeArquivo(document.getElementById('cliente').value, document.getElementById('local').value);
+  // o navegador usa o título da página como nome sugerido do PDF
+  // (dentro do sistema a página fica num quadro, então troca também o título da janela principal)
   const tituloAntigo=document.title;
-  // o navegador usa document.title como nome sugerido do PDF
-  document.title=nomeArquivo(cliente, local);
+  let pai=null, tituloPai='';
+  try{ if(window.parent!==window){ pai=window.parent.document; tituloPai=pai.title; pai.title=nome; } }catch(e){ pai=null; }
+  document.title=nome;
   window.print();
   // restaura após a caixa de impressão
-  setTimeout(()=>{ document.title=tituloAntigo; }, 1500);
+  setTimeout(()=>{ document.title=tituloAntigo; if(pai) pai.title=tituloPai; }, 1500);
 }
+
+// ── Envio pelo WhatsApp ─────────────────────────────────────────────
+function carregarScript(src){
+  return new Promise((ok,erro)=>{
+    if(document.querySelector('script[src="'+src+'"]')){ ok(); return; }
+    const sc=document.createElement('script'); sc.src=src; sc.onload=ok; sc.onerror=()=>erro(new Error('Não foi possível carregar '+src)); document.head.appendChild(sc);
+  });
+}
+// Gera o PDF (4 folhas A4) a partir das páginas da proposta
+async function gerarArquivoPdf(nome){
+  await carregarScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+  await carregarScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+  const paginas=[...document.querySelectorAll('#docStack .page')];
+  document.body.classList.add('gerando-pdf');
+  try{
+    if(document.fonts&&document.fonts.ready) await document.fonts.ready;
+    const pdf=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4',compress:true});
+    for(let i=0;i<paginas.length;i++){
+      const cv=await window.html2canvas(paginas[i],{scale:2,backgroundColor:'#ffffff',useCORS:true,logging:false,windowWidth:1200});
+      if(i) pdf.addPage();
+      pdf.addImage(cv.toDataURL('image/jpeg',0.92),'JPEG',0,0,210,297,undefined,'FAST');
+    }
+    pdf.setProperties({title:nome, author:'WM Engenharia Integrada'});
+    return new File([pdf.output('blob')], nome+'.pdf', {type:'application/pdf'});
+  } finally { document.body.classList.remove('gerando-pdf'); }
+}
+function numeroWhats(v){
+  let d=String(v||'').replace(/\D/g,'');
+  if(!d) return '';
+  if(d.startsWith('0')) d=d.replace(/^0+/,'');
+  if(d.length<=11) d='55'+d; // DDD + número, sem o código do país
+  return d;
+}
+function mensagemWhats(){
+  const cliente=document.getElementById('cliente').value.trim();
+  const primeiro=cliente.split(/\s+/)[0]||'';
+  return 'Olá'+(primeiro?', '+primeiro:'')+'! Tudo bem? Segue em anexo a proposta técnica e comercial da WM Engenharia para os projetos da sua obra. Fico à disposição para qualquer dúvida.';
+}
+async function compartilharArquivo(arquivo,nome,msg){
+  try{ await navigator.share({files:[arquivo], title:nome, text:msg}); window._pdfPronto=null; return 'ok'; }
+  catch(e){ if(e&&e.name==='AbortError'){ window._pdfPronto=null; return 'cancelado'; } if(e&&e.name==='NotAllowedError') return 'gesto'; throw e; }
+}
+async function enviarWhatsApp(){
+  const btn=document.getElementById('btnWhats'); const rotulo=btn.lastChild;
+  // 2º clique: o PDF já está pronto (o navegador exige um clique novo para abrir o compartilhamento)
+  if(window._pdfPronto){
+    const {arquivo,nome,msg}=window._pdfPronto; rotulo.textContent='Enviar pelo WhatsApp';
+    try{ await compartilharArquivo(arquivo,nome,msg); }catch(e){ window._pdfPronto=null; baixarEAbrir(arquivo,msg); }
+    return;
+  }
+  render();
+  if(document.getElementById('docStack').style.display==='none'){ toast('Preencha os dados do orçamento primeiro.'); return; }
+  const teste=new File(['x'],'t.pdf',{type:'application/pdf'});
+  const podeCompartilhar=!!(navigator.canShare && navigator.canShare({files:[teste]}));
+  // no computador abre a aba do WhatsApp já no clique (senão o navegador bloqueia a janela)
+  const janela=podeCompartilhar?null:window.open('about:blank','_blank');
+  btn.disabled=true; rotulo.textContent='Gerando PDF…';
+  try{
+    marcarEnviado();
+    const nome=nomeArquivo(document.getElementById('cliente').value, document.getElementById('local').value);
+    const arquivo=await gerarArquivoPdf(nome);
+    const msg=mensagemWhats();
+    if(podeCompartilhar){
+      // celular (e alguns computadores): compartilhamento com o PDF anexado; é só escolher o WhatsApp
+      const r=await compartilharArquivo(arquivo,nome,msg);
+      if(r==='gesto'){ window._pdfPronto={arquivo,nome,msg}; btn.disabled=false; rotulo.textContent='PDF pronto · toque para compartilhar'; return; }
+      return;
+    }
+    baixarEAbrir(arquivo,msg,janela);
+  }catch(e){ console.error(e); if(janela) janela.close(); toast('Não foi possível gerar o PDF: '+(e.message||e)); }
+  finally{ btn.disabled=false; if(!window._pdfPronto) rotulo.textContent='Enviar pelo WhatsApp'; }
+}
+// Computador: baixa o PDF e abre a conversa no WhatsApp com a mensagem pronta
+function baixarEAbrir(arquivo,msg,janela){
+  const url=URL.createObjectURL(arquivo);
+  const a=document.createElement('a'); a.href=url; a.download=arquivo.name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),5000);
+  const link='https://wa.me/'+numeroWhats(document.getElementById('whats').value)+'?text='+encodeURIComponent(msg);
+  if(janela){ try{ janela.opener=null; }catch(e){} janela.location.href=link; } else window.open(link,'_blank','noopener');
+  toast('PDF baixado: "'+arquivo.name+'". Na conversa do WhatsApp, clique no clipe (ou arraste o arquivo) para anexar.');
+}
+
 
 const CARD_CONTENT = {
   est:{cls:'est',ico:'🏗',t:'Projeto Estrutural',items:['Estudo e comparação de diferentes soluções estruturais','Dimensionamento completo da fundação e da estrutura','Verificação da capacidade de suportar todas as cargas','Análise de deformações e fissuras','Detalhamentos técnicos completos para a execução']},
@@ -897,6 +996,7 @@ function cardHtml(c){
 function limpar(){
   document.getElementById('cliente').value='';
   document.getElementById('local').value='';
+  document.getElementById('whats').value='';
   document.getElementById('tipo').value='';
   document.getElementById('prazo').value='65';
   document.getElementById('validade').value='15';
@@ -994,6 +1094,7 @@ function coletarEstado(){
   return {
     cliente:document.getElementById('cliente').value.trim(),
     local:document.getElementById('local').value.trim(),
+    whats:document.getElementById('whats').value.trim(),
     tipo:document.getElementById('tipo').value.trim(),
     prazo:document.getElementById('prazo').value,
     validade:document.getElementById('validade').value,
@@ -1014,6 +1115,7 @@ function coletarEstado(){
 function aplicarEstado(s){
   document.getElementById('cliente').value=s.cliente||'';
   document.getElementById('local').value=s.local||'';
+  document.getElementById('whats').value=s.whats||'';
   document.getElementById('tipo').value=s.tipo||'';
   document.getElementById('prazo').value=s.prazo||'65';
   document.getElementById('validade').value=s.validade||'15';
@@ -1143,7 +1245,7 @@ function toast(msg){
   const t=document.getElementById('toast');
   t.textContent=msg; t.classList.add('show');
   clearTimeout(_toastT);
-  _toastT=setTimeout(()=>t.classList.remove('show'),2600);
+  _toastT=setTimeout(()=>t.classList.remove('show'),Math.max(2600,msg.length*55));
 }
 
 renderPavList();

@@ -48,7 +48,8 @@ const TOPICOS = [
         "Preencha cliente, local (Cidade / UF) e tipo de edificação.",
         "Informe a área de cada pavimento (a soma alimenta o cálculo) e marque as disciplinas.",
         "Use \"Acrescentar impostos\" quando houver nota fiscal e \"Editar valores manualmente\" para ajustar algum item.",
-        "Ajuste prazo e validade e clique em \"Gerar / Imprimir PDF\". Escolha \"Salvar como PDF\" na janela de impressão e envie ao cliente.",
+        "Ajuste prazo e validade e clique em \"Gerar / Imprimir PDF\". Escolha \"Salvar como PDF\" na janela de impressão: o arquivo já vem com o nome \"Orçamento Nome do cliente - Cidade-UF - WM Engenharia\".",
+        "\"Enviar pelo WhatsApp\" gera o PDF com esse nome. No celular abre o compartilhar com o PDF anexado (escolha o WhatsApp). No computador o PDF é baixado e abre a conversa com o número informado em \"WhatsApp do cliente\" e a mensagem pronta; é só anexar o arquivo pelo clipe.",
       ]},
       { t:"Orçamentos salvos e status", itens:[
         "Gerar o PDF já salva o orçamento como Enviado. \"Salvar orçamento\" salva sem mudar o status.",

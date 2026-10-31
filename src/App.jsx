@@ -1144,6 +1144,7 @@ export default function App(){
             <iframe
               src="/orcamentos.html"
               title="Gerador de Orçamentos"
+              allow="web-share; clipboard-write"
               style={{width:"100%",height:"100%",border:"none",display:"block"}}
             />
           </div>
