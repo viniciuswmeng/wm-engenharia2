@@ -56,9 +56,16 @@ export function GeradorContratos({ projetos, usuarios, usuarioAtual, drive, onSa
         if (e2) console.warn("Orçamento não vinculado:", e2);
       }
       carregarLista();
-    } catch(e) { console.error("Erro ao salvar contrato:", e); setMsgSalvo("❌ Erro ao salvar"); id = null; }
+    } catch(e) {
+      console.error("Erro ao salvar contrato:", e);
+      const m = e?.message || String(e||"");
+      const motivo = /JWT|token|auth|permission|policy|row-level/i.test(m) ? "sessão expirada ou sem permissão — saia e entre de novo no sistema"
+        : /Failed to fetch|NetworkError|network/i.test(m) ? "sem conexão com o servidor"
+        : m;
+      setMsgSalvo("❌ Erro ao salvar: " + motivo); id = null;
+    }
     setSalvando(false);
-    setTimeout(()=>setMsgSalvo(""), 3000);
+    setTimeout(()=>setMsgSalvo(""), id ? 3000 : 12000);
     return id ? { id, titulo, dados:form } : null;
   };
 
