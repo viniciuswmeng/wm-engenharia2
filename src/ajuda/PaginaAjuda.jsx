@@ -64,7 +64,9 @@ const TOPICOS = [
       { t:"Criar", itens:[
         "\"A partir de orçamento\": escolha um orçamento e o contrato vem com cliente, disciplinas, área, valor, prazo e cronograma.",
         "Do zero: em \"Contratos Salvos\" → \"+ Novo Contrato\".",
-        "Passos: Cliente → Projeto (serviços, área, cronograma) → Valores (entrada %, prazo) → Finalizar (testemunhas).",
+        "Passos: Cliente → Projeto (serviços, área, cronograma) → Valores (parcelas, prazo) → Finalizar (testemunhas).",
+        "Parcelas: em cada uma, digite o percentual ou o valor em R$ (o outro é calculado) e escolha o vencimento: na assinatura, X dias após a assinatura, data fixa, na entrega dos projetos ou outro texto. \"Montar rápido\" cria entrada + N parcelas iguais a cada X dias. Se não fechar o total, aparece quanto falta e o botão \"Ajustar a última parcela\".",
+        "A Cláusula 7ª é escrita com todas as parcelas e, quando o contrato assinado é anexado, as parcelas vão para o Financeiro do projeto com as datas de vencimento.",
         "O cronograma pode vir de um modelo e ser ajustado ao prazo total; ele vira o Anexo II.",
         "Salve e use \"Imprimir / PDF\" ou \"Word\".",
       ]},

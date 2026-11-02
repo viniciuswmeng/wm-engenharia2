@@ -5,6 +5,8 @@ import { gerar as gerarCronograma, normalizar as normalizarCronograma, tabelaHTM
 import AnexarContrato from "../fluxo/AnexarContrato.jsx";
 import SeletorOrcamento from "../fluxo/SeletorOrcamento.jsx";
 import { orcamentoParaContrato } from "../fluxo/fluxo.js";
+import PagamentoEditor from "../contratos/PagamentoEditor.jsx";
+import { calcularPagamento, clausulaPagamento, parcelasDoForm, resumoPagamento } from "../contratos/pagamento.js";
 import { Btn, C_CONTRATO, Card, DRIVE_ROOT_ID, InpC, SecC, SelC, TIPOS } from "../nucleo.jsx";
 import Icone from "../ui/Icone.jsx";
 
@@ -144,8 +146,8 @@ export function GeradorContratos({ projetos, usuarios, usuarioAtual, drive, onSa
   const set = (k,v) => setForm(f=>({...f,[k]:v}));
   const assinado = form._fluxo?.status === "assinado";
   const fmtMoeda = v => isNaN(Number(v))||v==="" ? "R$ 0,00" : Number(v).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
-  const entrada  = Number(form.valorTotal||0) * Number(form.percEntrada||0) / 100;
-  const parcFinal= Number(form.valorTotal||0) - entrada;
+  const parcelasPag = parcelasDoForm(form);
+  const calcPag = calcularPagamento(parcelasPag, form.valorTotal);
   const dataFmt  = d => { if(!d) return "___/___/______"; const [y,m,dd]=d.split("-"); return `${dd}/${m}/${y}`; };
   const dataExtenso = d => { if(!d) return ""; const dt=new Date(d+"T12:00:00"); return dt.toLocaleDateString("pt-BR",{day:"numeric",month:"long",year:"numeric"}); };
   const extensoNum = n => {const m={"1":"uma","2":"duas","3":"três","4":"quatro","5":"cinco"};return m[n]||n;};
@@ -177,7 +179,7 @@ export function GeradorContratos({ projetos, usuarios, usuarioAtual, drive, onSa
 <h2 class="sec">Da Propriedade Intelectual</h2>
 <p><strong>Cláusula 6ª.</strong> Os projetos são protegidos pela Lei nº 9.610/1998 e permanecem de titularidade da CONTRATADA até a quitação integral. Após a quitação, os direitos de uso são cedidos ao CONTRATANTE exclusivamente para esta obra, sendo vedada a reprodução para outras edificações sem autorização escrita da CONTRATADA.</p>
 <h2 class="sec">Do Preço e das Condições de Pagamento</h2>
-<p><strong>Cláusula 7ª.</strong> O serviço será remunerado pela quantia total de <strong>${fmtMoeda(form.valorTotal)}</strong>, pagos em: (I) <strong>Entrada (${form.percEntrada}%):</strong> ${fmtMoeda(entrada)}, devida na assinatura; (II) <strong>Parcela final (${100-Number(form.percEntrada)}%):</strong> ${fmtMoeda(parcFinal)}, devida na entrega conforme Cláusula 5ª. Pagamentos via TED/PIX. Atraso do CONTRATANTE: IPCA + multa 2% + juros 1% a.m. Atraso imputável à CONTRATADA: correção da parcela final pelo IPCA.</p>
+<p><strong>Cláusula 7ª.</strong> O serviço será remunerado pela quantia total de <strong>${fmtMoeda(form.valorTotal)}</strong>, pagos em: ${clausulaPagamento(form)}. Pagamentos via TED/PIX. Atraso do CONTRATANTE: IPCA + multa 2% + juros 1% a.m. Atraso imputável à CONTRATADA: correção pelo IPCA das parcelas ainda não pagas.</p>
 <h2 class="sec">Do Inadimplemento e das Penalidades</h2>
 <p><strong>Cláusula 8ª.</strong> Inadimplemento do CONTRATANTE: multa de 2%, juros de 1% ao mês e correção pelo IPCA. Em cobrança judicial: custas e honorários advocatícios de 20%.</p>
 <p><strong>Cláusula 9ª.</strong> O descumprimento de qualquer cláusula, exceto a 7ª, sujeitará a parte infratora à multa compensatória de 5% do valor total, sem prejuízo de perdas e danos.</p>
@@ -519,16 +521,11 @@ body{width:210mm;margin:0 auto;padding:6mm 0;color:#1a1a1a;-webkit-print-color-a
           <SecC titulo="Honorários e Pagamento"/>
           <div style={{display:"flex",flexWrap:"wrap",gap:16}}>
             <InpC label="Valor Total do Contrato (R$)" val={form.valorTotal} onChange={v=>set("valorTotal",v)} type="number" placeholder="0,00"/>
-            <SelC label="Percentual de Entrada" val={form.percEntrada} onChange={v=>set("percEntrada",v)} opts={["10","20","30","40","50","60","70"].map(v=>({v,l:v+"%"}))}/>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12,marginTop:18}}>
-            {[["Entrada",fmtMoeda(entrada),"#e9f1fd",C2.azulM],["Parcela final",fmtMoeda(parcFinal),"#f3f6fb",C2.texto],["Total",fmtMoeda(form.valorTotal),"#effaf3",C2.verde]].map(([l,v,bg,cor])=>(
-              <div key={l} style={{background:bg,borderRadius:12,padding:"14px 16px"}}>
-                <div style={{fontSize:12.5,fontWeight:600,color:C2.sub}}>{l}</div>
-                <div style={{fontSize:20,fontWeight:800,color:cor,marginTop:4}}>{v}</div>
-              </div>
-            ))}
-          </div>
+          <SecC titulo="Parcelas e vencimentos"/>
+          <div style={{fontSize:12.5,color:C2.sub,margin:"-6px 0 12px"}}>Digite o percentual <b>ou</b> o valor de cada parcela (o outro é calculado) e escolha quando vence. O texto da Cláusula 7ª é montado a partir desta lista.</div>
+          <PagamentoEditor parcelas={parcelasPag} valorTotal={form.valorTotal} C2={C2}
+            onChange={lista=>setForm(f=>({...f,pagamento:lista,percEntrada:lista[0]?.vencimento==="assinatura"&&lista[0]?.modo!=="valor"?String(lista[0].pct||"0"):f.percEntrada}))}/>
           <SecC titulo="Prazos"/>
           <div style={{display:"flex",flexWrap:"wrap",gap:16}}>
             <InpC label="Prazo de Execução (Dias Corridos)" val={form.prazoExecucao} onChange={v=>set("prazoExecucao",v)} type="number" placeholder="65"/>
@@ -559,7 +556,8 @@ body{width:210mm;margin:0 auto;padding:6mm 0;color:#1a1a1a;-webkit-print-color-a
             <div><strong>Cliente:</strong> {form.nomeCompleto||"—"} · {form.tipoPessoa==="fisica"?"CPF":"CNPJ"}: {form.cpfCnpj||"—"}</div>
             <div><strong>Serviços:</strong> {form.servicos.join(", ")||"—"}</div>
             <div><strong>Obra:</strong> {form.descricaoEdificacao||"—"} · {form.areaTotal||"—"} · {form.cidadeUF||"—"}</div>
-            <div><strong>Valor Total:</strong> {fmtMoeda(form.valorTotal)} · Entrada ({form.percEntrada}%): {fmtMoeda(entrada)}</div>
+            <div><strong>Valor Total:</strong> {fmtMoeda(form.valorTotal)}{!calcPag.fechado&&calcPag.total>0&&<span style={{color:"#b45309",fontWeight:600}}> · ⚠ parcelas somam {fmtMoeda(calcPag.soma)}</span>}</div>
+            <div><strong>Pagamento:</strong> {resumoPagamento(form)}</div>
             <div><strong>Prazo:</strong> {form.prazoExecucao} dias corridos</div>
             <div><strong>Assinatura:</strong> {form.cidade}, {dataFmt(form.dataAssinatura)}</div>
           </div>
