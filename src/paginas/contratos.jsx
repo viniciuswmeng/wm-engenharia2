@@ -59,7 +59,7 @@ export function GeradorContratos({ projetos, usuarios, usuarioAtual, drive, onSa
     } catch(e) {
       console.error("Erro ao salvar contrato:", e);
       const m = e?.message || String(e||"");
-      const motivo = /JWT|token|auth|permission|policy|row-level/i.test(m) ? "sessão expirada ou sem permissão — saia e entre de novo no sistema"
+      const motivo = /permission|policy|row-level|42501/i.test(m) ? "o banco não deu permissão de gravar contratos (rode supabase/contratos_permissoes.sql no Supabase) — " + m
         : /Failed to fetch|NetworkError|network/i.test(m) ? "sem conexão com o servidor"
         : m;
       setMsgSalvo("❌ Erro ao salvar: " + motivo); id = null;
