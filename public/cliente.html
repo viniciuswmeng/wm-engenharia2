@@ -166,6 +166,19 @@ function render(d){
     secoes.push(["formulario","Formulário"]);
   }
 
+  // ── Atas de reunião (assinadas para baixar; as demais aguardando assinatura)
+  var atas=d.atas||[];
+  if(atas.length){
+    var cat='<p class="sub" style="margin:-6px 0 12px">Registros das reuniões do projeto. Quando a ata estiver assinada por todos, ela fica disponível para baixar.</p><div class="lista">';
+    atas.forEach(function(a){
+      cat+='<div class="form"><div class="t"><b>Ata '+esc(a.numero)+(a.assunto?' · '+esc(a.assunto):'')+'</b><span class="sub">Reunião de '+data(a.data)+(a.obra?' · '+esc(a.obra):'')+'</span></div>'+
+        (a.situacao==="assinada"?'<span class="tag t-ok">✓ Assinada'+(a.assinadaEm?' em '+data(a.assinadaEm):'')+'</span>'+(a.link?'<a class="btn pri" href="'+esc(a.link)+'" target="_blank" rel="noopener">⬇ Baixar ata</a>':''):'<span class="tag t-pau">Aguardando assinatura</span>')+'</div>';
+    });
+    cat+='</div>';
+    h+=sec("atas","🖋️","Atas de reunião",cat);
+    secoes.push(["atas","Atas"]);
+  }
+
   // ── Entregas
   var ce='';
   if(!ent.length){ce='<div class="vazio">'+(concl&&d.driveEntregaveis?'Os arquivos do projeto estão na pasta: <a href="'+esc(d.driveEntregaveis)+'" target="_blank" rel="noopener">abrir pasta de entregáveis</a>.':'Quando houver arquivos para você (entregas parciais e a entrega final), eles aparecem aqui para visualizar e baixar.')+'</div>'}

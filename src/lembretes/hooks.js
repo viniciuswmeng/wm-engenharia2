@@ -92,7 +92,7 @@ export function usePush({ supabase, user }) {
     let vivo = true;
     (async () => {
       let pk = "";
-      try { const r = await fetch("/api/push?acao=chave", { cache: "no-store" }); pk = String((await r.json()).publicKey || "").trim(); } catch { /* sem servidor */ }
+      try { const r = await fetch("/api/push?acao=chave", { cache: "no-store" }); pk = String((await r.json()).publicKey || "").replace(/[^A-Za-z0-9_-]/g, ""); } catch { /* sem servidor */ }
       if (!vivo) return;
       setChave(pk);
       if (!pk) { setEstado("sem-chave"); return; }

@@ -21,6 +21,20 @@ async function supabaseGet(tabela, filtros = '') {
 // Conjunto do modelo: "final" ou "preliminar" (modelos antigos: pelo nome do arquivo)
 const faseDe = m => (m.fase === 'final' || m.fase === 'preliminar') ? m.fase : (/final/i.test(`${m.nome || ''} ${m.arquivo || ''}`) ? 'final' : 'preliminar');
 
+// Link temporário (7 dias) para um arquivo do bucket privado das obras
+async function linkAssinado(caminho) {
+  try {
+    const r = await fetch(`${SUPABASE_URL}/storage/v1/object/sign/obras-arquivos/${caminho.split('/').map(encodeURIComponent).join('/')}`, {
+      method: 'POST', headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ expiresIn: 7 * 86400 }),
+    });
+    if (!r.ok) return '';
+    const j = await r.json();
+    const u = j.signedURL || j.signedUrl || '';
+    return u ? (u.startsWith('http') ? u : `${SUPABASE_URL}/storage/v1${u.startsWith('/') ? '' : '/'}${u}`) : '';
+  } catch { return ''; }
+}
+
 export default async function handler(req) {
   const url    = new URL(req.url);
   const token  = url.searchParams.get('token');
@@ -58,10 +72,22 @@ export default async function handler(req) {
     ).catch(() => []);
 
     // Formulário de cadastro (briefing) da obra ligada a este projeto — tabelas opcionais
-    let formularios = [];
+    let formularios = [], atas = [];
     try {
       const filtro = encodeURIComponent(JSON.stringify([projeto.id]));
-      const obras = await supabaseGet('obras', `select=id,nome&dados->wm=cs.${filtro}`);
+      const obras = await supabaseGet('obras', `select=id,nome,atas:dados->atas&dados->wm=cs.${filtro}`);
+      // Atas de reunião da obra: assinadas (com link para baixar) ou aguardando assinatura
+      for (const o of obras) {
+        for (const a of (Array.isArray(o.atas) ? o.atas : [])) {
+          const assinadas = Array.isArray(a.signed) ? a.signed : [];
+          if (!assinadas.length && !a.pdfAt) continue; // rascunho ainda em edição: não aparece
+          const ultima = assinadas[assinadas.length - 1];
+          atas.push({ numero: a.num || '', data: a.date || '', assunto: a.subject || '', obra: o.nome || '',
+            situacao: ultima ? 'assinada' : 'aguardando', assinadaEm: ultima?.date || null,
+            link: ultima ? await linkAssinado(`atas_assinadas/${ultima.file}`) : '' });
+        }
+      }
+      atas.sort((x, y) => String(y.data).localeCompare(String(x.data)));
       if (obras.length) {
         const ids = obras.map(o => `"${String(o.id).replace(/"/g, '')}"`).join(',');
         const brief = await supabaseGet('obras_briefing', `obra_id=in.(${ids})&select=token,obra_id,resposta,updated_at`);
@@ -125,6 +151,7 @@ export default async function handler(req) {
         return { fase: f, link: l.length > 1 ? `/modelo/${l.slice(0, 10).map(m => m.token).join('-')}` : '', total: l.length };
       }),
       formularios,
+      atas,
       entregas,
       // Portal
       progresso:            projeto.progresso || 0,

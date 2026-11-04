@@ -226,7 +226,7 @@ export function PaginaIFC({ projetos = [], usuarioAtual }) {
     render: () => !carregados.length ? (
       <p style={{ color: K.sub, fontSize: 13, textAlign: "center", marginTop: 30 }}>Abra um modelo para vinculá-lo a um projeto e gerar o link do cliente.</p>
     ) : (
-      <div style={{ display: "grid", gap: 14 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 14 }}>
         {carregados.filter(c => c.salvo).length >= 2 && (
           <CaixaConjunto modelos={carregados.filter(c => c.salvo).map(c => c.salvo)} projeto={projPorId[carregados.find(c => c.salvo)?.salvo.projetoId]} onQr={setQrModelo} />
         )}

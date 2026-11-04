@@ -247,7 +247,7 @@ export default function Visualizador3D({ ref, altura = "calc(100vh - 230px)", pa
               </button>
             ))}
           </div>
-          <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
+          <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", padding: 16, minWidth: 0 }}>
             {aba === "modelo" && (
               !tem ? <p style={{ color: K.sub, fontSize: 13, textAlign: "center", marginTop: 30 }}>Abra um modelo para ver disciplinas, categorias e pavimentos.</p> : <>
                 {modelos.map(m => (

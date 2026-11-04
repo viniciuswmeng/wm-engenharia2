@@ -15,15 +15,17 @@ export async function sbDelete(tabela, filtros) {
 }
 
 // Valores colados na Vercel podem vir com espaços/quebras de linha
-const env = k => String(process.env[k] || "").trim().replace(/^["']|["']$/g, "");
-export const chavePublica = () => env("VAPID_PUBLIC_KEY");
+// (e às vezes com < > ou aspas em volta, copiados de exemplos)
+const env = k => String(process.env[k] || "").trim().replace(/^[<"'\s]+|[>"'\s]+$/g, "");
+const soBase64Url = v => v.replace(/[^A-Za-z0-9_-]/g, "");
+export const chavePublica = () => soBase64Url(env("VAPID_PUBLIC_KEY"));
 export function pushConfigurado() {
   return !!(chavePublica() && env("VAPID_PRIVATE_KEY"));
 }
 function configurar() {
   let sub = env("VAPID_SUBJECT") || "mailto:wmengenhariaintegrada@gmail.com";
   if (!/^(mailto:|https:)/.test(sub)) sub = "mailto:" + sub;
-  webpush.setVapidDetails(sub, chavePublica(), env("VAPID_PRIVATE_KEY"));
+  webpush.setVapidDetails(sub, chavePublica(), soBase64Url(env("VAPID_PRIVATE_KEY")));
 }
 
 // Envia uma notificação para todos os computadores de um usuário.
