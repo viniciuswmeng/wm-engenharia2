@@ -23,7 +23,7 @@ const CABECALHOS = {
   projetos:   { titulo:"Projetos",      subtitulo:"Todos os projetos com status, prazos, equipe e financeiro." },
   financeiro: { titulo:"Financeiro",    subtitulo:"Valores contratados, recebidos e pendentes por projeto." },
   horas:      { titulo:"Horas",         subtitulo:"Banco de horas, horas extras e produtividade da equipe." },
-  agenda:     { titulo:"Agenda",        subtitulo:"Calendário, feriados, recessos e escalas." },
+  agenda:     { titulo:"Agenda",        subtitulo:"Plano da semana, calendário, feriados, recessos e escalas." },
   verificacao:{ titulo:"Verificação de projetos", subtitulo:"Confere modelo IFC, lista de materiais e pranchas e aponta inconsistências e erros normativos." },
   config:     { titulo:"Configurações", subtitulo:"Usuários, perfis, especialidades e expediente." },
 };
@@ -53,6 +53,7 @@ const PaginaIFC = carregarPagina(() => import("./ifc/PaginaIFC.jsx"), "PaginaIFC
 const PaginaComparativo = carregarPagina(() => import("./comparativo/PaginaComparativo.jsx"), "PaginaComparativo");
 const PaginaRelatorios = carregarPagina(() => import("./paginas/relatorios.jsx"), "PaginaRelatorios");
 const PaginaVerificacao = carregarPagina(() => import("./verificacao/PaginaVerificacao.jsx"), "PaginaVerificacao");
+const RotinaSemanal = lazy(() => import("./planejamento/RotinaSemanal.jsx"));
 
 export default function App(){
   const calendario = useCalendario();
@@ -1116,7 +1117,7 @@ export default function App(){
         {aba==="projetos"  &&<ListaProjetos projetos={projetos} onAbrirProjeto={abrirP} onNovoProjeto={novoP} usuarios={usuarios} usuarioAtual={user}/>}
         {aba==="financeiro"&&<Financeiro projetos={projetos}/>}
         {aba==="horas"     &&<AbaHoras registros={registros} setRegistros={setRegistros} usuarios={usuarios} projetos={projetos} usuarioAtual={user} calendario={calendario} onAbrirEncerramento={()=>setModalH("encerramento")}/>}
-        {aba==="agenda"    &&<AbaAgenda calendario={calendario} usuarioAtual={user} registros={registros} usuarios={usuarios}/>}
+        {aba==="agenda"    &&<AbaAgenda calendario={calendario} usuarioAtual={user} registros={registros} usuarios={usuarios} projetos={projetos}/>}
         {aba==="config"    &&<Configuracoes usuarios={usuarios} onSalvarUsuarios={salvarUsuarios} usuarioAtual={user} onFoto={alterarFoto}/>}
         {aba==="contratos"  &&<GeradorContratos projetos={projetos} usuarios={usuarios} usuarioAtual={user} drive={drive}
           onSalvarProjeto={salvarProjetoFluxo} onAbrirProjeto={abrirProjetoPorId}
@@ -1154,7 +1155,7 @@ export default function App(){
       </div>
 
       <Suspense fallback={null}>
-      {modal&&<ModalProjeto projeto={modal.projeto} modo={modal.modo} onClose={()=>setModal(null)} onSave={salvarP} onExcluir={excluirP} usuarios={usuarios}/>}
+      {modal&&<ModalProjeto projeto={modal.projeto} modo={modal.modo} onClose={()=>setModal(null)} onSave={salvarP} onExcluir={excluirP} usuarios={usuarios} usuarioAtual={user}/>}
 
       {modalH&&<ModalHoras tipo={modalH} projetos={projetos} usuarioAtual={user} sessaoAtiva={sessaoAtiva} onIniciar={iniciar} onEncerrar={encerrar} onMudar={mudar} onFechar={acao=>{
   if(acao==="encerrar") {
@@ -1172,6 +1173,8 @@ export default function App(){
     setModalH(null);
   }
 }}/>}
+
+      <RotinaSemanal user={user} usuarios={usuarios} projetos={projetos} registros={registros} pausado={!!modalH||!!modal}/>
 
       <ChatFlutuante
         usuario={user} usuarios={usuarios}

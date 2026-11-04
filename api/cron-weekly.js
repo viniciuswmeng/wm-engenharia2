@@ -19,6 +19,8 @@ async function supabaseGet(tabela, filtros = '') {
 }
 
 export default async function handler(req) {
+  // keep-alive do Supabase (mesmo sem CRON_SECRET)
+  try { await fetch(`${SUPABASE_URL}/rest/v1/projetos?select=id&limit=1`, { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }); } catch { /* segue */ }
   const authHeader = req.headers.get('authorization');
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return new Response('Unauthorized', { status: 401 });

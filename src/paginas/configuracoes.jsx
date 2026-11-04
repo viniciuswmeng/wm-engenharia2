@@ -1,3 +1,4 @@
+import CartaoBackup from "../planejamento/CartaoBackup.jsx";
 import { useState, useRef, useEffect } from "react";
 import { Avatar, Btn, C, Card, DIAS_LABEL, DRIVE_ROOT_ID, InpC, SelC, TIPOS, calcHorasDia, calcHorasDiaSemana, calcHorasSemanais, expedientePadrao, expedienteParaDiaSemana, horaMin, labelExpediente, labelModoExpediente } from "../nucleo.jsx";
 
@@ -118,6 +119,7 @@ export function Configuracoes({usuarios,onSalvarUsuarios,usuarioAtual,onFoto}){
   return(
     <div style={{display:"flex",flexDirection:"column",gap:20}}>
       <MinhaFoto usuario={usuarios.find(u=>u.id===usuarioAtual.id)||usuarioAtual} onFoto={onFoto}/>
+      {["admin","gestor"].includes(usuarioAtual.perfil)&&<CartaoBackup usuarioAtual={usuarioAtual}/>}
       <Card>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
           <div>

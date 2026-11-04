@@ -71,6 +71,34 @@ export default async function handler(req) {
       `projeto_id=eq.${encodeURIComponent(projeto.id)}&link_ativo=eq.true&order=created_at.desc&select=nome,disciplina,versao,token,created_at`
     ).catch(() => []);
 
+    // Formulário de cadastro (briefing) da obra ligada a este projeto — tabelas opcionais
+    let formularios = [];
+    try {
+      const filtro = encodeURIComponent(JSON.stringify([projeto.id]));
+      const obras = await supabaseGet('obras', `select=id,nome&dados->wm=cs.${filtro}`);
+      if (obras.length) {
+        const ids = obras.map(o => `"${String(o.id).replace(/"/g, '')}"`).join(',');
+        const brief = await supabaseGet('obras_briefing', `obra_id=in.(${ids})&select=token,obra_id,resposta,updated_at`);
+        formularios = brief.map(b => {
+          const r = b.resposta || {};
+          const obra = obras.find(o => o.id === b.obra_id);
+          return { link: `/briefing/${b.token}`, obra: obra?.nome || '', situacao: r.status === 'enviado' ? 'enviado' : r.status === 'rascunho' ? 'rascunho' : 'pendente',
+            enviadoEm: r.enviadoEm ? new Date(r.enviadoEm).toISOString() : null, atualizadoEm: r.atualizadoEm ? new Date(r.atualizadoEm).toISOString() : null };
+        });
+      }
+    } catch (e) { console.error('briefing:', e.message); }
+
+    // Entregas publicadas (pastas do Drive) — coluna opcional
+    const entregas = (Array.isArray(projeto.entregas_portal) ? projeto.entregas_portal : []).map(p => ({
+      id: p.id, tipo: p.tipo === 'final' ? 'final' : 'parcial', titulo: p.titulo || '', nota: p.nota || '', data: p.data || null,
+      atualizadoEm: p.atualizadoEm || null, pastaLink: p.pastaLink || '',
+      arquivos: (p.arquivos || []).map(a => ({
+        nome: a.nome, pasta: a.pasta || '', tamanho: a.tamanho || 0, tipo: a.tipo || '',
+        ver: `https://drive.google.com/file/d/${a.id}/view`,
+        baixar: /^application\/vnd\.google-apps\./.test(a.tipo || '') ? `https://drive.google.com/file/d/${a.id}/view` : `https://drive.google.com/uc?export=download&id=${a.id}`,
+      })),
+    })).sort((a, b) => String(b.data || '').localeCompare(String(a.data || '')));
+
     // Retornar apenas dados públicos (sem financeiro, sem dados internos)
     const dadosPublicos = {
       // Identificação
@@ -103,6 +131,9 @@ export default async function handler(req) {
       })(),
       // Modelos 3D
       modelos3d: (modelos3d || []).map(m => ({ nome: m.nome, disciplina: m.disciplina || '', versao: m.versao || '', link: `/modelo/${m.token}`, data: m.created_at })),
+      modelosJuntos: (modelos3d || []).length > 1 ? `/modelo/${(modelos3d || []).slice(0, 10).map(m => m.token).join('-')}` : '',
+      formularios,
+      entregas,
       // Portal
       progresso:            projeto.progresso || 0,
       obs:                  projeto.obs_cliente || '',

@@ -3,6 +3,7 @@ import { CartaoNumero, Abas, CabecalhoModal } from "../ui/ds.jsx";
 import { useState, useEffect, useMemo } from "react";
 import { db, portal } from "../supabase.js";
 import ModelosDoProjeto from "../ifc/ModelosDoProjeto.jsx";
+import EntregasPortal from "../portal/EntregasPortal.jsx";
 import { Badge, Btn, C, Card, DISCIPLINAS_CB, InpC, STATUS_CONFIG, SelC, TIPOS, TipoBadge, calcStatusAuto, diasAte, estaAtrasado, fmt, fmtData, resumoEntregas, obrasProgressoListeners, statusN } from "../nucleo.jsx";
 
 export function PainelDrive({drive,projetosExistentes,onImportar}){
@@ -81,7 +82,7 @@ function msgErro(e){
   return m || "erro desconhecido";
 }
 
-export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}){
+export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[],usuarioAtual}){
   const [form,setForm]=useState(()=>{
     const base = {
       id:"", codigo:"", cliente:"", responsavel:"", coresponsavel:"",
@@ -849,6 +850,7 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[]}
               </div>
             )}
 
+            {modo!=="novo" && form.id && <EntregasPortal projeto={form} usuarioAtual={usuarioAtual}/>}
             {modo!=="novo" && form.id && <ModelosDoProjeto projetoId={form.id} projeto={form}/>}
 
             {/* Progresso e obs do cliente */}

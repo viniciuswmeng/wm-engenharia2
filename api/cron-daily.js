@@ -18,11 +18,23 @@ async function supabaseGet(tabela, filtros = '') {
   return res.json();
 }
 
+// Mantém o Supabase ativo: o plano gratuito pausa o projeto após 7 dias sem uso.
+// Roda antes da checagem do CRON_SECRET, para funcionar mesmo se a variável faltar.
+async function manterSupabaseAtivo() {
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/projetos?select=id&limit=1`, {
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+    });
+    return r.ok;
+  } catch { return false; }
+}
+
 export default async function handler(req) {
+  const ativo = await manterSupabaseAtivo();
   // Segurança: só Vercel pode chamar este endpoint
   const authHeader = req.headers.get('authorization');
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return new Response('Unauthorized', { status: 401 });
+    return new Response(JSON.stringify({ supabaseAtivo: ativo, aviso: 'sem CRON_SECRET: só o keep-alive rodou' }), { status: 401 });
   }
 
   try {

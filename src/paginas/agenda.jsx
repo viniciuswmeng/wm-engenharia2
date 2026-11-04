@@ -1,12 +1,14 @@
 import { CartaoNumero, Abas } from "../ui/ds.jsx";
 import { useState, useEffect, useMemo } from "react";
+import { MinhaSemana } from "../planejamento/MinhaSemana.jsx";
 import { Avatar, Btn, C, Card, InpC, calcHorasDia, carregar, fmtData, labelExpediente, salvar } from "../nucleo.jsx";
 
-export function AbaAgenda({ calendario, usuarioAtual, registros, usuarios }) {
-  const [subAba, setSubAba] = useState("calendario");
+export function AbaAgenda({ calendario, usuarioAtual, registros, usuarios, projetos }) {
+  const [subAba, setSubAba] = useState("semana");
   return (
     <div>
-      <Abas style={{marginBottom:20}} valor={subAba} onChange={setSubAba} itens={[{id:"calendario",label:"Calendário",icone:"agenda"},{id:"escalas",label:"Escalas",icone:"equipe"}]}/>
+      <Abas style={{marginBottom:20}} valor={subAba} onChange={setSubAba} itens={[{id:"semana",label:"Minha semana",icone:"tarefa"},{id:"calendario",label:"Calendário",icone:"agenda"},{id:"escalas",label:"Escalas",icone:"equipe"}]}/>
+      {subAba==="semana"    &&<MinhaSemana usuarioAtual={usuarioAtual} usuarios={usuarios} projetos={projetos||[]} registros={registros}/>}
       {subAba==="calendario"&&<ModuloCalendario calendario={calendario} usuarioAtual={usuarioAtual} registros={registros} usuarios={usuarios}/>}
       {subAba==="escalas"   &&<Escalas usuarioAtual={usuarioAtual} usuarios={usuarios}/>}
     </div>

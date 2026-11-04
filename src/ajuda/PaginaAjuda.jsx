@@ -114,12 +114,26 @@ const TOPICOS = [
         "Produtividade: horas por projeto e por pessoa.",
       ]},
     ]},
-  { id:"agenda", icone:"📅", titulo:"Agenda e escalas", aba:"agenda",
-    resumo:"Calendário com feriados e recessos, e escalas de revisão de projetos e coleta de lixo.",
-    secoes:[{ t:"Usar", itens:[
-      "Calendário: visualize o mês, feriados e recessos. Gestores cadastram feriados e recessos/pontes.",
-      "Escalas: veja quem está na revisão de projetos e na coleta de lixo da semana.",
-    ]}]},
+  { id:"agenda", icone:"📅", titulo:"Agenda, plano da semana e Google Agenda", aba:"agenda",
+    resumo:"Disponibilidade da semana, distribuição automática das horas por projeto, Google Agenda, calendário e escalas.",
+    secoes:[
+      { t:"Minha semana", itens:[
+        "No primeiro acesso de cada semana o sistema pergunta em quais dias e períodos (manhã, tarde, noite) você vai trabalhar, já preenchido com a semana anterior ou com o seu expediente. Cada pessoa tem o seu horário.",
+        "Dá para mudar a qualquer momento em Agenda → Minha semana → Disponibilidade (e ver as próximas semanas nas setas).",
+        "O plano distribui as horas dos seus projetos nos períodos livres: a estimativa de cada projeto é a média de horas dos projetos concluídos do mesmo tipo (banco de horas); a sua parte vem das disciplinas suas que faltam entregar; o que falta é dividido pelas semanas até a entrega, a entrega mais próxima primeiro.",
+        "Se a semana não comportar tudo, o sistema avisa quantas horas faltam e dá a cada projeto uma parte proporcional (atrasados pesam mais).",
+        "Gestores podem ver o plano de qualquer pessoa escolhendo o nome no canto direito.",
+      ]},
+      { t:"Google Agenda", itens:[
+        "Em Minha semana → Google Agenda, cada pessoa escolhe o que vai para a própria agenda: o calendário geral \"WM · Entregas\" (entregas de todos os projetos) e/ou os blocos de trabalho da semana (com lembrete 10 min antes).",
+        "Clique em Sincronizar agora (ou marque \"Enviar para a minha Google Agenda\" ao confirmar a semana). O calendário geral é criado na primeira sincronização de um gestor e compartilhado com a equipe.",
+        "Antes do primeiro uso, ative a Google Calendar API no projeto do Google Cloud da WM (APIs e serviços → Biblioteca).",
+      ]},
+      { t:"Calendário e escalas", itens:[
+        "Calendário: visualize o mês, feriados e recessos. Gestores cadastram feriados e recessos/pontes.",
+        "Escalas: veja quem está na revisão de projetos e na coleta de lixo da semana.",
+      ]},
+    ]},
   { id:"tarefas", icone:"✅", titulo:"Tarefas e notificações", aba:"tarefas",
     resumo:"Lembretes automáticos (sino), tarefas da equipe e notificações no computador.",
     secoes:[{ t:"Usar", itens:[
@@ -159,6 +173,8 @@ const TOPICOS = [
         "Com o modelo aberto, vá na aba Link do painel, escolha o projeto, a disciplina e a versão e clique em Salvar no projeto e gerar link.",
         "Copie o link ou envie pelo WhatsApp. O cliente abre no navegador ou no celular, sem login.",
         "O modelo também aparece no Portal do cliente do projeto. Desative o link ou gere um novo quando quiser que o anterior pare de funcionar.",
+        "Portal do cliente (projeto → aba Portal do cliente): reúne num só link o formulário de cadastro da obra, o andamento (disciplinas e linha do tempo), os modelos 3D (separados e todos sobrepostos) e as entregas para baixar.",
+        "Entregas no portal: clique em Publicar entrega, escolha Parcial ou Final, cole o link da pasta do Drive (vem preenchido com a pasta de entregáveis) e clique em Ler pasta e publicar. O sistema lista os arquivos (com as subpastas), libera a pasta para quem tem o link e o cliente vê e baixa tudo pelo portal. Depois de mudar arquivos no Drive, clique em Atualizar.",
         "Modelos sobrepostos: em Modelos dos projetos use \"Sobrepor todos\" (ou Sobrepor em cada modelo). Na aba Link aparece o link com todos sobrepostos (copiar, WhatsApp, QR). \"Link de todos\" copia direto. O cliente liga e desliga cada modelo no olho; modelos com link desativado ficam de fora (máx. 10).",
         "QR code: no botão QR code (aba Link, lista de modelos ou Portal do cliente) baixe o QR em PNG ou SVG, ou a etiqueta pronta com logo e legenda para colar na prancha. Se gerar um novo link, gere e troque o QR.",
         "Em Modelos dos projetos ficam todos os modelos salvos, agrupados por projeto, para abrir de novo, sobrepor, copiar o link ou excluir.",
@@ -209,6 +225,8 @@ const TOPICOS = [
     secoes:[{ t:"Usar", itens:[
       "Entre com \"Entrar com Google\" usando o e-mail cadastrado. Marque \"Manter conectado\" no seu computador.",
       "Configurações: cadastro de usuários, perfil (admin, gestor, colaborador), e-mail Google, especialidades e expediente.",
+      "Backup semanal: toda semana, no primeiro acesso de um gestor, o sistema lembra de fazer o backup; em \"Fazer agora\" (ou em Configurações → Backup semanal no Google Drive) ele copia todas as tabelas para um arquivo na pasta \"Backups Sistema WM\" do Drive.",
+      "O Supabase fica sempre ativo: o sistema consulta o banco todos os dias pela tarefa automática da Vercel, mesmo sem ninguém usar.",
       "As especialidades definem para quem vai cada disciplina quando um projeto é criado pelo contrato.",
     ]}]},
 ];
