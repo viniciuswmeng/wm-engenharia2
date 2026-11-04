@@ -68,7 +68,7 @@ function tmplEncerramentoAuto({ colaborador, projetoOuAtividade, horaInicio, hor
       <div class="row"><span style="color:#6b7280;font-size:13px">Entrada</span><strong>${horaInicio}</strong></div>
       <div class="row"><span style="color:#6b7280;font-size:13px">Saída (automática)</span><strong style="color:${AMARELO}">${horaFim}</strong></div>
     </div>
-    <p style="color:#6b7280;font-size:12px">Caso o horário esteja incorreto, acesse o <a href="https://WM-projetos.vercel.app" style="color:${AZUL2}">sistema WM</a> para corrigir no Banco de Horas.</p>`;
+    <p style="color:#6b7280;font-size:12px">Caso o horário esteja incorreto, acesse o <a href="https://sistema.wmengenhariaintegrada.com.br" style="color:${AZUL2}">sistema WM</a> para corrigir no Banco de Horas.</p>`;
   return baseLayout(corpo, '⏹ Sessão Encerrada Automaticamente');
 }
 
@@ -92,7 +92,7 @@ function tmplProjetosVencendo({ destinatario, projetos }) {
       <tbody>${rows}</tbody>
     </table>
     <p style="text-align:center;margin-top:20px">
-      <a href="https://WM-projetos.vercel.app" style="background:${AZUL2};color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:13px">Abrir Sistema WM</a>
+      <a href="https://sistema.wmengenhariaintegrada.com.br" style="background:${AZUL2};color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:13px">Abrir Sistema WM</a>
     </p>`;
   return baseLayout(corpo, `⚠️ ${projetos.length} Projeto(s) com Prazo Crítico`);
 }
@@ -144,7 +144,7 @@ function tmplResumoDiario({ projetos, sessoesDia, usuarios }) {
     <tbody>${atrasados.slice(0,10).map(p=>`<tr><td><strong style="color:${AZUL2}">${p.codigo}</strong></td><td>${(p.cliente||'').substring(0,35)}</td><td>${p.responsavel||'—'}</td></tr>`).join('')}</tbody></table>
     ` : '<p style="color:'+VERDE+';font-weight:700;text-align:center">✅ Nenhum projeto atrasado!</p>'}
     <p style="text-align:center;margin-top:20px">
-      <a href="https://WM-projetos.vercel.app" style="background:${AZUL2};color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:13px">Abrir Sistema WM</a>
+      <a href="https://sistema.wmengenhariaintegrada.com.br" style="background:${AZUL2};color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:13px">Abrir Sistema WM</a>
     </p>`;
   return baseLayout(corpo, '📊 Resumo Diário — WM');
 }
@@ -195,7 +195,7 @@ function tmplResumoSemanal({ projetos, sessoes, usuarios }) {
     <table><thead><tr><th>Colaborador</th><th>Sessões</th><th>Projetos</th><th>Total</th></tr></thead>
     <tbody>${userRows}</tbody></table>
     <p style="text-align:center;margin-top:20px">
-      <a href="https://WM-projetos.vercel.app" style="background:${AZUL2};color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:13px">Abrir Sistema WM</a>
+      <a href="https://sistema.wmengenhariaintegrada.com.br" style="background:${AZUL2};color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:13px">Abrir Sistema WM</a>
     </p>`;
   return baseLayout(corpo, '📅 Resumo Semanal — WM');
 }

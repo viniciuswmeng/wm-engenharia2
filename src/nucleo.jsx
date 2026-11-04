@@ -29,7 +29,7 @@ export function notificarSistema(titulo, corpo, tag="intec-geral", duracaoMs=100
   try {
     const n = new Notification(titulo, {
       body:     corpo,
-      icon:     "https://wm-engenharia2.vercel.app/icons.svg",
+      icon:     "https://sistema.wmengenhariaintegrada.com.br/icons.svg",
       tag:      tag,
       renotify: true,
       silent:   false,
