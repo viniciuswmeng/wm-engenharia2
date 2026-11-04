@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {  lembrarLogin } from "./supabase.js";
 
-export const GOOGLE_CLIENT_ID = "68230646537-4kb5aao6h01kip047cnb76lkr546t085.apps.googleusercontent.com";
+import { GOOGLE_CLIENT_ID } from "./google/config.js";
+export { GOOGLE_CLIENT_ID };
 export const DRIVE_ROOT_ID    = "1-dOGDzNpkOvQMS-NLmX5c7ZEqyj8EPZO";
 // Leitura e gravação: o sistema cria a pasta do projeto e salva o contrato assinado nela
 export const SCOPES           = "https://www.googleapis.com/auth/drive";

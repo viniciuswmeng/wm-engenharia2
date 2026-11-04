@@ -80,6 +80,19 @@ nav.sec a.on{color:var(--azul);border-bottom-color:var(--azul)}
 .tl-c b{font-size:14px;color:var(--tx)}
 .tl-c p{font-size:13px;color:var(--sub);margin-top:2px}
 .tl-c small{font-size:11.5px;color:#8a97ab}
+.geral-t{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px}
+.geral-t b{font-size:15px;color:var(--mar)}.geral-t span{font-size:26px;font-weight:800;color:var(--azul)}
+.barra.grande{height:16px}
+.disc2{padding:12px 14px;border:1px solid var(--borda);border-radius:12px}
+.disc2-t{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.disc2-t b{font-size:14px;color:var(--mar);flex:1}
+.disc2 .pct{font-size:15px;font-weight:800;color:var(--azul)}.disc2 .pct.ok{color:var(--verde)}
+.barra i.ok{background:linear-gradient(90deg,#16a34a,#22c55e)}
+.conj{margin-bottom:16px}.conj:last-child{margin-bottom:0}
+.conj-cab{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.conj-cab b{font-size:15px;color:var(--mar)}
+.mod.destaque{border-color:#bcd3f5;background:#f2f7fe}
+.conj.final .mod.destaque{border-color:#bbf7d0;background:#f0fdf4}
 .vazio{font-size:13.5px;color:var(--sub);background:var(--fundo);border-radius:10px;padding:14px}
 .carreg{text-align:center;padding:90px 20px;color:var(--sub)}
 .spin{width:42px;height:42px;border:3px solid #dbe4f0;border-top-color:var(--azul);border-radius:50%;animation:g .8s linear infinite;margin:0 auto 14px}
@@ -173,40 +186,43 @@ function render(d){
   h+=sec("entregas","📦","Entregas do projeto",'<p class="sub" style="margin:-6px 0 12px">Todos os arquivos do seu projeto num só lugar: visualize no navegador ou baixe para o seu computador.</p>'+ce);
   secoes.push(["entregas","Entregas"]);
 
-  // ── Modelos 3D
+  // ── Modelos 3D: separados em preliminares e finais, cada conjunto com o seu link sobreposto
   var mods=d.modelos3d||[];
   if(mods.length){
-    var cm='<p class="sub" style="margin:-6px 0 12px">Abra no navegador para girar, aproximar e conferir cada elemento — funciona também no celular.</p><div class="lista">';
-    if(d.modelosJuntos)cm+='<a class="mod" href="'+esc(d.modelosJuntos)+'" target="_blank" rel="noopener" style="border-color:#bcd3f5;background:#f2f7fe"><span class="ic">🧩</span><span style="flex:1"><b style="color:#0a2557;font-size:14.5px">Todos os modelos sobrepostos</b><br><span class="sub">'+mods.length+' disciplinas juntas, com liga/desliga de cada uma</span></span><span class="btn pri peq">Abrir</span></a>';
-    mods.forEach(function(m){cm+='<a class="mod" href="'+esc(m.link)+'" target="_blank" rel="noopener"><span class="ic">🧊</span><span style="flex:1;min-width:0"><b style="color:#0a2557;font-size:14.5px">'+esc(m.nome)+'</b><br><span class="sub">'+esc([m.disciplina,m.versao&&("versão "+m.versao),m.data&&data(m.data)].filter(Boolean).join(" · "))+'</span></span><span class="btn peq">Abrir</span></a>'});
-    cm+='</div>';
+    var cm='<p class="sub" style="margin:-6px 0 12px">Abra no navegador para girar, aproximar e conferir cada elemento — funciona também no celular.</p>';
+    [["final","Modelos finais","Versão final do projeto, para execução."],["preliminar","Modelos preliminares","Versões de estudo, para conferência e aprovação."]].forEach(function(f){
+      var lista=mods.filter(function(m){return (m.fase||"preliminar")===f[0]});
+      if(!lista.length)return;
+      var conj=(d.conjuntos3d||[]).filter(function(c){return c.fase===f[0]})[0];
+      cm+='<div class="conj'+(f[0]==="final"?" final":"")+'"><div class="conj-cab"><span class="tag '+(f[0]==="final"?"t-ok":"t-and")+'">'+(f[0]==="final"?"FINAL":"PRELIMINAR")+'</span><b>'+f[1]+'</b><span class="sub">'+lista.length+' modelo(s) · '+f[2]+'</span></div><div class="lista">';
+      if(conj&&conj.link)cm+='<a class="mod destaque" href="'+esc(conj.link)+'" target="_blank" rel="noopener"><span class="ic">🧩</span><span style="flex:1"><b style="color:#0a2557;font-size:14.5px">Todos os '+f[1].toLowerCase()+' sobrepostos</b><br><span class="sub">'+lista.length+' modelos juntos, com liga/desliga de cada um</span></span><span class="btn '+(f[0]==="final"?"verde":"pri")+' peq">Abrir</span></a>';
+      lista.forEach(function(m){cm+='<a class="mod" href="'+esc(m.link)+'" target="_blank" rel="noopener"><span class="ic">🧊</span><span style="flex:1;min-width:0"><b style="color:#0a2557;font-size:14.5px">'+esc(m.nome)+'</b><br><span class="sub">'+esc([m.disciplina,m.versao&&("versão "+m.versao),m.data&&data(m.data)].filter(Boolean).join(" · "))+'</span></span><span class="btn peq">Abrir</span></a>'});
+      cm+='</div></div>';
+    });
     h+=sec("modelos","🧊","Modelos 3D (BIM)",cm);
     secoes.push(["modelos","Modelos 3D"]);
   }
 
-  // ── Andamento: disciplinas + linha do tempo
-  var ca='';
+  // ── Andamento: só os percentuais (geral e por disciplina)
+  var ca='<div class="geral"><div class="geral-t"><b>Andamento geral do projeto</b><span>'+prog+'%</span></div><div class="barra grande"><i class="anima" data-p="'+prog+'"></i></div></div>';
   if(discs.length){
-    ca+='<div class="lista" style="margin-bottom:16px">';
-    discs.forEach(function(x){ca+='<div class="disc"><b>'+esc(x.nome)+'</b>'+(x.situacao==="entregue"?'<span class="tag t-ok">✓ Entregue'+(x.entregue?' em '+data(x.entregue):'')+'</span>':x.situacao==="pausada"?'<span class="tag t-pau">Pausada</span>':'<span class="tag t-and">Em desenvolvimento</span>')+'</div>'});
+    ca+='<div class="lista" style="margin-top:16px">';
+    discs.forEach(function(x){
+      var p=x.situacao==="entregue"?100:Math.max(0,Math.min(100,x.progresso||0));
+      var tg=x.situacao==="entregue"?'<span class="tag t-ok">✓ Entregue'+(x.entregue?' em '+data(x.entregue):'')+'</span>':x.situacao==="pausada"?'<span class="tag t-pau">Pausada</span>':'';
+      ca+='<div class="disc2"><div class="disc2-t"><b>'+esc(x.nome)+'</b>'+tg+'<span class="pct'+(p>=100?" ok":"")+'">'+p+'%</span></div><div class="barra"><i class="anima'+(p>=100?" ok":"")+'" data-p="'+p+'"></i></div></div>';
+    });
     ca+='</div>';
   }
-  var atus=d.atualizacoes||[];
-  if(atus.length){
-    ca+='<div class="tl">';
-    atus.slice(0,40).forEach(function(a){ca+='<div class="tl-i"><div class="tl-e"><div class="tl-ic">'+esc(a.icone||"📝")+'</div><div class="tl-l"></div></div><div class="tl-c"><b>'+esc(a.titulo||"Atualização")+'</b>'+(a.descricao?'<p>'+esc(a.descricao)+'</p>':'')+'<small>'+esc([a.autor,quando(a.data)].filter(Boolean).join(" · "))+'</small></div></div>'});
-    ca+='</div>';
-    if(atus.length>40)ca+='<p class="sub">Mostrando as 40 atualizações mais recentes.</p>';
-  } else ca+='<div class="vazio">As novidades do projeto aparecem aqui conforme a equipe avança.</div>';
   var equipe=[d.responsavel,d.coresponsavel,d.coresponsavel2,d.coresponsavel3].filter(Boolean);
-  h+=sec("andamento","📈","Acompanhamento do projeto",ca,equipe.length?'<span class="sub">Equipe: <b style="color:#0f1f3d">'+esc(equipe.join(", "))+'</b></span>':'');
+  h+=sec("andamento","📈","Andamento do projeto",ca,equipe.length?'<span class="sub">Equipe: <b style="color:#0f1f3d">'+esc(equipe.join(", "))+'</b></span>':'');
   secoes.push(["andamento","Andamento"]);
 
   document.getElementById("app").innerHTML=h;
   var nav=document.getElementById("nav"),ni=document.getElementById("navIn");
   ni.innerHTML=secoes.map(function(s,i){return '<a href="#'+s[0]+'"'+(i===0?' class="on"':'')+'>'+s[1]+'</a>'}).join("");
   nav.hidden=false;
-  requestAnimationFrame(function(){requestAnimationFrame(function(){var b=document.getElementById("barra");if(b)b.style.width=prog+"%"})});
+  requestAnimationFrame(function(){requestAnimationFrame(function(){var b=document.getElementById("barra");if(b)b.style.width=prog+"%";[].forEach.call(document.querySelectorAll("i.anima"),function(i){i.style.width=i.getAttribute("data-p")+"%"})})});
   // destaca a seção visível
   var links=[].slice.call(ni.querySelectorAll("a"));
   if("IntersectionObserver" in window){

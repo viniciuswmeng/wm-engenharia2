@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Icone from "../ui/Icone.jsx";
 import { Abas } from "../ui/ds.jsx";
 import Visualizador3D from "./Visualizador3D.jsx";
-import { modelosIfc, LIMITE_MB } from "./dados.js";
+import { modelosIfc, LIMITE_MB, FASES } from "./dados.js";
 import { DISCIPLINAS_MODELO } from "./categorias.js";
 import { ModalQRCode } from "./QRCodeModelo.jsx";
 
@@ -92,7 +92,7 @@ function CaixaConjunto({ modelos, projeto, onQr }) {
 }
 
 function FormSalvar({ item, projetos, usuarioAtual, onSalvo }) {
-  const [f, setF] = useState({ projetoId: "", nome: item.nome.replace(/\.ifc$/i, ""), disciplina: "Estrutural", versao: "R00", observacao: "" });
+  const [f, setF] = useState({ projetoId: "", nome: item.nome.replace(/\.ifc$/i, ""), disciplina: "Estrutural", versao: "R00", observacao: "", fase: /final/i.test(item.nome) ? "final" : "preliminar" });
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
   const s = (k, v) => setF(x => ({ ...x, [k]: v }));
@@ -118,6 +118,12 @@ function FormSalvar({ item, projetos, usuarioAtual, onSalvo }) {
           <select value={f.disciplina} onChange={e => s("disciplina", e.target.value)} style={{ ...inp, cursor: "pointer" }}>{DISCIPLINAS_MODELO.map(d => <option key={d}>{d}</option>)}</select>
         </div>
         <div><label style={lbl}>Versão</label><input value={f.versao} onChange={e => s("versao", e.target.value)} style={inp} /></div>
+      </div>
+      <div><label style={lbl}>Conjunto</label>
+        <div style={{ display: "flex", gap: 6 }}>
+          {FASES.map(x => <button key={x.id} type="button" onClick={() => s("fase", x.id)} aria-pressed={f.fase === x.id}
+            style={btn(f.fase === x.id ? "pri" : "sec", { flex: 1, padding: "7px 10px", fontSize: 13, ...(f.fase === x.id && x.id === "final" ? { background: K.verde, borderColor: K.verde } : {}) })}>{x.rot}</button>)}
+        </div>
       </div>
       <div><label style={lbl}>Observação <span style={{ color: K.sub, fontWeight: 400 }}>(opcional)</span></label><input value={f.observacao} onChange={e => s("observacao", e.target.value)} placeholder="Ex.: revisão após compatibilização" style={inp} /></div>
       {erro && <div role="alert" style={{ fontSize: 12.5, color: "#be123c", background: "#fff1f2", border: "1px solid #fecdd3", borderRadius: 9, padding: "8px 10px" }}>{erro}</div>}
@@ -305,18 +311,24 @@ export function PaginaIFC({ projetos = [], usuarioAtual }) {
                 <Icone nome="pasta" tam={17} cor={K.azul} />
                 <span style={{ fontWeight: 700, color: K.mar, fontSize: 14 }}>{rotProj(projPorId[pid])}</span>
                 <span style={{ fontSize: 12, color: K.sub }}>{lista.length} modelo{lista.length > 1 ? "s" : ""}</span>
-                {lista.length > 1 && <span style={{ marginLeft: "auto", display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  <button onClick={() => sobreporTodos(lista)} title="Abrir todos os modelos deste projeto sobrepostos" style={btn("sec", { padding: "6px 10px", fontSize: 12.5 })}><Icone nome="camadas" tam={15} />Sobrepor todos</button>
-                  {lista.filter(m => m.linkAtivo).length > 1 && <button onClick={() => copiarLinkTodos(lista)}
-                    title="Copiar link com todos os modelos de link ativo sobrepostos" style={btn("sec", { padding: "6px 10px", fontSize: 12.5 })}><Icone nome="link" tam={15} />Link de todos</button>}
-                </span>}
+                <span style={{ marginLeft: "auto", display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {FASES.map(fx => { const doConj = lista.filter(m => m.fase === fx.id); if (doConj.length < 2) return null; return (
+                    <span key={fx.id} style={{ display: "inline-flex", gap: 4 }}>
+                      <button onClick={() => sobreporTodos(doConj)} title={`Abrir os modelos ${fx.plural.toLowerCase()} sobrepostos`} style={btn("sec", { padding: "6px 10px", fontSize: 12.5 })}><Icone nome="camadas" tam={15} />Sobrepor {fx.plural.toLowerCase()}</button>
+                      {doConj.filter(m => m.linkAtivo).length > 1 && <button onClick={() => copiarLinkTodos(doConj)} title={`Copiar link com os modelos ${fx.plural.toLowerCase()} sobrepostos`} aria-label={`Link dos ${fx.plural.toLowerCase()}`} style={btn("sec", { padding: "6px 9px", fontSize: 12.5 })}><Icone nome="link" tam={15} /></button>}
+                    </span>); })}
+                </span>
               </div>
               {lista.map((m, i) => (
                 <div key={m.id} className="wm-ifc-linha" style={{ display: "grid", gridTemplateColumns: "minmax(0,1.6fr) minmax(0,1fr) auto", gap: 14, alignItems: "center", padding: "12px 18px", borderTop: i ? `1px solid ${K.borda}` : "none" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
                     <span style={{ width: 38, height: 38, borderRadius: 11, background: "#e9f1fd", color: K.azul, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Icone nome="cubo" tam={19} /></span>
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, color: K.tx, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.nome}</div>
+                      <div style={{ fontWeight: 700, color: K.tx, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <button onClick={() => alterar(m, { fase: m.fase === "final" ? "preliminar" : "final" })} title="Trocar o conjunto (preliminar/final)"
+                          style={{ border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 10.5, fontWeight: 800, letterSpacing: .4, borderRadius: 6, padding: "2px 7px", marginRight: 7, verticalAlign: 1,
+                            background: m.fase === "final" ? "#dcfce7" : "#e9f1fd", color: m.fase === "final" ? "#166534" : K.azul }}>{m.fase === "final" ? "FINAL" : "PRELIMINAR"}</button>
+                        {m.nome}</div>
                       <div style={{ fontSize: 12, color: K.sub, marginTop: 2 }}>
                         {[m.disciplina, m.versao, fmtTam(m.tamanhoKb), fmtData(m.criadoEm), m.criadoPor].filter(Boolean).join(" · ")}
                       </div>

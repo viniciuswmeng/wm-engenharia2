@@ -1401,7 +1401,11 @@ function wmPct(p,tipo){
 function wmSyncProgress(id){
   const p=projects[id];if(!p||!WM||!WM.atualizarProgresso||isIntec(p))return;
   wmLinks(p).forEach(pid=>{const wp=wmProj(pid);if(!wp)return;const pct=wmPct(p,wp.tipo);
-    if(pct!==null&&pct!==(wp.progresso||0)){try{WM.atualizarProgresso(pid,pct)}catch(e){}}});
+    // progresso de cada disciplina do projeto (PE, EL, PH…) pelo checklist das disciplinas da obra
+    const porDisc={};
+    (wp.disciplinas||[]).forEach(d=>{const ks=(TIPO_DISC[d]||[]).filter(k=>dOn(p,k));if(ks.length)porDisc[d]=Math.round(ks.reduce((s2,k)=>s2+counts(k,p).pct,0)/ks.length)});
+    const mudouDisc=Object.keys(porDisc).some(d=>porDisc[d]!==(wp.progressoDisciplinas||{})[d]);
+    if((pct!==null&&pct!==(wp.progresso||0))||mudouDisc){try{WM.atualizarProgresso(pid,pct!==null&&pct!==(wp.progresso||0)?pct:null,mudouDisc?porDisc:null)}catch(e){}}});
 }
 function obraDoProjeto(pid){return Object.keys(projects).find(id=>!isIntec(projects[id])&&wmLinks(projects[id]).includes(pid))||null}
 function wmLinkBar(){

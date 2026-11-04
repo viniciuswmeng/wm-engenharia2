@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from "react";
-import { db, supabase, authClient, iniciarRealtime, enviarEmail, chat } from "./supabase.js";
+import { db, supabase, authClient, iniciarRealtime, enviarEmail, chat, portal } from "./supabase.js";
 import { SinoNotificacoes, PaginaTarefas } from "./lembretes/Central.jsx";
 import { useCentral, usePush, useAvisosAbertos } from "./lembretes/hooks.js";
 import * as syncHoras from "./sessoesSync.js";
-import { ACESSOS_GOOGLE, C, prepararFoto, CHECK_INTERVAL, TelaLogin, USUARIOS_PADRAO, calcStatusAuto, comPrazoAtual, expedientePadrao, expedienteParaDiaSemana, fimExpediente, horaMin, normEmail, normNome, normalizarExpediente, notificarSistema, notificarUmaVez, obrasProgressoListeners, pedirPermissaoNotificacao, piscarTitulo, statusN, tocarSomChat, useGoogleDrive, verificarForaExpediente, verificarHoraExtra } from "./nucleo.jsx";
+import { ACESSOS_GOOGLE, C, listaDisciplinas, prepararFoto, CHECK_INTERVAL, TelaLogin, USUARIOS_PADRAO, calcStatusAuto, comPrazoAtual, expedientePadrao, expedienteParaDiaSemana, fimExpediente, horaMin, normEmail, normNome, normalizarExpediente, notificarSistema, notificarUmaVez, obrasProgressoListeners, pedirPermissaoNotificacao, piscarTitulo, statusN, tocarSomChat, useGoogleDrive, verificarForaExpediente, verificarHoraExtra } from "./nucleo.jsx";
 import { ModalHoras } from "./paginas/ModalHoras.jsx";
 import Icone from "./ui/Icone.jsx";
 import { BuscaGlobal, MenuUsuario, CarregandoPagina, CabecalhoPagina } from "./ui/Topo.jsx";
@@ -269,14 +269,25 @@ export default function App(){
     window.WMObras = {
       supabase,
       usuario:   () => userRef.current || {},
-      projetos:  () => (projetosRef.current || []).map(p => ({ id:p.id, codigo:p.codigo, cliente:p.cliente, tipo:p.tipo, progresso:p.progresso||0, status:p.status })),
+      projetos:  () => (projetosRef.current || []).map(p => ({ id:p.id, codigo:p.codigo, cliente:p.cliente, tipo:p.tipo, progresso:p.progresso||0, status:p.status,
+        disciplinas:[...new Set(listaDisciplinas(p).map(d => d.id))], progressoDisciplinas:p.progressoDisciplinas||{} })),
       abrirProjeto: (id) => {
         const p = (projetosRef.current || []).find(x => x.id === id);
         if (p) setModal({ projeto:p, modo:"editar" });
       },
-      atualizarProgresso: async (id, pct) => {
+      atualizarProgresso: async (id, pct, porDisciplina) => {
         const p = (projetosRef.current || []).find(x => x.id === id);
         if (!p) return;
+        // Progresso por disciplina calculado pelo checklist da obra (aparece no portal do cliente)
+        if (porDisciplina && Object.keys(porDisciplina).length) {
+          const mapa = { ...(p.progressoDisciplinas || {}), ...porDisciplina };
+          if (JSON.stringify(mapa) !== JSON.stringify(p.progressoDisciplinas || {})) {
+            projetosRef.current = (projetosRef.current || []).map(x => x.id === id ? { ...x, progressoDisciplinas: mapa } : x);
+            setProjetos(ps => ps.map(x => x.id === id ? { ...x, progressoDisciplinas: mapa } : x));
+            portal.salvarProgressoDisciplinas(id, mapa).catch(e => console.warn("Progresso por disciplina:", e.message));
+          }
+        }
+        if (pct == null) return;
         const progresso = Math.max(0, Math.min(100, Math.round(pct || 0)));
         if ((p.progresso || 0) === progresso) return;
         const n = { ...p, progresso };

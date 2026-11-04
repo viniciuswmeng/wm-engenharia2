@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { db, portal } from "../supabase.js";
 import ModelosDoProjeto from "../ifc/ModelosDoProjeto.jsx";
 import EntregasPortal from "../portal/EntregasPortal.jsx";
+import ProgressoDisciplinas from "../portal/ProgressoDisciplinas.jsx";
 import { Badge, Btn, C, Card, DISCIPLINAS_CB, InpC, STATUS_CONFIG, SelC, TIPOS, TipoBadge, calcStatusAuto, diasAte, estaAtrasado, fmt, fmtData, resumoEntregas, obrasProgressoListeners, statusN } from "../nucleo.jsx";
 
 export function PainelDrive({drive,projetosExistentes,onImportar}){
@@ -867,6 +868,7 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[],
                   <span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span>
                 </div>
               </div>
+              {modo!=="novo" && form.id && <ProgressoDisciplinas projeto={form} onGeral={v=>s("progresso",v)} onMapa={m=>s("progressoDisciplinas",m)}/>}
               <div style={{display:"flex",flexDirection:"column",gap:4}}>
                 <label style={{fontSize:12,fontWeight:600,color:C.cinzaEscuro}}>Mensagem visível ao cliente</label>
                 <textarea value={form.obsCliente||form.obs_cliente||""} onChange={e=>s("obsCliente",e.target.value)} rows={2}
@@ -877,7 +879,8 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[],
 
             {/* Atualizações */}
             <div style={{marginTop:20}}>
-              <h3 style={{color:C.marinho,fontSize:15,fontWeight:700,margin:"0 0 12px"}}>Linha do Tempo</h3>
+              <h3 style={{color:C.marinho,fontSize:15,fontWeight:700,margin:"0 0 4px"}}>Linha do tempo interna</h3>
+              <p style={{color:C.cinzaClaro,fontSize:12,margin:"0 0 12px"}}>Registro da equipe. O portal do cliente mostra só o andamento em % (geral e por disciplina), não esta lista.</p>
               {/* Nova atualização */}
               <div style={{background:C.cinzaFundo,borderRadius:10,padding:14,marginBottom:14}}>
                 <div style={{display:"grid",gridTemplateColumns:"auto 1fr",gap:8,marginBottom:8}}>
@@ -891,10 +894,7 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[],
                   placeholder="Descrição detalhada (opcional)..."
                   style={{border:`1.5px solid ${C.cinzaCard}`,borderRadius:8,padding:"8px 12px",fontSize:13,fontFamily:"inherit",color:C.cinzaEscuro,outline:"none",resize:"vertical",width:"100%",boxSizing:"border-box",marginBottom:8}}/>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <div style={{display:"flex",alignItems:"center",gap:6}}>
-                    <input type="checkbox" checked={novaAtu.visivelCliente} onChange={e=>setNovaAtu(n=>({...n,visivelCliente:e.target.checked}))} id="vc" style={{cursor:"pointer"}}/>
-                    <label htmlFor="vc" style={{fontSize:12,cursor:"pointer",color:C.cinzaClaro}}>Visível ao cliente</label>
-                  </div>
+                  <span/>
                   <Btn onClick={adicionarAtu} small disabled={!novaAtu.titulo.trim()||salvandoAtu}>{salvandoAtu?"Adicionando...":"+ Adicionar"}</Btn>
                 </div>
               </div>

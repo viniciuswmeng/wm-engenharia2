@@ -18,6 +18,9 @@ async function supabaseGet(tabela, filtros = '') {
   return res.json();
 }
 
+// Conjunto do modelo: "final" ou "preliminar" (modelos antigos: pelo nome do arquivo)
+const faseDe = m => (m.fase === 'final' || m.fase === 'preliminar') ? m.fase : (/final/i.test(`${m.nome || ''} ${m.arquivo || ''}`) ? 'final' : 'preliminar');
+
 export default async function handler(req) {
   const url    = new URL(req.url);
   const token  = url.searchParams.get('token');
@@ -49,26 +52,9 @@ export default async function handler(req) {
       });
     }
 
-    // Buscar atualizações manuais do projeto (se a tabela falhar, o portal abre mesmo assim)
-    const atualizacoes = await supabaseGet('atualizacoes_projeto',
-      `projeto_id=eq.${encodeURIComponent(projeto.id)}&order=created_at.desc&select=*`
-    ).catch(e => { console.error('atualizacoes_projeto:', e.message); return []; });
-
-    // Sessões do banco de horas deste projeto (apenas encerradas). Os nomes vêm de uma
-    // consulta separada: a tabela de sessões não tem chave estrangeira para usuarios,
-    // então o "join" usuarios(nome) derrubava o portal inteiro.
-    const sessoes = await supabaseGet('sessoes_horas',
-      `projeto_id=eq.${encodeURIComponent(projeto.id)}&hora_fim=not.is.null&order=created_at.desc&select=*`
-    ).catch(e => { console.error('sessoes_horas:', e.message); return []; });
-    const idsUsuarios = [...new Set(sessoes.map(x => x.usuario_id).filter(Boolean))];
-    const listaUsuarios = idsUsuarios.length
-      ? await supabaseGet('usuarios', `id=in.(${idsUsuarios.map(i => `"${String(i).replace(/"/g, '')}"`).join(',')})&select=id,nome`).catch(() => [])
-      : [];
-    const nomeUsuario = Object.fromEntries(listaUsuarios.map(u => [String(u.id), u.nome]));
-
     // Modelos 3D (IFC) com link ativo — tabela opcional (ignora se ainda não existir)
     const modelos3d = await supabaseGet('modelos_ifc',
-      `projeto_id=eq.${encodeURIComponent(projeto.id)}&link_ativo=eq.true&order=created_at.desc&select=nome,disciplina,versao,token,created_at`
+      `projeto_id=eq.${encodeURIComponent(projeto.id)}&link_ativo=eq.true&order=created_at.desc&select=*`
     ).catch(() => []);
 
     // Formulário de cadastro (briefing) da obra ligada a este projeto — tabelas opcionais
@@ -127,58 +113,22 @@ export default async function handler(req) {
           : disc.filter(d => d?.id).map(d => ({ id: d.id, entregue: d.entregue || null, pausada: !!d.pausada }));
         const porId = new Map();
         linhas.forEach(l => { const a = porId.get(l.id); if (!a || (l.entregue && !a.entregue)) porId.set(l.id, l); });
-        return [...porId.values()].map(l => ({ nome: NOMES[l.id] || l.id, entregue: l.entregue, situacao: l.entregue ? 'entregue' : l.pausada ? 'pausada' : 'andamento' }));
+        const pd = (projeto.progresso_disciplinas && typeof projeto.progresso_disciplinas === 'object') ? projeto.progresso_disciplinas : {};
+        return [...porId.values()].map(l => ({ nome: NOMES[l.id] || l.id, entregue: l.entregue, situacao: l.entregue ? 'entregue' : l.pausada ? 'pausada' : 'andamento',
+          progresso: l.entregue ? 100 : Math.max(0, Math.min(100, Math.round(Number(pd[l.id]) || 0))) }));
       })(),
       // Modelos 3D
-      modelos3d: (modelos3d || []).map(m => ({ nome: m.nome, disciplina: m.disciplina || '', versao: m.versao || '', link: `/modelo/${m.token}`, data: m.created_at })),
-      modelosJuntos: (modelos3d || []).length > 1 ? `/modelo/${(modelos3d || []).slice(0, 10).map(m => m.token).join('-')}` : '',
+      modelos3d: (modelos3d || []).map(m => ({ nome: m.nome, disciplina: m.disciplina || '', versao: m.versao || '', link: `/modelo/${m.token}`, data: m.created_at, fase: faseDe(m) })),
+      // Link com os modelos sobrepostos de cada conjunto (preliminar e final)
+      conjuntos3d: ['preliminar', 'final'].map(f => {
+        const l = (modelos3d || []).filter(m => faseDe(m) === f);
+        return { fase: f, link: l.length > 1 ? `/modelo/${l.slice(0, 10).map(m => m.token).join('-')}` : '', total: l.length };
+      }),
       formularios,
       entregas,
       // Portal
       progresso:            projeto.progresso || 0,
       obs:                  projeto.obs_cliente || '',
-      // Atualizações visíveis ao cliente
-      atualizacoes: (() => {
-        // Atualizações manuais visíveis ao cliente
-        const manuais = (atualizacoes || [])
-          .filter(a => a.visivel_cliente !== false)
-          .map(a => ({
-            id:        a.id,
-            tipo:      a.tipo || 'manual',
-            titulo:    a.titulo,
-            descricao: a.descricao || '',
-            autor:     a.autor_nome || '',
-            data:      a.created_at,
-            icone:     a.icone || '📝',
-            origem:    'manual',
-          }));
-
-        // Sessões do banco de horas como linha do tempo
-        const sessoesTimeline = (sessoes || []).filter(s => s.visivel_cliente !== false).map(s => {
-          const nomeColaborador = nomeUsuario[String(s.usuario_id)] || 'Equipe WM';
-          const hIni  = s.hora_inicio || '';
-          const hFim  = s.hora_fim    || '';
-          const durMin= s.duracao_min || 0;
-          const horas = Math.floor(durMin/60);
-          const mins  = durMin % 60;
-          const durStr= durMin > 0 ? (horas>0 ? `${horas}h ${mins}min` : `${mins}min`) : '';
-          const obsStr= s.obs ? ` — ${s.obs}` : '';
-          return {
-            id:        s.id,
-            tipo:      'sessao',
-            titulo:    `Trabalho realizado por ${nomeColaborador}`,
-            descricao: `${s.data ? new Date(s.data+'T12:00:00').toLocaleDateString('pt-BR') : ''} ${durStr?'('+durStr+')':''} ${obsStr}`.trim(),
-            autor:     nomeColaborador,
-            data:      s.created_at,
-            icone:     '⚙️',
-            origem:    'sessao',
-          };
-        });
-
-        // Unir e ordenar por data decrescente
-        return [...manuais, ...sessoesTimeline]
-          .sort((a,b) => new Date(b.data) - new Date(a.data));
-      })(),
     };
 
     return new Response(JSON.stringify(dadosPublicos), {

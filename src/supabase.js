@@ -276,6 +276,7 @@ function toProjetoFront(r) {
     link_cliente_ativo:   r.link_cliente_ativo || false,
     linkClienteAtivo:     r.link_cliente_ativo || false,
     progresso:            r.progresso || 0,
+    progressoDisciplinas: (r.progresso_disciplinas && typeof r.progresso_disciplinas === 'object') ? r.progresso_disciplinas : {},
     obs_cliente:          r.obs_cliente || '',
   };
 }
@@ -535,6 +536,15 @@ export const portal = {
       .from('atualizacoes_projeto')
       .delete().eq('id', id);
     if (error) throw error;
+  },
+
+  // Progresso de cada disciplina mostrado no portal ({PE: 40, EL: 75, ...})
+  async salvarProgressoDisciplinas(projetoId, mapa) {
+    const { error } = await supabase.from('projetos').update({ progresso_disciplinas: mapa }).eq('id', projetoId);
+    if (error) {
+      if (/progresso_disciplinas|schema cache|column/i.test(error.message || '')) throw new Error('Falta rodar no Supabase o arquivo supabase/portal_disciplinas_ifc.sql.');
+      throw error;
+    }
   },
 
   // Atualizar progresso e obs do cliente

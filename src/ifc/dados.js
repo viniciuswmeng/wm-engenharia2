@@ -11,7 +11,15 @@ const paraFront = r => ({
   id: r.id, projetoId: r.projeto_id || "", nome: r.nome || r.arquivo || "Modelo", arquivo: r.arquivo || "", path: r.path_storage,
   tamanhoKb: r.tamanho_kb || 0, disciplina: r.disciplina || "", versao: r.versao || "", observacao: r.observacao || "",
   token: r.token || "", linkAtivo: r.link_ativo !== false, criadoPor: r.criado_por || "", criadoEm: r.created_at || "",
+  fase: faseDe(r),
 });
+// Conjunto do modelo: "preliminar" ou "final" (modelos antigos: pelo nome)
+export function faseDe(r) {
+  if (r.fase === "final" || r.fase === "preliminar") return r.fase;
+  return /final/i.test(`${r.nome || ""} ${r.arquivo || ""}`) ? "final" : "preliminar";
+}
+export const FASES = [{ id: "preliminar", rot: "Preliminar", plural: "Preliminares" }, { id: "final", rot: "Final", plural: "Finais" }];
+const semColunaFase = e => /fase/i.test(e?.message || "") && /column|schema cache/i.test(e?.message || "");
 
 function erroAmigavel(e, etapa) {
   const msg = String(e?.message || e || "");
@@ -33,7 +41,7 @@ export const modelosIfc = {
     return (data || []).map(paraFront);
   },
 
-  async salvar({ arquivo, projetoId, nome, disciplina, versao, observacao, criadoPor }) {
+  async salvar({ arquivo, projetoId, nome, disciplina, versao, observacao, criadoPor, fase }) {
     if (!arquivo) throw new Error("Nenhum arquivo para salvar.");
     if (arquivo.size > LIMITE_MB * 1024 * 1024) throw new Error(`Arquivo maior que o limite de ${LIMITE_MB} MB.`);
     const token = novoToken();
@@ -43,9 +51,10 @@ export const modelosIfc = {
     const linha = {
       projeto_id: projetoId || null, nome: nome || arquivo.name.replace(/\.ifc$/i, ""), arquivo: arquivo.name, path_storage: path,
       tamanho_kb: Math.round(arquivo.size / 1024), disciplina: disciplina || null, versao: versao || null, observacao: observacao || null,
-      token, link_ativo: true, criado_por: criadoPor || null,
+      token, link_ativo: true, criado_por: criadoPor || null, fase: fase === "final" ? "final" : "preliminar",
     };
-    const { data, error } = await supabase.from("modelos_ifc").insert(linha).select().single();
+    let { data, error } = await supabase.from("modelos_ifc").insert(linha).select().single();
+    if (error && semColunaFase(error)) { delete linha.fase; ({ data, error } = await supabase.from("modelos_ifc").insert(linha).select().single()); }
     if (error) { await supabase.storage.from(BUCKET).remove([path]).catch(() => {}); throw erroAmigavel(error, "o registro do modelo"); }
     return paraFront(data);
   },
@@ -58,9 +67,11 @@ export const modelosIfc = {
     if ("observacao" in campos) m.observacao = campos.observacao;
     if ("projetoId" in campos) m.projeto_id = campos.projetoId || null;
     if ("linkAtivo" in campos) m.link_ativo = !!campos.linkAtivo;
+    if ("fase" in campos) m.fase = campos.fase === "final" ? "final" : "preliminar";
     if (campos.novoToken) m.token = novoToken();
     m.updated_at = new Date().toISOString();
     const { data, error } = await supabase.from("modelos_ifc").update(m).eq("id", id).select();
+    if (error && semColunaFase(error)) throw new Error("Para separar os modelos em preliminar e final, rode no Supabase o arquivo supabase/portal_disciplinas_ifc.sql.");
     if (error) throw erroAmigavel(error, "a alteração do modelo");
     if (!data?.length) throw new Error("O Supabase não confirmou a alteração. Rode o arquivo supabase/modelos_ifc_comparativos.sql.");
     return paraFront(data[0]);

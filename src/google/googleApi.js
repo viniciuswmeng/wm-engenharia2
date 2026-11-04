@@ -1,7 +1,7 @@
 // Acesso às APIs do Google (Drive e Agenda) pelo navegador, com a conta Google de quem está usando.
 // O token é pedido pelo Google Identity Services (janela do Google) e fica só na memória desta aba.
 // Sempre chame obterToken() a partir de um clique: o navegador bloqueia janelas abertas sem clique.
-import { GOOGLE_CLIENT_ID } from "../nucleo.jsx";
+import { GOOGLE_CLIENT_ID } from "./config.js";
 
 export const ESCOPO_DRIVE = "https://www.googleapis.com/auth/drive";
 export const ESCOPO_AGENDA = "https://www.googleapis.com/auth/calendar";
