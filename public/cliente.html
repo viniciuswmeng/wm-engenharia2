@@ -117,7 +117,9 @@ nav.sec a.on{color:var(--azul);border-bottom-color:var(--azul)}
 var TIPOS={PE:"Projeto Estrutural",PR:"Projeto de Reforço",LT:"Laudo Técnico",CB:"Compatibilização de projetos",EL:"Projeto Elétrico",PH:"Projeto Hidrossanitário",PA:"Projeto Arquitetônico",PF:"Projeto de Fundação",CT:"Consultoria",RE:"Revisão",PP:"Projeto de Piscina",PI:"Projeto de Interiores"};
 var STATUS={"Em andamento":["Em andamento","#3b82f6"],"Novo/Definir":["Em preparação","#a9c8f5"],"PAUSADO":["Pausado","#f59e0b"],"PAUSADO PARCIAL":["Em andamento (parte pausada)","#f59e0b"],"ATRASADO":["Em andamento","#3b82f6"],"CONCLUÍDO":["Concluído","#22c55e"],"CONCLUIDO":["Concluído","#22c55e"],"CANCELADO":["Cancelado","#9ca3af"]};
 function esc(t){return String(t==null?"":t).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
-function data(d){if(!d)return"—";var p=String(d).slice(0,10).split("-");return p[2]+"/"+p[1]+"/"+p[0]}
+function data(d){if(!d)return"—";var m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(d));return m?m[3]+"/"+m[2]+"/"+m[1]:"—"}
+// só links http(s) (bloqueia javascript:, data: etc.) — sempre escapado
+function url(u){u=String(u==null?"":u).trim();return /^https:\/\//i.test(u)||/^\/[^\/]/.test(u)?esc(u):"#"}
 function diasAte(d){if(!d)return null;return Math.ceil((new Date(d+"T12:00:00")-new Date())/86400000)}
 function quando(iso){if(!iso)return"";var n=Math.floor((new Date()-new Date(iso))/86400000);return n<=0?"Hoje":n===1?"Ontem":n<7?n+" dias atrás":data(iso)}
 function tam(b){if(!b)return"";return b>=1048576?(b/1048576).toLocaleString("pt-BR",{maximumFractionDigits:1})+" MB":Math.max(1,Math.round(b/1024))+" KB"}
@@ -172,7 +174,7 @@ function render(d){
     var cat='<p class="sub" style="margin:-6px 0 12px">Registros das reuniões do projeto. Quando a ata estiver assinada por todos, ela fica disponível para baixar.</p><div class="lista">';
     atas.forEach(function(a){
       cat+='<div class="form"><div class="t"><b>Ata '+esc(a.numero)+(a.assunto?' · '+esc(a.assunto):'')+'</b><span class="sub">Reunião de '+data(a.data)+(a.obra?' · '+esc(a.obra):'')+'</span></div>'+
-        (a.situacao==="assinada"?'<span class="tag t-ok">✓ Assinada'+(a.assinadaEm?' em '+data(a.assinadaEm):'')+'</span>'+(a.link?'<a class="btn pri" href="'+esc(a.link)+'" target="_blank" rel="noopener">⬇ Baixar ata</a>':''):'<span class="tag t-pau">Aguardando assinatura</span>')+'</div>';
+        (a.situacao==="assinada"?'<span class="tag t-ok">✓ Assinada'+(a.assinadaEm?' em '+data(a.assinadaEm):'')+'</span>'+(a.link?'<a class="btn pri" href="'+url(a.link)+'" target="_blank" rel="noopener">⬇ Baixar ata</a>':''):'<span class="tag t-pau">Aguardando assinatura</span>')+'</div>';
     });
     cat+='</div>';
     h+=sec("atas","🖋️","Atas de reunião",cat);
@@ -181,17 +183,17 @@ function render(d){
 
   // ── Entregas
   var ce='';
-  if(!ent.length){ce='<div class="vazio">'+(concl&&d.driveEntregaveis?'Os arquivos do projeto estão na pasta: <a href="'+esc(d.driveEntregaveis)+'" target="_blank" rel="noopener">abrir pasta de entregáveis</a>.':'Quando houver arquivos para você (entregas parciais e a entrega final), eles aparecem aqui para visualizar e baixar.')+'</div>'}
+  if(!ent.length){ce='<div class="vazio">'+(concl&&d.driveEntregaveis?'Os arquivos do projeto estão na pasta: <a href="'+url(d.driveEntregaveis)+'" target="_blank" rel="noopener">abrir pasta de entregáveis</a>.':'Quando houver arquivos para você (entregas parciais e a entrega final), eles aparecem aqui para visualizar e baixar.')+'</div>'}
   ent.forEach(function(p){
     var grupos={},ordem=[];
     (p.arquivos||[]).forEach(function(a){var g=a.pasta||"";if(!grupos[g]){grupos[g]=[];ordem.push(g)}grupos[g].push(a)});
     var total=(p.arquivos||[]).reduce(function(s,a){return s+(a.tamanho||0)},0);
-    ce+='<div class="pacote'+(p.tipo==="final"?" final":"")+'"><div class="pacote-cab"><span class="tag '+(p.tipo==="final"?"t-ok":"t-and")+'">'+(p.tipo==="final"?"ENTREGA FINAL":"ENTREGA PARCIAL")+'</span><div class="t"><b>'+esc(p.titulo)+'</b><div class="sub">'+data(p.data)+' · '+(p.arquivos||[]).length+' arquivo(s)'+(total?' · '+tam(total):'')+(p.atualizadoEm&&p.atualizadoEm.slice(0,10)!==String(p.data).slice(0,10)?' · atualizada em '+data(p.atualizadoEm):'')+'</div></div>'+(p.pastaLink?'<a class="btn '+(p.tipo==="final"?"verde":"pri")+' peq" href="'+esc(p.pastaLink)+'" target="_blank" rel="noopener" title="Abre a pasta no Google Drive; use “Fazer download” para baixar tudo de uma vez">⬇ Baixar tudo</a>':'')+'</div>';
+    ce+='<div class="pacote'+(p.tipo==="final"?" final":"")+'"><div class="pacote-cab"><span class="tag '+(p.tipo==="final"?"t-ok":"t-and")+'">'+(p.tipo==="final"?"ENTREGA FINAL":"ENTREGA PARCIAL")+'</span><div class="t"><b>'+esc(p.titulo)+'</b><div class="sub">'+data(p.data)+' · '+(p.arquivos||[]).length+' arquivo(s)'+(total?' · '+tam(total):'')+(p.atualizadoEm&&p.atualizadoEm.slice(0,10)!==String(p.data).slice(0,10)?' · atualizada em '+data(p.atualizadoEm):'')+'</div></div>'+(p.pastaLink?'<a class="btn '+(p.tipo==="final"?"verde":"pri")+' peq" href="'+url(p.pastaLink)+'" target="_blank" rel="noopener" title="Abre a pasta no Google Drive; use “Fazer download” para baixar tudo de uma vez">⬇ Baixar tudo</a>':'')+'</div>';
     if(p.nota)ce+='<div class="nota">💬 '+esc(p.nota)+'</div>';
     ordem.forEach(function(g){
       if(g)ce+='<div class="grupo">'+esc(g)+'</div>';
       ce+='<div>';
-      grupos[g].forEach(function(a){var e=extDe(a.nome);ce+='<div class="arq"><span class="ext" style="background:'+e[1]+';color:'+e[2]+'">'+e[0]+'</span><div class="n"><b title="'+esc(a.nome)+'">'+esc(a.nome)+'</b><span>'+tam(a.tamanho)+'</span></div><a class="btn peq" href="'+esc(a.ver)+'" target="_blank" rel="noopener">Ver</a><a class="btn peq pri" href="'+esc(a.baixar)+'" target="_blank" rel="noopener">Baixar</a></div>'});
+      grupos[g].forEach(function(a){var e=extDe(a.nome);ce+='<div class="arq"><span class="ext" style="background:'+e[1]+';color:'+e[2]+'">'+esc(e[0])+'</span><div class="n"><b title="'+esc(a.nome)+'">'+esc(a.nome)+'</b><span>'+tam(a.tamanho)+'</span></div><a class="btn peq" href="'+esc(a.ver)+'" target="_blank" rel="noopener">Ver</a><a class="btn peq pri" href="'+esc(a.baixar)+'" target="_blank" rel="noopener">Baixar</a></div>'});
       ce+='</div>';
     });
     ce+='</div>';

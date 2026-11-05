@@ -1215,7 +1215,8 @@ let tpl={};DISC.forEach(k=>tpl[k]=buildDefault(k));
 let tplCustom={},projects={},curId=null,tab="cad",filter="all",editMode=false,allOpen=true;
 const $=id=>document.getElementById(id);
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
-function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+const ID_OK=/^[a-z0-9]{1,40}$/i; // ids internos (uid) — ids externos fora deste formato são trocados
 function today(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 function fmtD(s){if(!s)return"";const[a,m,d]=s.split("-");return d+"/"+m+"/"+a}
 function norm(p){p.status=p.status||{};p.notes=p.notes||{};p.cad=p.cad||{};p.amb=p.amb||[];p.bath=p.bath||[];p.log=p.log||[];p.hist=p.hist||{};p.phase=p.phase||{};p.due=p.due||{};p.discs=p.discs||{hid:true};p.hidMode=p.hidMode||"afaq";p.pisMode=p.pisMode||"aq";p.etapa=p.etapa||{};p.atas=p.atas||[];return p}
@@ -1436,7 +1437,7 @@ function embedOpen(){
   embedReady=true;const pid=EMBED,oid=obraDoProjeto(pid),w=wmProj(pid);
   if(oid){curId=oid;const want=w&&wmDiscs(w.tipo);const first=want&&want.find(k=>dOn(projects[oid],k));tab=first||"cad";showProject(oid);return}
   view="embedNew";$("home").hidden=true;$("projView").hidden=true;$("formPanel").hidden=true;
-  const opts=sortedIds().filter(id=>!isIntec(projects[id])).map(id=>`<option value="${id}">${esc(projects[id].name)}${projects[id].client?" · "+esc(projects[id].client):""}</option>`).join("");
+  const opts=sortedIds().filter(id=>!isIntec(projects[id])).map(id=>`<option value="${esc(id)}">${esc(projects[id].name)}${projects[id].client?" · "+esc(projects[id].client):""}</option>`).join("");
   let box=$("embedBox");if(!box){box=document.createElement("section");box.id="embedBox";box.className="panel";$("home").before(box)}
   box.hidden=false;
   box.innerHTML=`<h2>Checklist deste projeto</h2><p class="msg">O checklist, o cadastro do cliente e as atas ficam na <b>obra</b>, que pode reunir vários projetos (hidrossanitário, elétrico, estrutural…). Este projeto${w?` (<b>${esc(w.codigo)}</b> · ${esc(w.tipo)})`:""} ainda não está vinculado a nenhuma obra.</p>
@@ -1527,12 +1528,12 @@ function recordHist(p){
 /* ============ BARRA DO PROJETO ============ */
 function renderProjBar(){wmLinkBar();
   const sel=$("projSel"),ids=sortedIds();
-  sel.innerHTML=ids.length?ids.map(id=>`<option value="${id}"${id===curId?" selected":""}>${esc(projects[id].name)}${projects[id].rev?" · "+esc(projects[id].rev):""}</option>`).join(""):`<option value="">Nenhuma obra salva</option>`;
+  sel.innerHTML=ids.length?ids.map(id=>`<option value="${esc(id)}"${id===curId?" selected":""}>${esc(projects[id].name)}${projects[id].rev?" · "+esc(projects[id].rev):""}</option>`).join(""):`<option value="">Nenhuma obra salva</option>`;
   sel.disabled=!ids.length;const p=cur();
   ["btnEdit","btnPdf","btnXlsx","btnJson"].forEach(i=>$(i).disabled=!p);
   $("emptyNote").hidden=!!ids.length;
   $("meta").innerHTML=p?[p.company?`<span class="comp ${compCls(p.company)}">${esc(p.company)}</span>`:"",p.client?`<span>Cliente: <b>${esc(p.client)}</b></span>`:"",p.addr?`<span>Obra: <b>${esc(p.addr)}</b></span>`:"",
-    DISC.filter(k=>dOn(p,k)).map(k=>`<span class="tag ${k}">${tpl[k].name}${k==="hid"?(p.hidMode==="af"?" · só AF":" · AF + AQ"):k==="pis"?(p.pisMode==="sem"?" · sem aquecimento":" · aquecida"):""}</span>`).join(" ")].join(""):"";
+    DISC.filter(k=>dOn(p,k)).map(k=>`<span class="tag ${k}">${esc(tpl[k].name)}${k==="hid"?(p.hidMode==="af"?" · só AF":" · AF + AQ"):k==="pis"?(p.pisMode==="sem"?" · sem aquecimento":" · aquecida"):""}</span>`).join(" ")].join(""):"";
 }
 let formMode=null,view="home",homeComp="all";
 function compCls(c){return /^WM/.test(c||"")?"wm":/^Intec/.test(c||"")?"in":""}
@@ -1550,12 +1551,12 @@ function renderHome(){
     const pend=ks.reduce((s,k)=>s+counts(k,p).pd,0);
     const dues=ks.filter(k=>p.due[k]&&counts(k,p).pct<100).map(k=>p.due[k]).sort();
     const late=dues.length&&dues[0]<today();
-    return `<button type="button" class="pcard" data-proj="${id}">
+    return `<button type="button" class="pcard" data-proj="${esc(id)}">
       <span class="comp ${compCls(p.company)}">${esc(p.company||"Empresa não informada")}</span>
       <h3>${esc(p.name)}${p.rev?` <span style="font:500 12px var(--mono);color:var(--muted)">${esc(p.rev)}</span>`:""}</h3>
       <span class="pc-sub">${esc([p.client,p.addr].filter(Boolean).join(" · ")||"—")}</span>
       <span class="pc-bars"><span class="pc-bar" style="--c:var(--cad)"><span>Cadastro</span><i><b style="width:${cc.tot?cc.done/cc.tot*100:0}%"></b></i><span>${cc.tot?Math.round(cc.done/cc.tot*100):0}%</span></span>
-      ${ks.map(k=>{const c=counts(k,p);return `<span class="pc-bar" style="--c:var(--${k})"><span>${tpl[k].name}</span><i><b style="width:${c.pct}%"></b></i><span>${c.pct}%</span></span>`}).join("")}</span>
+      ${ks.map(k=>{const c=counts(k,p);return `<span class="pc-bar" style="--c:var(--${k})"><span>${esc(tpl[k].name)}</span><i><b style="width:${c.pct}%"></b></i><span>${c.pct}%</span></span>`}).join("")}</span>
       <span class="pc-foot"><span>Atualizado ${fmtD(new Date(p.updatedAt||p.createdAt||Date.now()).toISOString().slice(0,10))}</span>${respPending(p)?`<span class="warn">Cliente respondeu</span>`:""}${pend?`<span class="warn">${pend} pendente${pend>1?"s":""}</span>`:""}${dues.length?`<span class="${late?"warn":""}">Entrega ${fmtD(dues[0])}${late?" (atrasada)":""}</span>`:""}${p.atas.length?`<span>${p.atas.length} ata${p.atas.length>1?"s":""}</span>`:""}</span>
     </button>`};
   const act=ids.filter(id=>!isDone(projects[id])),done=ids.filter(id=>isDone(projects[id]));
@@ -1573,7 +1574,7 @@ $("btnHome").onclick=showHome;
 function openForm(mode){
   formMode=mode;const p=mode==="edit"?cur():null;
   $("fName").value=p?p.name:"";$("fClient").value=p?p.client||"":"";$("fAddr").value=p?p.addr||"":"";$("fRev").value=p?p.rev||"":"R00";
-  $("fDisc").innerHTML=`<legend>Projetos</legend>`+DISC.filter(discEnabled).map(k=>`<label><input type="checkbox" id="fd-${k}" ${p?(p.discs[k]?"checked":""):(k==="hid"||k==="san"?"checked":"")}> <span class="tag ${k}">${tpl[k].name}</span></label>`).join("");
+  $("fDisc").innerHTML=`<legend>Projetos</legend>`+DISC.filter(discEnabled).map(k=>`<label><input type="checkbox" id="fd-${k}" ${p?(p.discs[k]?"checked":""):(k==="hid"||k==="san"?"checked":"")}> <span class="tag ${k}">${esc(tpl[k].name)}</span></label>`).join("");
   const hm=p?p.hidMode:"afaq";$("hmAfaq").checked=hm!=="af";$("hmAf").checked=hm==="af";
   const pm=p?p.pisMode:"aq";$("pmAq").checked=pm!=="sem";$("pmSem").checked=pm==="sem";
   $("fcWM").checked=!!p&&p.company==="WM Engenharia Integrada";$("fcIN").checked=!!p&&p.company==="Intec Engenharia Integrada";$("fcIN").closest("label").hidden=!ehJon();$("fcIntecNote").hidden=!ehJon();
@@ -1628,7 +1629,7 @@ function renderTabs(){
     else if(k==="evo"){name="Evolução";c="var(--cad)"}
     else if(k==="atas"){name="Atas";c="var(--cad)";pc=p?String(p.atas.length):""}
     else{name=tpl[k].name;c=`var(--${k})`;const x=counts(k,p);pc=x.eDone+"/"+x.eTot}
-    return `<button class="tab" role="tab" style="--c:${c}" data-t="${k}" aria-selected="${k===tab}"><span class="sw"></span>${name}${pc?`<span class="pc">${pc}</span>`:""}</button>`}).join("");
+    return `<button class="tab" role="tab" style="--c:${c}" data-t="${k}" aria-selected="${k===tab}"><span class="sw"></span>${esc(name)}${pc?`<span class="pc">${pc}</span>`:""}</button>`}).join("");
 }
 $("tabs").addEventListener("click",e=>{const b=e.target.closest(".tab");if(!b)return;tab=b.dataset.t;editMode=false;cadEdit=false;renderTabs();renderBody()});
 
@@ -1644,8 +1645,8 @@ function setStats(html,pct,info){$("stats").innerHTML=html;$("meter").style.widt
 function optParts(v){return String(v||"").split(/\s*;\s*/).map(x=>x.trim()).filter(Boolean)}
 function qRow(key,label,hint,val,dis,opts,multi){
   const cur0=optParts(val);
-  const oh=opts&&opts.length?`<div class="opts" role="group" aria-label="Opções">${opts.map(o=>`<button type="button" class="opt" data-for="${key}" data-opt="${esc(o)}"${multi?' data-multi="1"':""} aria-pressed="${cur0.includes(o)}"${dis}>${esc(o)}</button>`).join("")}</div>`:"";
-  return `<div class="q${val&&val.trim()?" filled":""}"><label for="${key}">${esc(label)}${hint?`<small>${esc(hint)}</small>`:""}${multi?`<small>Pode marcar mais de uma opção</small>`:""}</label><textarea id="${key}" data-k="${key}" rows="1"${dis}>${esc(val||"")}</textarea>${oh}</div>`;
+  const oh=opts&&opts.length?`<div class="opts" role="group" aria-label="Opções">${opts.map(o=>`<button type="button" class="opt" data-for="${esc(key)}" data-opt="${esc(o)}"${multi?' data-multi="1"':""} aria-pressed="${cur0.includes(o)}"${dis}>${esc(o)}</button>`).join("")}</div>`:"";
+  return `<div class="q${val&&val.trim()?" filled":""}"><label for="${esc(key)}">${esc(label)}${hint?`<small>${esc(hint)}</small>`:""}${multi?`<small>Pode marcar mais de uma opção</small>`:""}</label><textarea id="${esc(key)}" data-k="${esc(key)}" rows="1"${dis}>${esc(val||"")}</textarea>${oh}</div>`;
 }
 document.addEventListener("click",e=>{
   const b=e.target.closest(".opt");if(!b||b.disabled)return;
@@ -1668,7 +1669,7 @@ function renderCad(){
     h+=`</div>`;
     if(g.bath){
       h+=`<div class="tblwrap"><table class="tbl"><thead><tr><th>Morador</th><th>Tempo médio de banho (min)</th><th>Banhos por dia</th><th></th></tr></thead><tbody>`;
-      (p?p.bath:[]).forEach(r=>{h+=`<tr data-bid="${r.id}"><td><input type="text" id="b-n-${r.id}" data-bf="n" value="${esc(r.n)}" aria-label="Morador"></td><td><input type="number" id="b-t-${r.id}" data-bf="t" min="0" step="1" value="${esc(r.t)}" aria-label="Tempo de banho"></td><td><input type="number" id="b-b-${r.id}" data-bf="b" min="0" step="1" value="${esc(r.b)}" aria-label="Banhos por dia"></td><td><button class="btn danger" type="button" data-bdel="${r.id}">Remover</button></td></tr>`});
+      (p?p.bath:[]).forEach(r=>{h+=`<tr data-bid="${esc(r.id)}"><td><input type="text" id="b-n-${esc(r.id)}" data-bf="n" value="${esc(r.n)}" aria-label="Morador"></td><td><input type="number" id="b-t-${esc(r.id)}" data-bf="t" min="0" step="1" value="${esc(r.t)}" aria-label="Tempo de banho"></td><td><input type="number" id="b-b-${esc(r.id)}" data-bf="b" min="0" step="1" value="${esc(r.b)}" aria-label="Banhos por dia"></td><td><button class="btn danger" type="button" data-bdel="${esc(r.id)}">Remover</button></td></tr>`});
       h+=`</tbody></table>${p?`<div class="addbar"><button class="btn" type="button" id="bAdd">+ Morador</button></div>`:""}</div>`;
     }
     h+=`</details>`;
@@ -1677,8 +1678,8 @@ function renderCad(){
     h+=`<div class="subh">Ambientes (briefing por ambiente) · não contam no progresso do cadastro</div>`;
     p.amb.filter(a=>ambVisible(p,a)).forEach(a=>{
       const Q=ambQ(a.type),done=Q.filter(q=>(a.ans[q.n]||"").trim()).length;
-      h+=`<details class="sec" data-aid="${a.id}"><summary><span class="code">${esc(AMB[a.type].label)}</span><h3>${esc(a.name)}</h3><span class="cnt${done===Q.length?" done":""}">${done}/${Q.length}</span><span class="chev"></span></summary>
-      <div class="ambhead"><input type="text" id="an-${a.id}" data-an="${a.id}" value="${esc(a.name)}" aria-label="Nome do ambiente"><button class="btn danger" type="button" data-adel="${a.id}">Remover ambiente</button><span class="inline-confirm" id="adc-${a.id}" hidden>Remover e apagar as respostas? <button class="btn danger" type="button" data-adelyes="${a.id}">Remover</button><button class="btn" type="button" data-adelno="${a.id}">Cancelar</button></span></div>
+      h+=`<details class="sec" data-aid="${esc(a.id)}"><summary><span class="code">${esc(AMB[a.type].label)}</span><h3>${esc(a.name)}</h3><span class="cnt${done===Q.length?" done":""}">${done}/${Q.length}</span><span class="chev"></span></summary>
+      <div class="ambhead"><input type="text" id="an-${esc(a.id)}" data-an="${esc(a.id)}" value="${esc(a.name)}" aria-label="Nome do ambiente"><button class="btn danger" type="button" data-adel="${esc(a.id)}">Remover ambiente</button><span class="inline-confirm" id="adc-${esc(a.id)}" hidden>Remover e apagar as respostas? <button class="btn danger" type="button" data-adelyes="${esc(a.id)}">Remover</button><button class="btn" type="button" data-adelno="${esc(a.id)}">Cancelar</button></span></div>
       <div class="qlist">${Q.map(q=>qRow("a|"+a.id+"|"+q.n,q.t,"",a.ans[q.n],"")).join("")}</div></details>`;
     });
     h+=`<div class="addbar"><span class="lbl">Adicionar ambiente</span>${Object.entries(AMB).filter(([t,v])=>has(p,v.disc)).map(([t,v])=>`<button class="btn" type="button" data-aadd="${t}">+ ${v.label}</button>`).join("")}</div>`;
@@ -1713,25 +1714,25 @@ function renderCk(keep){
         const v=p?(p.status[it.id]||""):"";if(v==="ok"||v==="na")sd++;if(v==="pd")npd++;
         if(filter==="pend"&&v!=="pd"&&!editMode)return;
         if(editMode){
-          ih+=`<li class="ed" data-id="${it.id}"><input class="ed-t" type="text" id="e-t-${it.id}" data-f="t" value="${esc(it.t)}" aria-label="Texto do item"><input type="text" id="e-h-${it.id}" data-f="h" value="${esc(it.h)}" placeholder="Observação" aria-label="Observação"><input type="text" id="e-r-${it.id}" data-f="r" value="${esc(it.r)}" placeholder="Referência" aria-label="Referência"><span class="edx">${hasAQ(k)?`<label><input type="checkbox" data-f="aq" ${it.aq?"checked":""}> só AQ</label>`:""}<button class="btn danger" type="button" data-del="${it.id}">Remover</button></span></li>`;
+          ih+=`<li class="ed" data-id="${esc(it.id)}"><input class="ed-t" type="text" id="e-t-${esc(it.id)}" data-f="t" value="${esc(it.t)}" aria-label="Texto do item"><input type="text" id="e-h-${esc(it.id)}" data-f="h" value="${esc(it.h)}" placeholder="Observação" aria-label="Observação"><input type="text" id="e-r-${esc(it.id)}" data-f="r" value="${esc(it.r)}" placeholder="Referência" aria-label="Referência"><span class="edx">${hasAQ(k)?`<label><input type="checkbox" data-f="aq" ${it.aq?"checked":""}> só AQ</label>`:""}<button class="btn danger" type="button" data-del="${esc(it.id)}">Remover</button></span></li>`;
         }else{
           const note=p&&p.notes[it.id];
-          ih+=`<li class="it${v?" s-"+v:""}" data-id="${it.id}"><div class="st" role="group" aria-label="Situação"><button class="ok" data-v="ok" title="Conferido" aria-label="Conferido" aria-pressed="${v==="ok"}"${dis}>✓</button><button class="pd" data-v="pd" title="Pendente" aria-label="Pendente" aria-pressed="${v==="pd"}"${dis}>!</button><button class="na" data-v="na" title="Não se aplica" aria-label="Não se aplica" aria-pressed="${v==="na"}"${dis}>–</button></div>
+          ih+=`<li class="it${v?" s-"+v:""}" data-id="${esc(it.id)}"><div class="st" role="group" aria-label="Situação"><button class="ok" data-v="ok" title="Conferido" aria-label="Conferido" aria-pressed="${v==="ok"}"${dis}>✓</button><button class="pd" data-v="pd" title="Pendente" aria-label="Pendente" aria-pressed="${v==="pd"}"${dis}>!</button><button class="na" data-v="na" title="Não se aplica" aria-label="Não se aplica" aria-pressed="${v==="na"}"${dis}>–</button></div>
           <div class="txt"><p>${esc(it.t)}${it.aq&&hasAQ(k)&&!sec.aq?'<span class="aqb">AQ</span>':""}</p>${it.h?`<small>${esc(it.h)}</small>`:""}</div><span class="ref">${esc(it.r)}</span>
-          ${p?`<button class="note-t" data-note="${it.id}">${note?"Editar nota":"Adicionar nota"}</button><textarea id="n-${it.id}" data-nt="${it.id}" placeholder="Origem do dado, responsável, prazo…" ${note?"":"hidden"}>${esc(note||"")}</textarea>`:""}</li>`;
+          ${p?`<button class="note-t" data-note="${esc(it.id)}">${note?"Editar nota":"Adicionar nota"}</button><textarea id="n-${esc(it.id)}" data-nt="${esc(it.id)}" placeholder="Origem do dado, responsável, prazo…" ${note?"":"hidden"}>${esc(note||"")}</textarea>`:""}</li>`;
         }
       });
       if(!editMode&&filter==="pend"&&!ih)return;
       const aqB=sec.aq&&hasAQ(k)?'<span class="aqb">AQ</span>':"";
       if(editMode){
-        sh+=`<div class="ed-etp" data-eid="${sec.id}"><div class="etp-hd"><span class="code">${esc(sec.code)}</span><input type="text" id="et-${sec.id}" data-et="${sec.id}" value="${esc(sec.title)}" aria-label="Nome da etapa">
-          ${hasAQ(k)?`<label class="ck"><input type="checkbox" data-eaq="${sec.id}" ${sec.aq?"checked":""}> etapa só AQ</label>`:""}
-          <button class="btn" type="button" data-emv="-1" data-eid2="${sec.id}" title="Mover para cima" aria-label="Mover etapa para cima"${si===0?" disabled":""}>↑</button><button class="btn" type="button" data-emv="1" data-eid2="${sec.id}" title="Mover para baixo" aria-label="Mover etapa para baixo"${si===stg.secs.length-1?" disabled":""}>↓</button>
-          <button class="btn danger" type="button" data-edel="${sec.id}">Remover etapa</button></div>
-          <ul class="items">${ih}</ul><div class="addrow"><button class="btn" type="button" data-add="${sec.id}">+ Item de conferência</button></div></div>`;
+        sh+=`<div class="ed-etp" data-eid="${esc(sec.id)}"><div class="etp-hd"><span class="code">${esc(sec.code)}</span><input type="text" id="et-${esc(sec.id)}" data-et="${esc(sec.id)}" value="${esc(sec.title)}" aria-label="Nome da etapa">
+          ${hasAQ(k)?`<label class="ck"><input type="checkbox" data-eaq="${esc(sec.id)}" ${sec.aq?"checked":""}> etapa só AQ</label>`:""}
+          <button class="btn" type="button" data-emv="-1" data-eid2="${esc(sec.id)}" title="Mover para cima" aria-label="Mover etapa para cima"${si===0?" disabled":""}>↑</button><button class="btn" type="button" data-emv="1" data-eid2="${esc(sec.id)}" title="Mover para baixo" aria-label="Mover etapa para baixo"${si===stg.secs.length-1?" disabled":""}>↓</button>
+          <button class="btn danger" type="button" data-edel="${esc(sec.id)}">Remover etapa</button></div>
+          <ul class="items">${ih}</ul><div class="addrow"><button class="btn" type="button" data-add="${esc(sec.id)}">+ Item de conferência</button></div></div>`;
       }else{
         const open=keep?was.has(sec.id):(filter==="pend"||(allOpen&&es!=="ok"&&es!=="na"&&sec.items.length>0));
-        sh+=`<details class="sec etp es-${es||"none"}" data-eid="${sec.id}"${open?" open":""}><summary><span class="code">${esc(sec.code)}</span><h3>${esc(sec.title)}${aqB}</h3>
+        sh+=`<details class="sec etp es-${es||"none"}" data-eid="${esc(sec.id)}"${open?" open":""}><summary><span class="code">${esc(sec.code)}</span><h3>${esc(sec.title)}${aqB}</h3>
           <span class="cnt${sec.items.length&&sd===sec.items.length?" done":""}">${sec.items.length?sd+"/"+sec.items.length+" conferidos":"sem itens"}${npd?` · <b class="pdn">${npd} pend.</b>`:""}</span>
           <span class="es" role="group" aria-label="Situação da etapa">${["and","ok","na"].map(s=>`<button type="button" class="esb ${s}" data-es="${s}" aria-pressed="${es===s}"${dis}>${ESL[s]}</button>`).join("")}</span><span class="chev"></span></summary>
           ${sec.items.length?`<ul class="items">${ih}</ul>`:`<p class="noit">Sem itens de conferência nesta etapa. Use "Editar etapas e itens" para incluir.</p>`}</details>`;
@@ -1803,7 +1804,7 @@ function chartSVG(p){
     if(pts.length>1)s+=`<polyline fill="none" stroke="${col}" stroke-width="2.5" stroke-linejoin="round" points="${pts.map(q=>q.join(",")).join(" ")}"/>`;
     const lp=pts[pts.length-1];s+=`<circle cx="${lp[0]}" cy="${lp[1]}" r="4" fill="${col}"/>`;
   });
-  return s+`</svg><div class="lg">${series(p).map(k=>`<span style="--c:var(--${k})"><i></i>${sName(k)}</span>`).join("")}</div>`;
+  return s+`</svg><div class="lg">${series(p).map(k=>`<span style="--c:var(--${k})"><i></i>${esc(sName(k))}</span>`).join("")}</div>`;
 }
 function renderEvo(){
   const p=cur();
@@ -1811,19 +1812,19 @@ function renderEvo(){
   let h=`<div class="cards">`;
   series(p).forEach(k=>{
     let pct,sub;if(k==="cad"){const c=cadCounts(p);pct=c.tot?Math.round(c.done/c.tot*100):0;sub=c.done+"/"+c.tot+" respostas"}else{const c=counts(k,p);pct=c.pct;sub=c.eDone+"/"+c.eTot+" etapas concluídas · "+c.pd+" pendência"+(c.pd===1?"":"s")}
-    h+=`<div class="card" style="--c:var(--${k})"><h3>${sName(k)}<span>${pct}%</span></h3><div class="mini"><i style="width:${pct}%"></i></div><div class="row">${sub}</div>
+    h+=`<div class="card" style="--c:var(--${k})"><h3>${esc(sName(k))}<span>${pct}%</span></h3><div class="mini"><i style="width:${pct}%"></i></div><div class="row">${sub}</div>
       ${k==="cad"?"":`<div class="row">Etapa atual<b style="color:var(--ink)">${esc(etapaAtual(k,p))}</b></div><label class="row">Previsão de entrega<input type="date" id="du-${k}" data-du="${k}" value="${esc(p.due[k]||"")}"></label>`}</div>`;
   });
   h+=`</div><div class="panel chart"><h2>Progresso ao longo do tempo</h2>${chartSVG(p)}</div>
   <div class="panel"><h2>Registro de evolução</h2>
    <form class="logform" id="logForm">
     <label class="field"><span>Data</span><input type="date" id="lgDate" value="${today()}"></label>
-    <label class="field"><span>Disciplina</span><select id="lgDisc"><option value="geral">Geral</option>${DISC.filter(k=>dOn(p,k)).map(k=>`<option value="${k}">${tpl[k].name}</option>`).join("")}</select></label>
+    <label class="field"><span>Disciplina</span><select id="lgDisc"><option value="geral">Geral</option>${DISC.filter(k=>dOn(p,k)).map(k=>`<option value="${k}">${esc(tpl[k].name)}</option>`).join("")}</select></label>
     <label class="field"><span>Tipo</span><select id="lgType">${LOGTYPES.map(t=>`<option>${t}</option>`).join("")}</select></label>
     <label class="field full"><span>Descrição</span><textarea id="lgText" rows="1" placeholder="O que aconteceu, decisão tomada, próximo passo…"></textarea></label>
     <button class="btn pri full" type="submit">Registrar</button>
    </form>
-   <ul class="log">${p.log.slice().sort((a,b)=>(b.date||"").localeCompare(a.date||"")).map(e=>`<li><time>${fmtD(e.date)}</time><div><div class="lt">${e.disc==="geral"?`<span class="tag" style="background:var(--cad-tint);color:var(--cad-ink)">Geral</span>`:`<span class="tag ${e.disc}">${tpl[e.disc]?tpl[e.disc].name:e.disc}</span>`}<span>${esc(e.type)}</span></div><p>${esc(e.text)}</p></div><button class="btn danger" type="button" data-ldel="${e.id}" aria-label="Remover registro">Remover</button></li>`).join("")||`<li><span></span><p class="msg">Nenhum registro ainda.</p></li>`}</ul>
+   <ul class="log">${p.log.slice().sort((a,b)=>(b.date||"").localeCompare(a.date||"")).map(e=>`<li><time>${fmtD(e.date)}</time><div><div class="lt">${e.disc==="geral"?`<span class="tag" style="background:var(--cad-tint);color:var(--cad-ink)">Geral</span>`:`<span class="tag ${e.disc}">${tpl[e.disc]?tpl[e.disc].name:e.disc}</span>`}<span>${esc(e.type)}</span></div><p>${esc(e.text)}</p></div><button class="btn danger" type="button" data-ldel="${esc(e.id)}" aria-label="Remover registro">Remover</button></li>`).join("")||`<li><span></span><p class="msg">Nenhum registro ainda.</p></li>`}</ul>
   </div>`;
   $("root").innerHTML=h;
   $("logForm").addEventListener("submit",ev=>{ev.preventDefault();const t=$("lgText").value.trim();if(!t){$("lgText").focus();return}
@@ -2024,7 +2025,7 @@ function renderAtas(){
   if(!a){curAta=null;
     const list=p.atas.slice().sort((x,y)=>(y.date||"").localeCompare(x.date||"")||(y.num||"").localeCompare(x.num||""));
     $("root").innerHTML=`<div class="atabar"><h2>Atas de reunião</h2><button class="btn pri" type="button" id="ataNew">+ Nova ata</button></div>
-    ${list.length?`<div class="atalist">${list.map(x=>{const[s,c]=ataStatus(x);return`<button class="atacard" type="button" data-open="${x.id}"><span class="an">ATA ${esc(x.num)}</span><span class="ad">${fmtD(x.date)}${x.t1?" · "+esc(x.t1):""}</span><span class="as">${esc(x.subject||"Sem assunto")}</span><span class="badge ${c}">${s}${x.signed&&x.signed.length>1?" ("+x.signed.length+")":""}</span></button>`}).join("")}</div>`
+    ${list.length?`<div class="atalist">${list.map(x=>{const[s,c]=ataStatus(x);return`<button class="atacard" type="button" data-open="${esc(x.id)}"><span class="an">ATA ${esc(x.num)}</span><span class="ad">${fmtD(x.date)}${x.t1?" · "+esc(x.t1):""}</span><span class="as">${esc(x.subject||"Sem assunto")}</span><span class="badge ${c}">${s}${x.signed&&x.signed.length>1?" ("+x.signed.length+")":""}</span></button>`}).join("")}</div>`
     :`<p class="empty">Nenhuma ata ainda. Crie a primeira com <b>+ Nova ata</b>.</p>`}`;
     return;
   }
@@ -2044,7 +2045,7 @@ function renderAtas(){
     <div class="field wide"><span>Disciplinas tratadas</span><div class="cks">${dchk}</div></div>
   </div></div>
   <div class="panel"><h2>Participantes</h2><div class="tblwrap0"><table class="tbl"><thead><tr><th>Nome</th><th>Função / empresa</th><th>E-mail</th><th>Assina</th><th></th></tr></thead><tbody>
-    ${a.parts.map(r=>`<tr data-pid="${r.id}"><td><input type="text" id="pn-${r.id}" data-pf="name" value="${esc(r.name)}" aria-label="Nome"></td><td><input type="text" id="pr-${r.id}" data-pf="role" value="${esc(r.role)}" aria-label="Função"></td><td><input type="text" id="pm-${r.id}" data-pf="mail" value="${esc(r.mail)}" aria-label="E-mail"></td><td style="text-align:center"><input type="checkbox" data-pf="sign" ${r.sign?"checked":""} aria-label="Assina a ata"></td><td><button class="btn danger" type="button" data-pdel="${r.id}">Remover</button></td></tr>`).join("")}
+    ${a.parts.map(r=>`<tr data-pid="${esc(r.id)}"><td><input type="text" id="pn-${esc(r.id)}" data-pf="name" value="${esc(r.name)}" aria-label="Nome"></td><td><input type="text" id="pr-${esc(r.id)}" data-pf="role" value="${esc(r.role)}" aria-label="Função"></td><td><input type="text" id="pm-${esc(r.id)}" data-pf="mail" value="${esc(r.mail)}" aria-label="E-mail"></td><td style="text-align:center"><input type="checkbox" data-pf="sign" ${r.sign?"checked":""} aria-label="Assina a ata"></td><td><button class="btn danger" type="button" data-pdel="${esc(r.id)}">Remover</button></td></tr>`).join("")}
   </tbody></table></div><div class="addbar"><button class="btn" type="button" id="pAdd">+ Participante</button></div></div>
   <div class="panel"><h2>Conteúdo</h2><div class="qlist0">
     <label class="field"><span>Pauta</span><textarea id="af-pauta" data-af="pauta" rows="3">${esc(a.pauta)}</textarea></label>
@@ -2052,12 +2053,12 @@ function renderAtas(){
     <label class="field"><span>Decisões tomadas</span><textarea id="af-dec" data-af="dec" rows="4">${esc(a.dec)}</textarea></label>
   </div></div>
   <div class="panel"><h2>Encaminhamentos</h2><div class="tblwrap0"><table class="tbl"><thead><tr><th>Ação</th><th>Responsável</th><th>Prazo</th><th></th></tr></thead><tbody>
-    ${a.acts.map(r=>`<tr data-xid="${r.id}"><td><input type="text" id="xw-${r.id}" data-xf="what" value="${esc(r.what)}" aria-label="Ação"></td><td><input type="text" id="xo-${r.id}" data-xf="who" value="${esc(r.who)}" aria-label="Responsável"></td><td><input type="date" id="xd-${r.id}" data-xf="due" value="${esc(r.due)}" aria-label="Prazo"></td><td><button class="btn danger" type="button" data-xdel="${r.id}">Remover</button></td></tr>`).join("")}
+    ${a.acts.map(r=>`<tr data-xid="${esc(r.id)}"><td><input type="text" id="xw-${esc(r.id)}" data-xf="what" value="${esc(r.what)}" aria-label="Ação"></td><td><input type="text" id="xo-${esc(r.id)}" data-xf="who" value="${esc(r.who)}" aria-label="Responsável"></td><td><input type="date" id="xd-${esc(r.id)}" data-xf="due" value="${esc(r.due)}" aria-label="Prazo"></td><td><button class="btn danger" type="button" data-xdel="${esc(r.id)}">Remover</button></td></tr>`).join("")}
   </tbody></table></div><div class="addbar"><button class="btn" type="button" id="xAdd">+ Encaminhamento</button></div>
   <label class="field" style="margin-top:12px"><span>Próxima reunião</span><input type="text" id="af-next" data-af="next" value="${esc(a.next)}" placeholder="Data, horário e pauta prevista"></label></div>
   <div class="panel"><h2>Ata assinada (gov.br)</h2>
     <p class="msg">Gere o PDF, envie para cada participante assinar no Assinador gov.br (assinador.iti.br) e anexe aqui o arquivo final assinado. O PDF traz um quadro de assinatura para cada participante marcado em "Assina".</p>
-    <ul class="signed">${(a.signed||[]).map(f=>`<li><span>${esc(f.orig||f.file)}</span><small>anexado em ${fmtD(f.date)}</small><button class="btn" type="button" data-sopen="${f.id}">Abrir</button><button class="btn danger" type="button" data-sdel="${f.id}">Remover</button><span class="inline-confirm" id="sdc-${f.id}" hidden>Remover o anexo? <button class="btn danger" type="button" data-sdelyes="${f.id}">Remover</button><button class="btn" type="button" data-sdelno="${f.id}">Cancelar</button></span></li>`).join("")||`<li class="msg">Nenhuma ata assinada anexada.</li>`}</ul>
+    <ul class="signed">${(a.signed||[]).map(f=>`<li><span>${esc(f.orig||f.file)}</span><small>anexado em ${fmtD(f.date)}</small><button class="btn" type="button" data-sopen="${esc(f.id)}">Abrir</button><button class="btn danger" type="button" data-sdel="${esc(f.id)}">Remover</button><span class="inline-confirm" id="sdc-${esc(f.id)}" hidden>Remover o anexo? <button class="btn danger" type="button" data-sdelyes="${esc(f.id)}">Remover</button><button class="btn" type="button" data-sdelno="${esc(f.id)}">Cancelar</button></span></li>`).join("")||`<li class="msg">Nenhuma ata assinada anexada.</li>`}</ul>
     <label class="btn filebtn${folderOK?"":" dis"}" for="signFile">Anexar ata assinada (PDF)<input type="file" id="signFile" accept="application/pdf,.pdf"${folderOK?"":" disabled"}></label>
     ${folderOK?"":`<span class="msg err"> Abra pelo sistema WM para anexar arquivos.</span>`}
     <span class="msg" id="signMsg" role="status"></span>
@@ -2195,8 +2196,8 @@ const attUrl={};
 function isImg(f){return /^image\//.test(f.type||"")||/\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(f.file)}
 function attHtml(it){const fs=it.files||[];if(!fs.length)return"";
   return `<div class="hw-att">${fs.map(f=>isImg(f)
-    ?`<span style="position:relative;display:inline-block"><button type="button" class="hw-img" data-fopen="${f.id}" data-it="${it.id}" title="${esc(f.orig)}"><img data-thumb="${esc(f.file)}" alt="${esc(f.orig)}" hidden><span class="ph">${folderOK?"carregando…":"pasta desconectada"}</span></button><button type="button" class="hw-x" data-fdel="${f.id}" data-it="${it.id}" aria-label="Remover anexo">×</button></span>`
-    :`<span class="hw-pdfw"><button type="button" class="hw-pdf" data-fopen="${f.id}" data-it="${it.id}" title="Abrir ${esc(f.orig)}"><b>PDF</b><span>${esc(f.orig)}</span></button><button type="button" class="hw-x" data-fdel="${f.id}" data-it="${it.id}" aria-label="Remover anexo">×</button></span>`).join("")}</div>`}
+    ?`<span style="position:relative;display:inline-block"><button type="button" class="hw-img" data-fopen="${esc(f.id)}" data-it="${esc(it.id)}" title="${esc(f.orig)}"><img data-thumb="${esc(f.file)}" alt="${esc(f.orig)}" hidden><span class="ph">${folderOK?"carregando…":"pasta desconectada"}</span></button><button type="button" class="hw-x" data-fdel="${esc(f.id)}" data-it="${esc(it.id)}" aria-label="Remover anexo">×</button></span>`
+    :`<span class="hw-pdfw"><button type="button" class="hw-pdf" data-fopen="${esc(f.id)}" data-it="${esc(it.id)}" title="Abrir ${esc(f.orig)}"><b>PDF</b><span>${esc(f.orig)}</span></button><button type="button" class="hw-x" data-fdel="${esc(f.id)}" data-it="${esc(it.id)}" aria-label="Remover anexo">×</button></span>`).join("")}</div>`}
 async function attBlobUrl(f){
   if(attUrl[f.file])return attUrl[f.file];
   const file=await readFileBlob("ajuda_anexos",f.file);
@@ -2235,7 +2236,7 @@ function renderHelp(){
   const q=$("hwSearch").value.trim().toLowerCase();
   const items=help.items.filter(x=>(hwDisc==="all"||x.disc===hwDisc)&&(!q||(x.title+" "+x.body+" "+x.src+" "+(x.files||[]).map(f=>f.orig).join(" ")).toLowerCase().includes(q))).sort((a,b)=>a.title.localeCompare(b.title,"pt"));
   let h=hwEdit==="new"?helpForm(null):"";
-  h+=items.map(it=>hwEdit===it.id?helpForm(it):`<article class="hw-item" data-item="${it.id}" style="--c:${it.disc==="geral"?"var(--cad)":"var(--"+it.disc+")"}"><header><h4>${esc(it.title)}</h4><span class="tag ${it.disc}">${(HCATS.find(c=>c[0]===it.disc)||[,""])[1]}</span></header>${fmtBody(it.body)}${it.src?`<p class="hw-src">Fonte: ${esc(it.src)}</p>`:""}${attHtml(it)}<div class="hw-act"><button class="btn" type="button" data-hedit="${it.id}">Editar</button>${folderOK?`<label class="btn filebtn" for="hf-${it.id}">Anexar PDF/imagem<input type="file" id="hf-${it.id}" data-hatt="${it.id}" multiple accept="application/pdf,.pdf,image/*"></label>`:""}<button class="btn danger" type="button" data-hdel="${it.id}">Excluir</button><span class="inline-confirm" id="hdc-${it.id}" hidden>Excluir esta referência? <button class="btn danger" type="button" data-hdelyes="${it.id}">Excluir</button><button class="btn" type="button" data-hdelno="${it.id}">Cancelar</button></span></div></article>`).join("");
+  h+=items.map(it=>hwEdit===it.id?helpForm(it):`<article class="hw-item" data-item="${esc(it.id)}" style="--c:${it.disc==="geral"?"var(--cad)":"var(--"+it.disc+")"}"><header><h4>${esc(it.title)}</h4><span class="tag ${it.disc}">${(HCATS.find(c=>c[0]===it.disc)||[,""])[1]}</span></header>${fmtBody(it.body)}${it.src?`<p class="hw-src">Fonte: ${esc(it.src)}</p>`:""}${attHtml(it)}<div class="hw-act"><button class="btn" type="button" data-hedit="${esc(it.id)}">Editar</button>${folderOK?`<label class="btn filebtn" for="hf-${esc(it.id)}">Anexar PDF/imagem<input type="file" id="hf-${esc(it.id)}" data-hatt="${esc(it.id)}" multiple accept="application/pdf,.pdf,image/*"></label>`:""}<button class="btn danger" type="button" data-hdel="${esc(it.id)}">Excluir</button><span class="inline-confirm" id="hdc-${esc(it.id)}" hidden>Excluir esta referência? <button class="btn danger" type="button" data-hdelyes="${esc(it.id)}">Excluir</button><button class="btn" type="button" data-hdelno="${esc(it.id)}">Cancelar</button></span></div></article>`).join("");
   if(!items.length&&hwEdit!=="new")h+=`<div class="hw-empty"><p><b>${help.items.length?"Nada encontrado.":"Nenhuma referência cadastrada ainda."}</b></p><p>Use <b>+ Nova</b> para cadastrar diâmetros, tabelas de norma, limites e fórmulas de cada sistema. Exemplo de tabela:</p><pre>| Aparelho | UHC | DN mínimo
 | Bacia sanitária | 6 | 100
 | Lavatório | 1 | 40</pre></div>`;
@@ -2351,7 +2352,7 @@ function applyDiffs(p,r,sel){
     if(!sel.includes(i))return;n++;
     if(d.kind==="cad")p.cad[d.k]=d.val;
     else if(d.kind==="amb"){const a=p.amb.find(x=>x.id===d.id);if(a)a.ans[d.i]=d.val}
-    else if(d.kind==="newamb"){const ans={};Object.entries(d.ra.ans||{}).forEach(([i,v])=>{if(String(v).trim())ans[i]=String(v)});if(!p.amb.some(x=>x.id===d.ra.id))p.amb.push({id:d.ra.id,type:d.ra.tipo,name:d.ra.nome||AMB[d.ra.tipo].label,ans})}
+    else if(d.kind==="newamb"){const ans={};Object.entries(d.ra.ans||{}).forEach(([i,v])=>{if(String(v).trim())ans[i]=String(v)});const nid=ID_OK.test(String(d.ra.id||""))?d.ra.id:uid();if(AMB[d.ra.tipo]&&!p.amb.some(x=>x.id===nid))p.amb.push({id:nid,type:d.ra.tipo,name:d.ra.nome||AMB[d.ra.tipo].label,ans})}
     else if(d.kind==="bath")p.bath=d.rows.map(x=>({id:uid(),n:x.n||"",t:x.t||"",b:x.b||""}));
   });
   p.clientForm.importedAt=r.atualizadoEm||Date.now();
@@ -2416,16 +2417,16 @@ function renderCadEdit(){
     <button class="btn" type="button" id="ftReset">Restaurar perguntas padrão</button><span class="inline-confirm" id="ftResetConf" hidden>Descartar todas as edições do cadastro? <button class="btn danger" type="button" id="ftResetYes">Restaurar</button><button class="btn" type="button" id="ftResetNo">Cancelar</button></span></div>
     <div class="editnote">As alterações valem para todas as obras. Respostas já dadas a perguntas removidas ficam guardadas, mas deixam de aparecer. Para o cliente ver as mudanças, use "Atualizar perguntas do formulário" na obra.</div>`;
   ftpl.groups.forEach((g,gi)=>{
-    h+=`<div class="ed-etp cg" data-gid="${g.id}"><div class="etp-hd"><span class="code">0.${gi+1}</span><input type="text" id="gt-${g.id}" data-gt="${g.id}" value="${esc(g.title)}" aria-label="Nome do grupo">
-      <span class="gdisc"><span class="lbl">Mostrar em</span>${dlist.map(k=>`<label class="ck"><input type="checkbox" data-gd="${k}" data-g="${g.id}" ${g.disc.includes(k)?"checked":""}> <span class="tag ${k}">${tpl[k].name}</span></label>`).join("")}<small class="msg">${g.disc.length?"":"todos os projetos"}</small></span>
-      <button class="btn" type="button" data-gmv="-1" data-g="${g.id}" aria-label="Subir grupo"${gi===0?" disabled":""}>↑</button><button class="btn" type="button" data-gmv="1" data-g="${g.id}" aria-label="Descer grupo"${gi===ftpl.groups.length-1?" disabled":""}>↓</button>
-      <button class="btn danger" type="button" data-gdel="${g.id}">Remover grupo</button></div>
-      <ul class="items">${g.q.map((q,qi)=>`<li class="ed cq" data-g="${g.id}" data-qn="${q.n}">
-        <input class="ed-t" type="text" id="qt-${g.id}-${q.n}" data-qf="t" value="${esc(q.t)}" placeholder="Pergunta" aria-label="Pergunta">
-        <input type="text" id="qh-${g.id}-${q.n}" data-qf="h" value="${esc(q.h)}" placeholder="Texto de ajuda (opcional)" aria-label="Texto de ajuda">
-        <input type="text" id="qo-${g.id}-${q.n}" data-qf="o" value="${esc(q.o.join("; "))}" placeholder="Opções separadas por ; (opcional)" aria-label="Opções">
+    h+=`<div class="ed-etp cg" data-gid="${esc(g.id)}"><div class="etp-hd"><span class="code">0.${gi+1}</span><input type="text" id="gt-${esc(g.id)}" data-gt="${esc(g.id)}" value="${esc(g.title)}" aria-label="Nome do grupo">
+      <span class="gdisc"><span class="lbl">Mostrar em</span>${dlist.map(k=>`<label class="ck"><input type="checkbox" data-gd="${k}" data-g="${esc(g.id)}" ${g.disc.includes(k)?"checked":""}> <span class="tag ${k}">${esc(tpl[k].name)}</span></label>`).join("")}<small class="msg">${g.disc.length?"":"todos os projetos"}</small></span>
+      <button class="btn" type="button" data-gmv="-1" data-g="${esc(g.id)}" aria-label="Subir grupo"${gi===0?" disabled":""}>↑</button><button class="btn" type="button" data-gmv="1" data-g="${esc(g.id)}" aria-label="Descer grupo"${gi===ftpl.groups.length-1?" disabled":""}>↓</button>
+      <button class="btn danger" type="button" data-gdel="${esc(g.id)}">Remover grupo</button></div>
+      <ul class="items">${g.q.map((q,qi)=>`<li class="ed cq" data-g="${esc(g.id)}" data-qn="${q.n}">
+        <input class="ed-t" type="text" id="qt-${esc(g.id)}-${q.n}" data-qf="t" value="${esc(q.t)}" placeholder="Pergunta" aria-label="Pergunta">
+        <input type="text" id="qh-${esc(g.id)}-${q.n}" data-qf="h" value="${esc(q.h)}" placeholder="Texto de ajuda (opcional)" aria-label="Texto de ajuda">
+        <input type="text" id="qo-${esc(g.id)}-${q.n}" data-qf="o" value="${esc(q.o.join("; "))}" placeholder="Opções separadas por ; (opcional)" aria-label="Opções">
         <span class="edx"><label><input type="checkbox" data-qf="m" ${q.m?"checked":""}> várias</label><button class="btn" type="button" data-qmv="-1" aria-label="Subir"${qi===0?" disabled":""}>↑</button><button class="btn" type="button" data-qmv="1" aria-label="Descer"${qi===g.q.length-1?" disabled":""}>↓</button><button class="btn danger" type="button" data-qdel="1">Remover</button></span></li>`).join("")}</ul>
-      <div class="addrow"><button class="btn" type="button" data-qadd="${g.id}">+ Pergunta</button></div></div>`;
+      <div class="addrow"><button class="btn" type="button" data-qadd="${esc(g.id)}">+ Pergunta</button></div></div>`;
   });
   h+=`<div class="addrow"><button class="btn pri" type="button" id="gAdd">+ Novo grupo de perguntas</button></div>
     <div class="subh">Perguntas dos ambientes</div>`;

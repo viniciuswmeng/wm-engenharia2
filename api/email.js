@@ -8,6 +8,13 @@ const RESEND_API = 'https://api.resend.com/emails';
 const FROM       = 'WM Engenharia <noreply@engenhariaWM.com.br>';
 const GESTOR     = 'direcao@engenhariaWM.com.br';
 
+import { autorizar, emailDaEquipe } from './_auth.js';
+
+// Escapa texto vindo do banco/requisição antes de entrar no HTML do e-mail
+const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const linha = v => String(v == null ? '' : v).replace(/[\r\n]+/g, ' ').slice(0, 120);
+const json = (o, status) => new Response(JSON.stringify(o), { status, headers: { 'Content-Type': 'application/json' } });
+
 // Paleta WM
 const AZUL    = '#1a3a6b';
 const AZUL2   = '#2563a8';
@@ -61,12 +68,12 @@ function baseLayout(conteudo, titulo) {
 
 function tmplEncerramentoAuto({ colaborador, projetoOuAtividade, horaInicio, horaFim }) {
   const corpo = `
-    <p style="color:#374151;font-size:14px">Olá, <strong>${colaborador}</strong>!</p>
+    <p style="color:#374151;font-size:14px">Olá, <strong>${esc(colaborador)}</strong>!</p>
     <p style="color:#6b7280;font-size:13px">Sua sessão de trabalho foi encerrada automaticamente pelo sistema pois o horário de expediente foi atingido.</p>
     <div style="background:#f0f4f8;border-radius:10px;padding:16px;margin:16px 0">
-      <div class="row"><span style="color:#6b7280;font-size:13px">Atividade</span><strong style="font-size:13px">${projetoOuAtividade}</strong></div>
-      <div class="row"><span style="color:#6b7280;font-size:13px">Entrada</span><strong>${horaInicio}</strong></div>
-      <div class="row"><span style="color:#6b7280;font-size:13px">Saída (automática)</span><strong style="color:${AMARELO}">${horaFim}</strong></div>
+      <div class="row"><span style="color:#6b7280;font-size:13px">Atividade</span><strong style="font-size:13px">${esc(projetoOuAtividade)}</strong></div>
+      <div class="row"><span style="color:#6b7280;font-size:13px">Entrada</span><strong>${esc(horaInicio)}</strong></div>
+      <div class="row"><span style="color:#6b7280;font-size:13px">Saída (automática)</span><strong style="color:${AMARELO}">${esc(horaFim)}</strong></div>
     </div>
     <p style="color:#6b7280;font-size:12px">Caso o horário esteja incorreto, acesse o <a href="https://sistema.wmengenhariaintegrada.com.br" style="color:${AZUL2}">sistema WM</a> para corrigir no Banco de Horas.</p>`;
   return baseLayout(corpo, '⏹ Sessão Encerrada Automaticamente');
@@ -75,17 +82,18 @@ function tmplEncerramentoAuto({ colaborador, projetoOuAtividade, horaInicio, hor
 function tmplProjetosVencendo({ destinatario, projetos }) {
   const rows = projetos.map(p => {
     const cor = p.dias < 0 ? VERMELHO : p.dias <= 3 ? VERMELHO : p.dias <= 7 ? AMARELO : AMARELO;
-    const label = p.dias < 0 ? `${Math.abs(p.dias)}d atrasado` : p.dias === 0 ? 'Vence HOJE' : `${p.dias}d restantes`;
+    const dias = Number(p.dias) || 0;
+    const label = dias < 0 ? `${Math.abs(dias)}d atrasado` : dias === 0 ? 'Vence HOJE' : `${dias}d restantes`;
     return `<tr>
-      <td><strong style="color:${AZUL2}">${p.codigo}</strong></td>
-      <td>${p.cliente.substring(0,35)}</td>
-      <td>${p.responsavel||'—'}</td>
+      <td><strong style="color:${AZUL2}">${esc(p.codigo)}</strong></td>
+      <td>${esc(String(p.cliente||'').substring(0,35))}</td>
+      <td>${esc(p.responsavel||'—')}</td>
       <td><span style="color:${cor};font-weight:700">${label}</span></td>
     </tr>`;
   }).join('');
 
   const corpo = `
-    <p style="color:#374151;font-size:14px">Olá, <strong>${destinatario}</strong>!</p>
+    <p style="color:#374151;font-size:14px">Olá, <strong>${esc(destinatario)}</strong>!</p>
     <p style="color:#6b7280;font-size:13px">Os seguintes projetos estão com prazo vencendo ou já atrasados:</p>
     <table style="margin:16px 0">
       <thead><tr><th>Código</th><th>Projeto</th><th>Responsável</th><th>Prazo</th></tr></thead>
@@ -120,7 +128,7 @@ function tmplResumoDiario({ projetos, sessoesDia, usuarios }) {
   const userRows = usuarios.map(u => {
     const d = porUser[u.id] || { min:0, sessoes:0 };
     const h = Math.floor(d.min/60); const m = d.min%60;
-    return `<tr><td>${u.nome}</td><td>${d.sessoes} sessão(ões)</td><td style="color:${d.min>0?VERDE:CINZA};font-weight:700">${d.min>0?`${h}h ${m}min`:'—'}</td></tr>`;
+    return `<tr><td>${esc(u.nome)}</td><td>${d.sessoes} sessão(ões)</td><td style="color:${d.min>0?VERDE:CINZA};font-weight:700">${d.min>0?`${h}h ${m}min`:'—'}</td></tr>`;
   }).join('');
 
   const corpo = `
@@ -141,7 +149,7 @@ function tmplResumoDiario({ projetos, sessoesDia, usuarios }) {
     ${atrasados.length > 0 ? `
     <h3 style="color:${VERMELHO};font-size:14px;margin:20px 0 10px">⚠️ Projetos Atrasados (${atrasados.length})</h3>
     <table><thead><tr><th>Código</th><th>Projeto</th><th>Responsável</th></tr></thead>
-    <tbody>${atrasados.slice(0,10).map(p=>`<tr><td><strong style="color:${AZUL2}">${p.codigo}</strong></td><td>${(p.cliente||'').substring(0,35)}</td><td>${p.responsavel||'—'}</td></tr>`).join('')}</tbody></table>
+    <tbody>${atrasados.slice(0,10).map(p=>`<tr><td><strong style="color:${AZUL2}">${esc(p.codigo)}</strong></td><td>${esc((p.cliente||'').substring(0,35))}</td><td>${esc(p.responsavel||'—')}</td></tr>`).join('')}</tbody></table>
     ` : '<p style="color:'+VERDE+';font-weight:700;text-align:center">✅ Nenhum projeto atrasado!</p>'}
     <p style="text-align:center;margin-top:20px">
       <a href="https://sistema.wmengenhariaintegrada.com.br" style="background:${AZUL2};color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:13px">Abrir Sistema WM</a>
@@ -173,7 +181,7 @@ function tmplResumoSemanal({ projetos, sessoes, usuarios }) {
   const userRows = usuarios.map(u => {
     const d = porUser[u.id] || { min:0, sessoes:0, projetos:new Set() };
     const h = Math.floor(d.min/60); const m = d.min%60;
-    return `<tr><td>${u.nome}</td><td>${d.sessoes}</td><td>${d.projetos.size}</td><td style="color:${d.min>0?VERDE:CINZA};font-weight:700">${d.min>0?`${h}h ${m}min`:'—'}</td></tr>`;
+    return `<tr><td>${esc(u.nome)}</td><td>${d.sessoes}</td><td>${d.projetos.size}</td><td style="color:${d.min>0?VERDE:CINZA};font-weight:700">${d.min>0?`${h}h ${m}min`:'—'}</td></tr>`;
   }).join('');
 
   const corpo = `
@@ -213,44 +221,53 @@ export default async function handler(req) {
     });
   }
 
+  // Só o cron (CRON_SECRET) ou um membro ativo da equipe pode enviar
+  const quem = await autorizar(req.headers.get('authorization'));
+  if (!quem) return json({ error: 'Não autorizado' }, 401);
+
   let body;
   try { body = await req.json(); }
   catch { return new Response('Body inválido', { status: 400 }); }
 
-  const { tipo, dados } = body;
+  const { tipo } = body || {};
+  const dados = (body && typeof body.dados === 'object' && body.dados) || {};
   let para, assunto, html;
+  // destinatários sempre resolvidos no servidor: gestor + e-mails da equipe
+  const extra = async e => (await emailDaEquipe(e)) ? [String(e).trim().toLowerCase()] : [];
 
   try {
     switch (tipo) {
       case 'encerramento_auto':
-        para    = [dados.email, GESTOR].filter(Boolean);
-        assunto = `⏹ Sessão encerrada automaticamente — ${dados.colaborador}`;
+        para    = [GESTOR, ...(quem.tipo === 'equipe' ? [quem.email] : await extra(dados.email))];
+        assunto = `⏹ Sessão encerrada automaticamente — ${linha(dados.colaborador)}`;
         html    = tmplEncerramentoAuto(dados);
         break;
 
       case 'projetos_vencendo':
-        para    = [GESTOR, dados.emailResponsavel].filter((e,i,a) => e && a.indexOf(e)===i);
+        if (!Array.isArray(dados.projetos)) return json({ error: 'projetos inválido' }, 400);
+        para    = [GESTOR, ...await extra(dados.emailResponsavel)];
         assunto = `⚠️ ${dados.projetos.length} projeto(s) com prazo crítico — WM`;
         html    = tmplProjetosVencendo(dados);
         break;
 
       case 'resumo_diario':
+        if (quem.tipo !== 'cron') return json({ error: 'Só o agendamento envia o resumo' }, 403);
         para    = [GESTOR];
         assunto = `📊 Resumo Diário WM — ${new Date().toLocaleDateString('pt-BR')}`;
         html    = tmplResumoDiario(dados);
         break;
 
       case 'resumo_semanal':
+        if (quem.tipo !== 'cron') return json({ error: 'Só o agendamento envia o resumo' }, 403);
         para    = [GESTOR];
         assunto = `📅 Resumo Semanal WM — semana de ${new Date().toLocaleDateString('pt-BR')}`;
         html    = tmplResumoSemanal(dados);
         break;
 
       default:
-        return new Response(JSON.stringify({ error: 'Tipo desconhecido: ' + tipo }), {
-          status: 400, headers: { 'Content-Type': 'application/json' }
-        });
+        return json({ error: 'Tipo desconhecido' }, 400);
     }
+    para = [...new Set(para)];
 
     const res = await fetch(RESEND_API, {
       method: 'POST',
@@ -258,8 +275,8 @@ export default async function handler(req) {
       body: JSON.stringify({ from: FROM, to: para, subject: assunto, html }),
     });
 
-    const resultado = await res.json();
-    if (!res.ok) throw new Error(JSON.stringify(resultado));
+    const resultado = await res.json().catch(() => ({}));
+    if (!res.ok) { console.error('Resend:', res.status, resultado); throw new Error('Falha no envio'); }
 
     return new Response(JSON.stringify({ ok: true, id: resultado.id }), {
       status: 200, headers: { 'Content-Type': 'application/json' }
@@ -267,8 +284,6 @@ export default async function handler(req) {
 
   } catch (err) {
     console.error('Erro email:', err);
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500, headers: { 'Content-Type': 'application/json' }
-    });
+    return json({ error: 'Falha ao enviar o e-mail' }, 500);
   }
 }

@@ -137,7 +137,9 @@ export function montarRelatorio({ projetos = [], usuarios = [], sessoes = [], ta
 // Planilha (CSV com ; para abrir direto no Excel em português)
 export function paraCSV(r, secoes, titulo) {
   const L = [];
-  const lin = (...c) => L.push(c.map(v => { const s = v == null ? "" : String(v); return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; }).join(";"));
+  // Neutraliza fórmulas (=, +, @, tab, -texto) para o Excel não executar conteúdo vindo do banco
+  const seguro = s => /^[=+@\t\r]/.test(s) || /^-[^\d]/.test(s) ? "'" + s : s;
+  const lin = (...c) => L.push(c.map(v => { const s = seguro(v == null ? "" : String(v)); return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; }).join(";"));
   const num = v => (Number(v) || 0).toFixed(2).replace(".", ",");
   lin(titulo); lin("Período", textoPeriodo(r.faixa)); lin("");
   if (secoes.resumo) { lin("RESUMO"); const s = r.resumo;

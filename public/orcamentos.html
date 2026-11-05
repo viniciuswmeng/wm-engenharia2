@@ -838,12 +838,15 @@ const CARD_CONTENT = {
   arqB:{cls:'arq',ico:'📐',t:'Projeto Arquitetônico',items:['Concepção e partido arquitetônico','Plantas, cortes e fachadas','Estudo de layout e distribuição de ambientes','Compatibilização com as demais disciplinas','Detalhamentos executivos']},
 };
 
+// Escapa texto antes de ir para innerHTML (dados vêm do banco compartilhado)
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+const idSeguro=v=>String(v==null?'':v).replace(/[^A-Za-z0-9_-]/g,'');
 let pavs=[{nome:'Pavimento Térreo',area:''},{nome:'Pavimento Superior',area:''}];
 function renderPavList(){
   document.getElementById('pavList').innerHTML=pavs.map((p,i)=>`
     <div class="pav-row">
-      <input type="text" value="${p.nome.replace(/"/g,'&quot;')}" placeholder="Nome do pavimento" oninput="pavs[${i}].nome=this.value;render()">
-      <input type="number" value="${p.area}" min="0" step="0.01" placeholder="m²" oninput="pavs[${i}].area=this.value;render()">
+      <input type="text" value="${esc(p.nome)}" placeholder="Nome do pavimento" oninput="pavs[${i}].nome=this.value;render()">
+      <input type="number" value="${esc(p.area)}" min="0" step="0.01" placeholder="m²" oninput="pavs[${i}].area=this.value;render()">
       <button class="pav-del" onclick="delPav(${i})" title="Remover">×</button>
     </div>`).join('');
 }
@@ -888,8 +891,8 @@ function renderManualRows(){
   box.innerHTML=itens.map(it=>{
     const cur=(window._manualVals&&window._manualVals[it.k]!=null)?window._manualVals[it.k]:'';
     return `<div class="manual-row">
-      <span class="mr-name">${it.nome}</span>
-      <input type="number" min="0" step="10" placeholder="calc." value="${cur}"
+      <span class="mr-name">${esc(it.nome)}</span>
+      <input type="number" min="0" step="10" placeholder="calc." value="${esc(cur)}"
         oninput="setManual('${it.k}', this.value)">
     </div>`;
   }).join('');
@@ -936,9 +939,9 @@ function render(){
     `A presente proposta contempla a elaboração dos Projetos de ${discPhrase} para ${tipo||'a construção descrita'}${local?', localizada em '+local:''}, conforme descrito a seguir:`;
 
   let areaRows='';
-  pavs.forEach(p=>{ if(p.nome || p.area) areaRows+=`<div class="ar"><div class="ar-k">${p.nome||'—'}</div><div class="ar-v">${p.area?brl(parseFloat(p.area))+' m²':'—'}</div></div>`; });
+  pavs.forEach(p=>{ if(p.nome || p.area) areaRows+=`<div class="ar"><div class="ar-k">${esc(p.nome)||'—'}</div><div class="ar-v">${p.area?brl(parseFloat(p.area))+' m²':'—'}</div></div>`; });
   areaRows+=`<div class="ar total"><div class="ar-k">Área Total</div><div class="ar-v">${brl(area)} m²</div></div>`;
-  if(local) areaRows+=`<div class="ar"><div class="ar-k">Localização</div><div class="ar-v">${local}</div></div>`;
+  if(local) areaRows+=`<div class="ar"><div class="ar-k">Localização</div><div class="ar-v">${esc(local)}</div></div>`;
   document.getElementById('p2-areas').innerHTML=areaRows;
 
   let cards='', count=0;
@@ -1188,7 +1191,7 @@ function renderSalvos(){
   const box=document.getElementById('savedList');
   const cont=k=>todos.filter(o=>k==='todos'||(o.status||'aberto')===k).length;
   const filtros=`<div class="saved-filtros">${['todos','aberto','enviado','fechado','recusado'].map(k=>`<button class="${_filtro===k?'on':''}" onclick="filtrar('${k}')">${k==='todos'?'Todos':STATUS_ORC[k]} (${cont(k)})</button>`).join('')}</div>`
-    +(_syncMsg?`<div class="sync-info" style="color:#c0392b">${_syncMsg}</div>`:(SB?'<div class="sync-info">Salvos no sistema WM — todos da equipe veem a mesma lista.</div>':''));
+    +(_syncMsg?`<div class="sync-info" style="color:#c0392b">${esc(_syncMsg)}</div>`:(SB?'<div class="sync-info">Salvos no sistema WM — todos da equipe veem a mesma lista.</div>':''));
   const arr=todos.filter(o=>_filtro==='todos'||(o.status||'aberto')===_filtro);
   if(!arr.length){ box.innerHTML=filtros+'<div class="saved-empty">'+(todos.length?'Nenhum orçamento com este status.':'Nenhum orçamento salvo ainda.<br>Preencha os dados e clique em "Salvar orçamento".')+'</div>'; return; }
   // agrupar por data
@@ -1206,19 +1209,20 @@ function renderSalvos(){
     grupos[k].forEach(o=>{
       const nDisc=(o.discs||[]).length;
       const nome=nomeArquivo(o.cliente, o.local);
-      const meta=`${fmtHora(o.criadoEm)} · ${o.tipo||'Sem tipo'} · ${nDisc} disciplina${nDisc!==1?'s':''}`;
+      const oid=idSeguro(o.id), st=STATUS_ORC[o.status]?o.status:'aberto';
+      const meta=`${fmtHora(o.criadoEm)} · ${esc(o.tipo||'Sem tipo')} · ${nDisc} disciplina${nDisc!==1?'s':''}`;
       html+=`<div class="saved-item">
         <div class="si-info">
-          <div class="si-name">${nome}</div>
-          <div class="si-meta">${meta}${o.criadoPor?' · '+o.criadoPor:''}</div>
+          <div class="si-name">${esc(nome)}</div>
+          <div class="si-meta">${meta}${o.criadoPor?' · '+esc(o.criadoPor):''}</div>
           ${o.contratoId?'<div class="si-ctr">✔ Contrato gerado</div>':''}
         </div>
         <div class="si-total">R$ ${brl(o.total||0)}</div>
         <div class="si-btns">
-          <select class="si-status ${o.status||'aberto'}" onchange="mudarStatus('${o.id}',this.value)" title="Situação do orçamento">${Object.entries(STATUS_ORC).map(([v,l])=>`<option value="${v}" ${(o.status||'aberto')===v?'selected':''}>${l}</option>`).join('')}</select>
-          ${(o.status==='fechado'&&WMB)?`<button class="si-act ctr" onclick="gerarContrato('${o.id}')" title="Abrir o gerador de contratos já preenchido">${o.contratoId?'Ver contrato':'Gerar contrato'}</button>`:''}
-          <button class="si-act load" onclick="carregarOrcamento('${o.id}')">Abrir</button>
-          <button class="si-act del" onclick="excluirOrcamento('${o.id}')" title="Excluir">🗑</button>
+          <select class="si-status ${st}" onchange="mudarStatus('${oid}',this.value)" title="Situação do orçamento">${Object.entries(STATUS_ORC).map(([v,l])=>`<option value="${v}" ${st===v?'selected':''}>${l}</option>`).join('')}</select>
+          ${(o.status==='fechado'&&WMB)?`<button class="si-act ctr" onclick="gerarContrato('${oid}')" title="Abrir o gerador de contratos já preenchido">${o.contratoId?'Ver contrato':'Gerar contrato'}</button>`:''}
+          <button class="si-act load" onclick="carregarOrcamento('${oid}')">Abrir</button>
+          <button class="si-act del" onclick="excluirOrcamento('${oid}')" title="Excluir">🗑</button>
         </div>
       </div>`;
     });

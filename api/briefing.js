@@ -47,7 +47,8 @@ function sanitizar(p, ant, form, final) {
     Object.keys((a && a.ans) || {}).slice(0, 80).forEach((i) => {
       if (/^\d+$/.test(i)) ans[i] = limpa(a.ans[i]);
     });
-    return { id: limpa(a && a.id, 40), tipo: limpa(a && a.tipo, 20), nome: limpa(a && a.nome, 80), novo: !!(a && a.novo), ans };
+    const id = limpa(a && a.id, 40);
+    return { id: /^[a-z0-9]{1,40}$/i.test(id) ? id : "", tipo: /^[a-z]{1,20}$/.test(String(a && a.tipo || "")) ? a.tipo : "", nome: limpa(a && a.nome, 80), novo: !!(a && a.novo), ans };
   });
   const banho = (Array.isArray(p.banho) ? p.banho : []).slice(0, 30).map((r) => ({
     n: limpa(r && r.n, 80), t: limpa(r && r.t, 10), b: limpa(r && r.b, 10),

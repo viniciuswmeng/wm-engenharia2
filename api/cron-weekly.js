@@ -18,11 +18,13 @@ async function supabaseGet(tabela, filtros = '') {
   return res.json();
 }
 
+import { cronAutorizado } from './_auth.js';
+
 export default async function handler(req) {
   // keep-alive do Supabase (mesmo sem CRON_SECRET)
   try { await fetch(`${SUPABASE_URL}/rest/v1/projetos?select=id&limit=1`, { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }); } catch { /* segue */ }
   const authHeader = req.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!cronAutorizado(authHeader)) {
     return new Response('Unauthorized', { status: 401 });
   }
 
@@ -41,7 +43,7 @@ export default async function handler(req) {
 
     await fetch(`${BASE_URL}/api/email`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', authorization: `Bearer ${process.env.CRON_SECRET}` },
       body: JSON.stringify({
         tipo: 'resumo_semanal',
         dados: { projetos, sessoes, usuarios }

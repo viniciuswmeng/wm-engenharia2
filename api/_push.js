@@ -28,6 +28,15 @@ function configurar() {
   webpush.setVapidDetails(sub, chavePublica(), soBase64Url(env("VAPID_PRIVATE_KEY")));
 }
 
+// Só serviços de push reais dos navegadores (evita o servidor fazer requisições para endereços arbitrários)
+const HOSTS_PUSH = [/^fcm\.googleapis\.com$/, /^android\.googleapis\.com$/, /^updates\.push\.services\.mozilla\.com$/, /^push\.services\.mozilla\.com$/, /\.notify\.windows\.com$/, /^web\.push\.apple\.com$/, /\.push\.apple\.com$/];
+export function endpointValido(endpoint) {
+  try {
+    const u = new URL(String(endpoint || ""));
+    return u.protocol === "https:" && !u.port && HOSTS_PUSH.some(r => r.test(u.hostname));
+  } catch { return false; }
+}
+
 // Envia uma notificação para todos os computadores de um usuário.
 // payload: { title, body, url, tag }
 export async function enviarParaUsuario(usuarioId, payload) {
@@ -36,13 +45,17 @@ export async function enviarParaUsuario(usuarioId, payload) {
   const subs = await sbGet("push_assinaturas", `usuario_id=eq.${encodeURIComponent(usuarioId)}&select=endpoint,dados`);
   let enviados = 0, ultimoErro = "";
   for (const s of subs) {
+    if (!endpointValido(s.dados && s.dados.endpoint) || s.dados.endpoint !== s.endpoint) {
+      await sbDelete("push_assinaturas", `endpoint=eq.${encodeURIComponent(s.endpoint)}`);
+      continue;
+    }
     try {
-      await webpush.sendNotification(s.dados, JSON.stringify(payload), { TTL: 60 * 60 * 12 });
+      await webpush.sendNotification(s.dados, JSON.stringify(payload), { TTL: 60 * 60 * 12, timeout: 8000 });
       enviados++;
     } catch (e) {
       // assinatura vencida ou removida no navegador
       if (e && (e.statusCode === 404 || e.statusCode === 410)) await sbDelete("push_assinaturas", `endpoint=eq.${encodeURIComponent(s.endpoint)}`);
-      else { ultimoErro = `${(e && e.statusCode) || ""} ${(e && (e.body || e.message)) || e}`.trim(); console.error("push:", ultimoErro); }
+      else { console.error("push:", (e && e.statusCode) || "", (e && (e.body || e.message)) || e); ultimoErro = `falha no serviço de notificação${e && e.statusCode ? " (" + e.statusCode + ")" : ""}`; }
     }
   }
   return { enviados, assinaturas: subs.length, ...(ultimoErro ? { erro: ultimoErro } : {}) };

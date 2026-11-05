@@ -29,12 +29,14 @@ async function manterSupabaseAtivo() {
   } catch { return false; }
 }
 
+import { cronAutorizado } from './_auth.js';
+
 export default async function handler(req) {
   const ativo = await manterSupabaseAtivo();
   // Segurança: só Vercel pode chamar este endpoint
   const authHeader = req.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return new Response(JSON.stringify({ supabaseAtivo: ativo, aviso: 'sem CRON_SECRET: só o keep-alive rodou' }), { status: 401 });
+  if (!cronAutorizado(authHeader)) {
+    return new Response(JSON.stringify({ supabaseAtivo: ativo, aviso: 'não autorizado: só o keep-alive rodou' }), { status: 401 });
   }
 
   try {
@@ -74,7 +76,7 @@ export default async function handler(req) {
         const usuario = usuarios.find(u => u.nome === responsavel);
         await fetch(`${BASE_URL}/api/email`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', authorization: `Bearer ${process.env.CRON_SECRET}` },
           body: JSON.stringify({
             tipo: 'projetos_vencendo',
             dados: {
@@ -90,7 +92,7 @@ export default async function handler(req) {
     // Enviar resumo diário para o gestor
     await fetch(`${BASE_URL}/api/email`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', authorization: `Bearer ${process.env.CRON_SECRET}` },
       body: JSON.stringify({
         tipo: 'resumo_diario',
         dados: { projetos, sessoesDia: sessoes, usuarios }

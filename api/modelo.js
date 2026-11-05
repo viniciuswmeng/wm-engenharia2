@@ -17,7 +17,7 @@ async function supabaseGet(tabela, filtros = '') {
 }
 
 const json = (corpo, status = 200) => new Response(JSON.stringify(corpo), {
-  status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' },
+  status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
 });
 
 const TIPOS = {

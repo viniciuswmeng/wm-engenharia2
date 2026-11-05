@@ -84,12 +84,12 @@ export default async function handler(req) {
           const ultima = assinadas[assinadas.length - 1];
           atas.push({ numero: a.num || '', data: a.date || '', assunto: a.subject || '', obra: o.nome || '',
             situacao: ultima ? 'assinada' : 'aguardando', assinadaEm: ultima?.date || null,
-            link: ultima ? await linkAssinado(`atas_assinadas/${ultima.file}`) : '' });
+            link: ultima && /^[^/\\]+$/.test(String(ultima.file || '')) && !String(ultima.file).includes('..') ? await linkAssinado(`atas_assinadas/${ultima.file}`) : '' });
         }
       }
       atas.sort((x, y) => String(y.data).localeCompare(String(x.data)));
       if (obras.length) {
-        const ids = obras.map(o => `"${String(o.id).replace(/"/g, '')}"`).join(',');
+        const ids = obras.map(o => String(o.id)).filter(x => /^[A-Za-z0-9_-]{1,80}$/.test(x)).map(x => `"${x}"`).join(',');
         const brief = await supabaseGet('obras_briefing', `obra_id=in.(${ids})&select=token,obra_id,resposta,updated_at`);
         formularios = brief.map(b => {
           const r = b.resposta || {};
@@ -106,8 +106,8 @@ export default async function handler(req) {
       atualizadoEm: p.atualizadoEm || null, pastaLink: p.pastaLink || '',
       arquivos: (p.arquivos || []).map(a => ({
         nome: a.nome, pasta: a.pasta || '', tamanho: a.tamanho || 0, tipo: a.tipo || '',
-        ver: `https://drive.google.com/file/d/${a.id}/view`,
-        baixar: /^application\/vnd\.google-apps\./.test(a.tipo || '') ? `https://drive.google.com/file/d/${a.id}/view` : `https://drive.google.com/uc?export=download&id=${a.id}`,
+        ver: `https://drive.google.com/file/d/${encodeURIComponent(a.id)}/view`,
+        baixar: /^application\/vnd\.google-apps\./.test(a.tipo || '') ? `https://drive.google.com/file/d/${encodeURIComponent(a.id)}/view` : `https://drive.google.com/uc?export=download&id=${encodeURIComponent(a.id)}`,
       })),
     })).sort((a, b) => String(b.data || '').localeCompare(String(a.data || '')));
 
@@ -162,7 +162,6 @@ export default async function handler(req) {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
         'Cache-Control': 'no-store',
       }
     });

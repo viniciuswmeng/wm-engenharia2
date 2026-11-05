@@ -7,13 +7,35 @@ import {
 } from "docx";
 import { TIMBRADO_TOPO_B64, TIMBRADO_RODAPE_B64 } from "./_timbrado.js";
 import { normalizar, linhasDocumento, duracaoTexto } from "../src/contratos/cronograma.js";
+import { membroDaEquipe } from "./_auth.js";
+
+// Limites contra abuso (documentos reais ficam muito abaixo disso)
+const MAX_JSON = 120000, MAX_TAREFAS = 300, MAX_LISTA = 80, MAX_TEXTO = 4000;
+function contarTarefas(c) {
+  let n = 0;
+  for (const e of Array.isArray(c) ? c : []) { n += 1 + (Array.isArray(e && e.tarefas) ? e.tarefas.length : 0); }
+  return n;
+}
+function validarForm(f) {
+  if (!f || typeof f !== "object" || Array.isArray(f)) return "Dados inválidos";
+  if (JSON.stringify(f).length > MAX_JSON) return "Contrato grande demais";
+  if (contarTarefas(f.cronograma) > MAX_TAREFAS) return "Cronograma com tarefas demais";
+  for (const k of ["servicos", "naoInclusos", "adicionaisInclusos", "testemunhas", "parcelas"]) if (f[k] != null && (!Array.isArray(f[k]) || f[k].length > MAX_LISTA)) return `Campo ${k} inválido`;
+  for (const [k, v] of Object.entries(f)) if (typeof v === "string" && v.length > MAX_TEXTO) return `Campo ${k} grande demais`;
+  return "";
+}
 
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
+  // só membros ativos da equipe geram contratos no papel timbrado
+  const eu = await membroDaEquipe(req.headers.authorization);
+  if (!eu) return res.status(401).json({ error: "Sessão expirada. Entre novamente no sistema." });
+
   const form = req.body;
-  if (!form) return res.status(400).json({ error: "Dados não enviados" });
+  const invalido = validarForm(form);
+  if (invalido) return res.status(400).json({ error: invalido });
 
   const fmtMoeda = v => isNaN(Number(v)) || v === "" ? "R$ 0,00"
     : Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -21,7 +43,7 @@ export default async function handler(req, res) {
   const entrada   = Number(form.valorTotal || 0) * Number(form.percEntrada || 0) / 100;
   const parcFinal = Number(form.valorTotal || 0) - entrada;
 
-  const dataFmt = d => { if (!d) return "___/___/______"; const [y,m,dd]=d.split("-"); return `${dd}/${m}/${y}`; };
+  const dataFmt = d => { if (!d) return "___/___/______"; const [y,m,dd]=String(d).split("-"); return `${dd}/${m}/${y}`; };
   const dataExtenso = d => { if (!d) return ""; return new Date(d+"T12:00:00").toLocaleDateString("pt-BR",{day:"numeric",month:"long",year:"numeric"}); };
   const extensoNum = n => ({"1":"uma","2":"duas","3":"três","4":"quatro","5":"cinco"}[n]||n);
   const extensoPrazo = n => ({"30":"trinta","45":"quarenta e cinco","60":"sessenta","65":"sessenta e cinco","90":"noventa","120":"cento e vinte"}[String(n)]||String(n));
@@ -211,8 +233,9 @@ export default async function handler(req, res) {
 
   const doc=new Document({styles:{default:{document:{run:{font:FONT,size:SZ}}}},sections:[secaoContrato,secaoAnexo,...(cronoRows.length?[secaoCrono]:[])]});
   const buffer=await Packer.toBuffer(doc);
-  const nomeArq=`Contrato_WM_${(form.nomeCompleto||"Contrato").replace(/\s+/g,"_")}.docx`;
+  const base=String(form.nomeCompleto||"Contrato").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^A-Za-z0-9._-]+/g,"_").slice(0,80)||"Contrato";
+  const nomeArq=`Contrato_WM_${base}.docx`;
   res.setHeader("Content-Type","application/vnd.openxmlformats-officedocument.wordprocessingml.document");
-  res.setHeader("Content-Disposition",`attachment; filename="${nomeArq}"`);
+  res.setHeader("Content-Disposition",`attachment; filename="${nomeArq}"; filename*=UTF-8''${encodeURIComponent(`Contrato_WM_${String(form.nomeCompleto||"Contrato").slice(0,80)}.docx`)}`);
   res.send(buffer);
 }

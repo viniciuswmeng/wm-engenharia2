@@ -947,6 +947,14 @@ export default function App(){
     if (!email) return;
     const b = ACESSOS_GOOGLE[email];
     const provisorios = Object.values(ACESSOS_GOOGLE).map(x => x.id);
+    // Segurança: conta desativada em Configurações perde o acesso (inclusive as contas fixas)
+    const doEmail = usuarios.filter(x => normEmail(x.email) === email);
+    const logadoDesativado = user && usuarios.some(x => x.id === user.id && x.ativo === false);
+    if (logadoDesativado || (doEmail.length && doEmail.every(x => x.ativo === false))) {
+      setAuthErro(`A conta ${email} está desativada. Fale com um administrador.`);
+      fazerLogout();
+      return;
+    }
     // Já logado com o cadastro certo: nada a fazer. Com id provisório (ex.: "jonathan"), refaz o vínculo.
     if (user && normEmail(user.email) === email && !(provisorios.includes(user.id) && usuarios.some(x => !provisorios.includes(x.id) && x.ativo !== false &&
       (normEmail(x.email) === email || (b && normNome(x.nome).split(" ")[0] === normNome(b.nome).split(" ")[0]))))) return;

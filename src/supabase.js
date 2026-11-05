@@ -462,12 +462,21 @@ export function iniciarRealtime({ onProjetosChange, onSessoesChange }) {
   return () => supabase.removeChannel(canal); // retorna função de cleanup
 }
 
+// Cabeçalho com a sessão Google/Supabase de quem está logado (as rotas /api exigem)
+export async function cabecalhoAuth() {
+  try {
+    const { data } = await authClient.auth.getSession();
+    const t = data?.session?.access_token;
+    return t ? { Authorization: `Bearer ${t}` } : {};
+  } catch { return {}; }
+}
+
 // ─── EMAIL VIA RESEND (chama a API da Vercel) ─────────────────────────────────
 export async function enviarEmail(tipo, dados) {
   try {
     const res = await fetch('/api/email', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(await cabecalhoAuth()) },
       body: JSON.stringify({ tipo, dados }),
     });
     const result = await res.json();

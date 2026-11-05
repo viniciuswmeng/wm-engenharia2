@@ -24,14 +24,8 @@ function provedor() {
   return null;
 }
 
-async function usuarioLogado(req) {
-  const tok = String(req.headers.authorization || "").replace(/^Bearer\s+/i, "");
-  if (!tok || !SUPABASE_URL) return null;
-  const r = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${tok}` } });
-  if (!r.ok) return null;
-  const u = await r.json();
-  return u?.email ? u : null;
-}
+// Só membros ATIVOS da equipe podem gastar a cota/chave de IA (não basta ter conta no Supabase Auth)
+const usuarioLogado = req => membroDaEquipe(req.headers.authorization);
 
 const CHECKLIST = {
   "Hidrossanitário": `
@@ -201,6 +195,8 @@ async function chamarClaude(chave, sistema, imagem, texto) {
   return { dados: j.content?.find(c => c.type === "tool_use")?.input || {}, modelo: MODELO_CLAUDE, tokens: j.usage || null };
 }
 
+import { membroDaEquipe } from "./_auth.js";
+
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ erro: "Use POST" });
   const prov = provedor();
@@ -208,7 +204,11 @@ export default async function handler(req, res) {
   const u = await usuarioLogado(req).catch(() => null);
   if (!u) return res.status(401).json({ erro: "Sessão expirada. Entre novamente no sistema." });
 
-  const { imagem, texto = "", pagina = 1, totalPaginas = 1, arquivo = "", disciplina = "Hidrossanitário", contexto = {}, tentativa = 0 } = req.body || {};
+  const { imagem, texto = "", pagina = 1, totalPaginas = 1, arquivo = "", disciplina: discBruta = "Hidrossanitário", contexto = {}, tentativa = 0 } = req.body || {};
+  // limites de entrada: evita abuso de custo e quebra do prompt
+  const disciplina = String(discBruta || "Hidrossanitário").slice(0, 40);
+  if (imagem != null && (typeof imagem !== "string" || imagem.length > 6_000_000)) return res.status(413).json({ erro: "Imagem grande demais." });
+  if (typeof texto !== "string" || (contexto && typeof contexto !== "object") || JSON.stringify(contexto || {}).length > 30000) return res.status(400).json({ erro: "Dados da prancha inválidos." });
   if (!imagem && !texto) return res.status(400).json({ erro: "Prancha sem imagem e sem texto." });
 
   const sistema = `Você é um engenheiro civil revisor de projetos (compatibilização e conformidade com as normas ABNT) do escritório WM Engenharia Integrada.

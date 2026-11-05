@@ -1,6 +1,7 @@
 // src/lembretes/hooks.js — dados da central, Web Push e avisos com o sistema aberto
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { gerarLembretes, lembretesDoUsuario } from "./regras.js";
+import { cabecalhoAuth } from "../supabase.js";
 
 const hojeISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 
@@ -138,7 +139,7 @@ export function usePush({ supabase, user }) {
   };
   const testar = async () => {
     try {
-      const r = await fetch("/api/push?acao=teste", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ usuarioId: user.id }) });
+      const r = await fetch("/api/push?acao=teste", { method: "POST", headers: { "Content-Type": "application/json", ...(await cabecalhoAuth()) }, body: JSON.stringify({ usuarioId: user.id }) });
       const j = await r.json().catch(() => ({}));
       if (r.ok) return "Teste enviado — deve aparecer no canto da tela";
       return j.erro || j.error || (r.status === 404 ? "nenhum computador ativo encontrado para você" : `erro ${r.status}`);

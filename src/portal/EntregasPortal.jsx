@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import Icone from "../ui/Icone.jsx";
 import { supabase, portal } from "../supabase.js";
 import { ESCOPO_DRIVE, drive, idDoLinkDrive, obterToken } from "../google/googleApi.js";
+import { DRIVE_ROOT_ID } from "../nucleo.jsx";
 
 const K = { mar: "#0a2557", azul: "#1565d8", tx: "#0f1f3d", sub: "#6b7a90", borda: "#e6ecf4", fundo: "#f3f6fb", verde: "#16a34a" };
 const inp = { width: "100%", boxSizing: "border-box", border: `1px solid #d9e2ee`, borderRadius: 9, padding: "8px 11px", fontSize: 13.5, fontFamily: "inherit", color: K.tx, background: "#fff" };
@@ -48,6 +49,10 @@ export default function EntregasPortal({ projeto, usuarioAtual }) {
       const info = await drive.info(token, pastaId);
       const arquivos = await drive.listarArvore(token, pastaId);
       if (!arquivos.length) { avisar("A pasta está vazia.", false); setEstado(""); return; }
+      // Segurança: nunca tornar pública a pasta raiz da WM, a de backups ou uma pasta grande demais
+      const proibida = pastaId === DRIVE_ROOT_ID || /backups sistema wm/i.test(info.name || "") || arquivos.some(a => /backups sistema wm/i.test(a.pasta || ""));
+      if (proibida || arquivos.length >= 600) { avisar("Esta pasta não pode ser publicada (pasta geral da WM, de backups ou com arquivos demais). Escolha a pasta de entregáveis deste projeto.", false); setEstado(""); return; }
+      if (!window.confirm(`Liberar para qualquer pessoa com o link a pasta “${info.name}” (${arquivos.length} arquivo(s)) no portal do cliente?`)) { setEstado(""); return; }
       setEstado("Liberando o acesso por link…");
       const publico = await drive.compartilharComLink(token, pastaId);
       const pacote = {
