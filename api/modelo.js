@@ -2,15 +2,16 @@
 // Endpoint público — dados do modelo IFC pelo token do link do cliente
 // Chamado pela página /modelo/[token]
 
+import { chaveServidor, authSb } from "./_sb.js";
 export const config = { runtime: 'edge' };
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
-const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY;
+const SUPABASE_KEY = chaveServidor();
 const BUCKET = 'modelos-ifc';
 
 async function supabaseGet(tabela, filtros = '') {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${tabela}?${filtros}`, {
-    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+    headers: { apikey: SUPABASE_KEY, ...authSb(SUPABASE_KEY) },
   });
   if (!res.ok) throw new Error(`Supabase error: ${res.status}`);
   return res.json();

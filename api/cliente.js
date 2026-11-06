@@ -2,16 +2,17 @@
 // Endpoint público — retorna dados do projeto pelo token do cliente
 // Chamado pela página /cliente/[token]
 
+import { chaveServidor, authSb } from "./_sb.js";
 export const config = { runtime: 'edge' };
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
-const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY;
+const SUPABASE_KEY = chaveServidor();
 
 async function supabaseGet(tabela, filtros = '') {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${tabela}?${filtros}`, {
     headers: {
       'apikey': SUPABASE_KEY,
-      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      ...authSb(SUPABASE_KEY),
     }
   });
   if (!res.ok) throw new Error(`Supabase error: ${res.status}`);
@@ -25,7 +26,7 @@ const faseDe = m => (m.fase === 'final' || m.fase === 'preliminar') ? m.fase : (
 async function linkAssinado(caminho) {
   try {
     const r = await fetch(`${SUPABASE_URL}/storage/v1/object/sign/obras-arquivos/${caminho.split('/').map(encodeURIComponent).join('/')}`, {
-      method: 'POST', headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' },
+      method: 'POST', headers: { apikey: SUPABASE_KEY, ...authSb(SUPABASE_KEY), 'Content-Type': 'application/json' },
       body: JSON.stringify({ expiresIn: 7 * 86400 }),
     });
     if (!r.ok) return '';

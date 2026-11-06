@@ -2,17 +2,18 @@
 // Vercel Cron Job — executa toda segunda-feira às 08h (BRT = 11h UTC)
 // Configurado no vercel.json
 
+import { chaveServidor, authSb } from "./_sb.js";
 export const config = { runtime: 'edge' };
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
-const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY;
+const SUPABASE_KEY = chaveServidor();
 const BASE_URL     = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
 
 async function supabaseGet(tabela, filtros = '') {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${tabela}?${filtros}`, {
     headers: {
       'apikey': SUPABASE_KEY,
-      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      ...authSb(SUPABASE_KEY),
     }
   });
   return res.json();
@@ -22,7 +23,7 @@ import { cronAutorizado } from './_auth.js';
 
 export default async function handler(req) {
   // keep-alive do Supabase (mesmo sem CRON_SECRET)
-  try { await fetch(`${SUPABASE_URL}/rest/v1/projetos?select=id&limit=1`, { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }); } catch { /* segue */ }
+  try { await fetch(`${SUPABASE_URL}/rest/v1/projetos?select=id&limit=1`, { headers: { apikey: SUPABASE_KEY, ...authSb(SUPABASE_KEY) } }); } catch { /* segue */ }
   const authHeader = req.headers.get('authorization');
   if (!cronAutorizado(authHeader)) {
     return new Response('Unauthorized', { status: 401 });

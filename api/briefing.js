@@ -4,15 +4,16 @@
 // POST /api/briefing {token, payload, final} → salva rascunho ou envio
 // Substitui o Google Apps Script do app local. Página: /briefing/[token]
 
+import { chaveServidor, authSb } from "./_sb.js";
 export const config = { runtime: 'edge' };
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
-const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY;
+const SUPABASE_KEY = chaveServidor();
 const TOKEN_OK = /^[A-Za-z0-9_-]{16,64}$/;
 
 const headers = {
   apikey: SUPABASE_KEY,
-  Authorization: `Bearer ${SUPABASE_KEY}`,
+  ...authSb(SUPABASE_KEY),
   'Content-Type': 'application/json',
 };
 

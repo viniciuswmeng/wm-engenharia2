@@ -1,9 +1,10 @@
 // api/_push.js — utilitários de Web Push e leitura do Supabase (não é rota)
+import { chaveServidor, authSb } from "./_sb.js";
 import webpush from "web-push";
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
-const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY;
-const H = () => ({ apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" });
+const SUPABASE_KEY = chaveServidor();
+const H = () => ({ apikey: SUPABASE_KEY, ...authSb(SUPABASE_KEY), "Content-Type": "application/json" });
 
 export async function sbGet(tabela, filtros = "") {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/${tabela}?${filtros}`, { headers: H() });

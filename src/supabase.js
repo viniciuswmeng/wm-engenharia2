@@ -7,13 +7,6 @@ import { createClient } from '@supabase/supabase-js';
 const SUPABASE_URL  = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// Cliente de dados: continua usando a chave pública (anon), sem sessão de usuário.
-// Assim o login com Google não altera o acesso às tabelas enquanto as regras do
-// banco (RLS) não forem revistas para usuários autenticados.
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, {
-  auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-});
-
 // "Manter conectado": com a opção ligada a sessão fica no localStorage (sobrevive ao
 // fechar o navegador); desligada, fica no sessionStorage (termina ao fechar).
 const LEMBRAR = 'wm-auth-lembrar';
@@ -36,6 +29,10 @@ const armazenamentoSessao = {
 export const authClient = createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth: { storageKey: 'wm-auth', storage: armazenamentoSessao, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
 });
+
+// Cliente de dados = o mesmo cliente da sessão: toda leitura/gravação vai com o login
+// Google de quem está usando, e o banco (RLS) só libera para membros ativos da equipe.
+export const supabase = authClient;
 
 // ─── PROJETOS ──────────────────────────────────────────────────────────────────
 export const db = {

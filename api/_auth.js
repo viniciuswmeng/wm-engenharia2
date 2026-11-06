@@ -6,7 +6,8 @@
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY;
-const SERVICE_KEY = () => String(process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+import { authSb, temChaveServico, chaveServidor } from "./_sb.js";
+const SERVICE_KEY = () => (temChaveServico() ? chaveServidor() : "");
 
 // Contas com acesso garantido (mesma lista de src/nucleo.jsx → ACESSOS_GOOGLE) + STAFF_EMAILS na Vercel
 export const ID_FIXO = { "jonathanmartins.eng@gmail.com": "jonathan", "vinicius.wilk13@gmail.com": "vinicius", "wmengenhariaintegrada@gmail.com": "wm", "estagiario.wmengenharia@gmail.com": "estagiario" };
@@ -47,7 +48,7 @@ export async function membroDaEquipe(authHeader) {
   let reg = null;
   try {
     const chave = SERVICE_KEY() || SUPABASE_KEY;
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/usuarios?select=id,email,ativo&email=ilike.${encodeURIComponent(email)}&limit=5`, { headers: { apikey: chave, Authorization: `Bearer ${SERVICE_KEY() ? chave : tok}` } });
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/usuarios?select=id,email,ativo&email=ilike.${encodeURIComponent(email)}&limit=5`, { headers: SERVICE_KEY() ? { apikey: chave, ...authSb(chave) } : { apikey: chave, Authorization: `Bearer ${tok}` } });
     if (r.ok) reg = (await r.json()).find(x => norm(x.email) === email) || null;
   } catch { /* segue */ }
   if (reg && reg.ativo === false) return null;
@@ -73,7 +74,7 @@ export async function emailDaEquipe(email) {
   const k = SERVICE_KEY();
   if (!k || !SUPABASE_URL) return false;
   try {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/usuarios?select=email,ativo&email=ilike.${encodeURIComponent(e)}&limit=5`, { headers: { apikey: k, Authorization: `Bearer ${k}` } });
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/usuarios?select=email,ativo&email=ilike.${encodeURIComponent(e)}&limit=5`, { headers: { apikey: k, ...authSb(k) } });
     if (!r.ok) return false;
     return (await r.json()).some(x => norm(x.email) === e && x.ativo !== false);
   } catch { return false; }
