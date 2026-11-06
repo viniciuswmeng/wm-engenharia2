@@ -8,6 +8,7 @@ const RESEND_API = 'https://api.resend.com/emails';
 const FROM       = 'WM Engenharia <noreply@engenhariaWM.com.br>';
 const GESTOR     = 'direcao@engenhariaWM.com.br';
 
+import { registrar } from "./_seguranca.js";
 import { autorizar, emailDaEquipe } from './_auth.js';
 
 // Escapa texto vindo do banco/requisição antes de entrar no HTML do e-mail
@@ -223,7 +224,7 @@ export default async function handler(req) {
 
   // Só o cron (CRON_SECRET) ou um membro ativo da equipe pode enviar
   const quem = await autorizar(req.headers.get('authorization'));
-  if (!quem) return json({ error: 'Não autorizado' }, 401);
+  if (!quem) { await registrar(req, 'api_negado', { rota: 'email' }); return json({ error: 'Não autorizado' }, 401); }
 
   let body;
   try { body = await req.json(); }

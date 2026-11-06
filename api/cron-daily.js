@@ -2,6 +2,7 @@
 // Vercel Cron Job — executa todo dia às 08h (BRT = UTC-3, então 11h UTC)
 // Configurado no vercel.json
 
+import { registrar } from "./_seguranca.js";
 import { chaveServidor, authSb } from "./_sb.js";
 export const config = { runtime: 'edge' };
 
@@ -37,6 +38,7 @@ export default async function handler(req) {
   // Segurança: só Vercel pode chamar este endpoint
   const authHeader = req.headers.get('authorization');
   if (!cronAutorizado(authHeader)) {
+    await registrar(req, 'cron_negado', { rota: 'cron-daily' });
     return new Response(JSON.stringify({ supabaseAtivo: ativo, aviso: 'não autorizado: só o keep-alive rodou' }), { status: 401 });
   }
 
@@ -99,6 +101,13 @@ export default async function handler(req) {
         dados: { projetos, sessoesDia: sessoes, usuarios }
       })
     });
+
+    // Segurança: procura contas novas no login que não são da equipe (alerta os gestores)
+    let seguranca = null;
+    try {
+      const r = await fetch(`${BASE_URL}/api/alerta-seguranca`, { method: 'POST', headers: { 'Content-Type': 'application/json', authorization: `Bearer ${process.env.CRON_SECRET}` }, body: JSON.stringify({ acao: 'auditoria' }) });
+      seguranca = await r.json().catch(() => null);
+    } catch (e) { console.error('auditoria segurança:', e); }
 
     // Notificação da manhã no computador (dias úteis) — lembretes e tarefas
     let lembretes = null;

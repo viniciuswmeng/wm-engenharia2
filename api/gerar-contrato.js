@@ -1,3 +1,4 @@
+import { registrar } from "./_seguranca.js";
 import {
   Document, Packer, Paragraph, TextRun, AlignmentType,
   BorderStyle, Table, TableRow, TableCell,
@@ -31,11 +32,11 @@ export default async function handler(req, res) {
 
   // só membros ativos da equipe geram contratos no papel timbrado
   const eu = await membroDaEquipe(req.headers.authorization);
-  if (!eu) return res.status(401).json({ error: "Sessão expirada. Entre novamente no sistema." });
+  if (!eu) { await registrar(req, "api_negado", { rota: "gerar-contrato" }); return res.status(401).json({ error: "Sessão expirada. Entre novamente no sistema." }); }
 
   const form = req.body;
   const invalido = validarForm(form);
-  if (invalido) return res.status(400).json({ error: invalido });
+  if (invalido) { await registrar(req, "dados_invalidos", { rota: "gerar-contrato", motivo: invalido }); return res.status(400).json({ error: invalido }); }
 
   const fmtMoeda = v => isNaN(Number(v)) || v === "" ? "R$ 0,00"
     : Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });

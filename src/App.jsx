@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from "react";
-import { db, supabase, authClient, iniciarRealtime, enviarEmail, chat, portal } from "./supabase.js";
+import { db, supabase, authClient, iniciarRealtime, enviarEmail, chat, portal, cabecalhoAuth } from "./supabase.js";
 import { SinoNotificacoes, PaginaTarefas } from "./lembretes/Central.jsx";
 import { useCentral, usePush, useAvisosAbertos } from "./lembretes/hooks.js";
 import * as syncHoras from "./sessoesSync.js";
@@ -890,6 +890,10 @@ export default function App(){
     pedirPermissaoNotificacao();
     setTimeout(()=>setModalH("checkin"),600);
   };
+  // Segurança: avisa o servidor (que confirma o e-mail no Supabase e alerta os gestores)
+  const avisarLoginNegado = async () => {
+    try { await fetch("/api/alerta-seguranca", { method: "POST", headers: { "Content-Type": "application/json", ...(await cabecalhoAuth()) }, body: JSON.stringify({ acao: "login_negado" }) }); } catch { /* sem rede */ }
+  };
   const fazerLogout = () => {
     localStorage.removeItem("intec_user_logado");
     setUser(null);
@@ -952,7 +956,7 @@ export default function App(){
     const logadoDesativado = user && usuarios.some(x => x.id === user.id && x.ativo === false);
     if (logadoDesativado || (doEmail.length && doEmail.every(x => x.ativo === false))) {
       setAuthErro(`A conta ${email} está desativada. Fale com um administrador.`);
-      fazerLogout();
+      avisarLoginNegado().finally(fazerLogout);
       return;
     }
     // Já logado com o cadastro certo: nada a fazer. Com id provisório (ex.: "jonathan"), refaz o vínculo.
@@ -974,7 +978,7 @@ export default function App(){
     else u = ativos.find(x => normEmail(x.email) === email);
     if (!u && !b) {
       setAuthErro(`A conta ${email} não tem acesso ao sistema. Peça a um administrador para cadastrar este e-mail em Configurações → Colaboradores.`);
-      authClient.auth.signOut();
+      avisarLoginNegado().finally(() => authClient.auth.signOut());
       return;
     }
     if (!u) {

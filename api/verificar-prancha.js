@@ -195,6 +195,7 @@ async function chamarClaude(chave, sistema, imagem, texto) {
   return { dados: j.content?.find(c => c.type === "tool_use")?.input || {}, modelo: MODELO_CLAUDE, tokens: j.usage || null };
 }
 
+import { registrar } from "./_seguranca.js";
 import { membroDaEquipe } from "./_auth.js";
 
 export default async function handler(req, res) {
@@ -202,7 +203,7 @@ export default async function handler(req, res) {
   const prov = provedor();
   if (!prov) return res.status(503).json({ erro: "A análise por IA não está configurada: cadastre a variável GEMINI_API_KEY (gratuita) ou ANTHROPIC_API_KEY na Vercel.", codigo: "sem_chave" });
   const u = await usuarioLogado(req).catch(() => null);
-  if (!u) return res.status(401).json({ erro: "Sessão expirada. Entre novamente no sistema." });
+  if (!u) { await registrar(req, "api_negado", { rota: "verificar-prancha" }); return res.status(401).json({ erro: "Sessão expirada. Entre novamente no sistema." }); }
 
   const { imagem, texto = "", pagina = 1, totalPaginas = 1, arquivo = "", disciplina: discBruta = "Hidrossanitário", contexto = {}, tentativa = 0 } = req.body || {};
   // limites de entrada: evita abuso de custo e quebra do prompt

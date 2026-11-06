@@ -3,6 +3,7 @@
 // Chamado pela página /cliente/[token]
 
 import { chaveServidor, authSb } from "./_sb.js";
+import { registrar } from "./_seguranca.js";
 export const config = { runtime: 'edge' };
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
@@ -53,6 +54,7 @@ export default async function handler(req) {
     );
 
     if (!projetos || projetos.length === 0) {
+      await registrar(req, 'token_invalido', { rota: 'cliente' });
       return new Response(JSON.stringify({ error: 'Link inválido ou expirado' }), {
         status: 404, headers: { 'Content-Type': 'application/json' }
       });

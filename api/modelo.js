@@ -2,6 +2,7 @@
 // Endpoint público — dados do modelo IFC pelo token do link do cliente
 // Chamado pela página /modelo/[token]
 
+import { registrar } from "./_seguranca.js";
 import { chaveServidor, authSb } from "./_sb.js";
 export const config = { runtime: 'edge' };
 
@@ -46,7 +47,7 @@ const publico = async m => ({ nome: m.nome, disciplina: m.disciplina || '', vers
 // /modelo/<token> abre um modelo; /modelo/<tokenA>-<tokenB>-... abre os modelos sobrepostos
 export default async function handler(req) {
   const param = new URL(req.url).searchParams.get('token') || '';
-  if (!/^[a-f0-9]{16,64}(-[a-f0-9]{16,64}){0,9}$/i.test(param)) return json({ error: 'Link inválido' }, 400);
+  if (!/^[a-f0-9]{16,64}(-[a-f0-9]{16,64}){0,9}$/i.test(param)) { await registrar(req, 'token_invalido', { rota: 'modelo' }); return json({ error: 'Link inválido' }, 400); }
   const tokens = [...new Set(param.split('-'))];
 
   try {
@@ -54,7 +55,7 @@ export default async function handler(req) {
     const porToken = new Map(achados.map(m => [m.token, m]));
     const lista = tokens.map(t => porToken.get(t)).filter(Boolean);
     const ativos = lista.filter(m => m.link_ativo !== false);
-    if (!lista.length) return json({ error: 'Link inválido ou expirado' }, 404);
+    if (!lista.length) { await registrar(req, 'token_invalido', { rota: 'modelo' }); return json({ error: 'Link inválido ou expirado' }, 404); }
     if (!ativos.length) return json({ error: 'Este link foi desativado pelo escritório' }, 403);
     const m = ativos[0];
 

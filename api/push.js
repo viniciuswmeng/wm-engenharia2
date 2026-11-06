@@ -1,6 +1,7 @@
 // api/push.js
 // GET  /api/push?acao=chave          → chave pública VAPID (para o navegador assinar)
 // POST /api/push?acao=teste {usuarioId} → envia uma notificação de teste ao usuário
+import { registrar } from "./_seguranca.js";
 import { enviarParaUsuario, pushConfigurado, chavePublica } from "./_push.js";
 import { membroDaEquipe, ID_FIXO } from "./_auth.js";
 
@@ -15,8 +16,8 @@ export default async function handler(req, res) {
     if (!usuarioId) return res.status(400).json({ error: "usuarioId obrigatório" });
     // só a própria pessoa logada pode mandar o teste para os próprios computadores
     const eu = await membroDaEquipe(req.headers.authorization);
-    if (!eu) return res.status(401).json({ error: "Sessão expirada. Entre novamente no sistema." });
-    if (usuarioId !== eu.id && usuarioId !== ID_FIXO[eu.email]) return res.status(403).json({ error: "Só é possível testar o seu próprio usuário" });
+    if (!eu) { await registrar(req, "api_negado", { rota: "push" }); return res.status(401).json({ error: "Sessão expirada. Entre novamente no sistema." }); }
+    if (usuarioId !== eu.id && usuarioId !== ID_FIXO[eu.email]) { await registrar(req, "acesso_outro_usuario", { quem: eu.email, alvo: usuarioId }); return res.status(403).json({ error: "Só é possível testar o seu próprio usuário" }); }
     try {
       const r = await enviarParaUsuario(usuarioId, { title: "WM Engenharia", body: "Notificações ativadas neste computador ✔", url: "/", tag: "wm-teste" });
       if (!r.enviados && !r.erro && !r.assinaturas) r.erro = "nenhum computador ativo encontrado para você";

@@ -2,6 +2,7 @@
 // Vercel Cron Job — executa toda segunda-feira às 08h (BRT = 11h UTC)
 // Configurado no vercel.json
 
+import { registrar } from "./_seguranca.js";
 import { chaveServidor, authSb } from "./_sb.js";
 export const config = { runtime: 'edge' };
 
@@ -26,6 +27,7 @@ export default async function handler(req) {
   try { await fetch(`${SUPABASE_URL}/rest/v1/projetos?select=id&limit=1`, { headers: { apikey: SUPABASE_KEY, ...authSb(SUPABASE_KEY) } }); } catch { /* segue */ }
   const authHeader = req.headers.get('authorization');
   if (!cronAutorizado(authHeader)) {
+    await registrar(req, 'cron_negado', { rota: 'cron-weekly' });
     return new Response('Unauthorized', { status: 401 });
   }
 

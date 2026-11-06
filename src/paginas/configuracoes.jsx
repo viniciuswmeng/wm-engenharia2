@@ -1,3 +1,4 @@
+import PainelSeguranca from "../seguranca/PainelSeguranca.jsx";
 import CartaoBackup from "../planejamento/CartaoBackup.jsx";
 import { useState, useRef, useEffect } from "react";
 import { Avatar, Btn, C, Card, DIAS_LABEL, DRIVE_ROOT_ID, InpC, SelC, TIPOS, calcHorasDia, calcHorasDiaSemana, calcHorasSemanais, expedientePadrao, expedienteParaDiaSemana, horaMin, labelExpediente, labelModoExpediente } from "../nucleo.jsx";
@@ -267,6 +268,8 @@ export function Configuracoes({usuarios,onSalvarUsuarios,usuarioAtual,onFoto}){
           ))}
         </div>
       </Card>
+
+      {["gestor","admin"].includes(usuarioAtual.perfil) && <Card><PainelSeguranca/></Card>}
 
       <Card>
         <h2 style={{color:C.marinho,margin:"0 0 16px",fontSize:16,fontWeight:700}}>Informações do Sistema</h2>
