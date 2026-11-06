@@ -172,3 +172,19 @@ export function montarPlano({ projetos, registros, usuario, periodos, semana, ag
 export const CORES_PLANO = ["#1565d8", "#0891b2", "#16a34a", "#d97706", "#7c3aed", "#db2777", "#0f766e", "#b45309", "#4f46e5", "#be123c"];
 export const corDoProjeto = (id, lista) => CORES_PLANO[Math.max(0, lista.indexOf(id)) % CORES_PLANO.length];
 export { DIAS };
+
+// Aplica os blocos ajustados à mão sobre o plano automático e refaz as contas
+export function aplicarAjustes(plano, blocos) {
+  if (!plano || !Array.isArray(blocos)) return plano;
+  const porProjeto = {};
+  blocos.forEach(b => { porProjeto[b.projetoId] = (porProjeto[b.projetoId] || 0) + b.horas; });
+  const metas = plano.metas.map(m => ({ ...m, alocado: porProjeto[m.id] || 0 }));
+  // projetos colocados à mão que não estavam nas metas aparecem na tabela também
+  const extras = [...new Set(blocos.map(b => b.projetoId))].filter(id => id && !metas.some(m => m.id === id)).map(id => {
+    const b = blocos.find(x => x.projetoId === id);
+    return { id, codigo: b.codigo, cliente: b.cliente, tipo: b.tipo, base: "incluído manualmente", parte: 1, minhaEstimativa: 0, gastoMeu: 0, restante: 0, meta: 0, alocado: porProjeto[id], entrega: null, atrasado: false };
+  });
+  const alocado = blocos.reduce((a, b) => a + b.horas, 0);
+  return { ...plano, blocos, metas: [...metas, ...extras], alocado, livre: Math.max(0, plano.capacidade - alocado),
+    semEspaco: Math.max(0, Math.round((plano.metaTotal - alocado) * 2) / 2), ajustado: true };
+}

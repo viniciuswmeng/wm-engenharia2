@@ -62,3 +62,40 @@ export const disponibilidade = {
     } catch { return {}; }
   },
 };
+
+// Ajustes feitos à mão no plano da semana (blocos movidos, trocados ou criados)
+const chavePlano = (u, s) => `wm-plano-${u}-${s}`;
+const HORA = /^([01]\d|2[0-3]):[0-5]\d$/;
+// Só guarda campos conhecidos e válidos (o plano é lido de volta e mostrado na agenda)
+export function blocoValido(b) {
+  if (!b || typeof b !== "object") return null;
+  const data = String(b.data || ""), inicio = String(b.inicio || ""), fim = String(b.fim || "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(data) || !HORA.test(inicio) || !HORA.test(fim) || fim <= inicio) return null;
+  const [hi, mi] = inicio.split(":").map(Number), [hf, mf] = fim.split(":").map(Number);
+  return { id: String(b.id || "").slice(0, 40) || Math.random().toString(36).slice(2, 10), data, dia: String(b.dia || "").slice(0, 10),
+    periodo: ["manha", "tarde", "noite"].includes(b.periodo) ? b.periodo : (hi < 12 ? "manha" : hi < 18 ? "tarde" : "noite"),
+    inicio, fim, horas: Math.round(((hf * 60 + mf) - (hi * 60 + mi)) / 30) / 2,
+    projetoId: String(b.projetoId || "").slice(0, 80), codigo: String(b.codigo || "").slice(0, 40), cliente: String(b.cliente || "").slice(0, 120), tipo: String(b.tipo || "").slice(0, 10) };
+}
+export const planoSemanal = {
+  async ler(usuarioId, semana) {
+    try {
+      const { data, error } = await supabase.from("plano_semanal").select("blocos").eq("usuario_id", String(usuarioId)).eq("semana", semana).maybeSingle();
+      if (error) throw error;
+      return data ? data.blocos : local.ler(chavePlano(usuarioId, semana), null);
+    } catch (e) { if (!tabelaFalta(e)) console.warn("plano_semanal:", e.message); return local.ler(chavePlano(usuarioId, semana), null); }
+  },
+  async salvar(usuarioId, semana, blocos) {
+    const limpos = (blocos || []).map(blocoValido).filter(Boolean).slice(0, 120);
+    local.gravar(chavePlano(usuarioId, semana), limpos);
+    try {
+      const { error } = await supabase.from("plano_semanal").upsert({ usuario_id: String(usuarioId), semana, blocos: limpos, atualizado_em: new Date().toISOString() });
+      if (error) throw error;
+      return true;
+    } catch (e) { if (!tabelaFalta(e)) throw e; return false; }
+  },
+  async limpar(usuarioId, semana) {
+    try { localStorage.removeItem(chavePlano(usuarioId, semana)); } catch { /* sem armazenamento */ }
+    try { await supabase.from("plano_semanal").delete().eq("usuario_id", String(usuarioId)).eq("semana", semana); } catch { /* sem tabela */ }
+  },
+};
