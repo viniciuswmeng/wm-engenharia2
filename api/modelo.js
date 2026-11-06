@@ -27,10 +27,21 @@ const TIPOS = {
   PP: 'Projeto de Piscina', PI: 'Projeto de Interiores',
 };
 
-const urlArquivo = path => `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${path.split('/').map(encodeURIComponent).join('/')}`;
+// Link temporário (2 h) assinado no servidor: desativar ou trocar o link corta o acesso ao arquivo
+async function urlArquivo(path) {
+  const caminho = String(path || '').split('/').map(encodeURIComponent).join('/');
+  if (!caminho || String(path).includes('..')) return '';
+  try {
+    const r = await fetch(`${SUPABASE_URL}/storage/v1/object/sign/${BUCKET}/${caminho}`, {
+      method: 'POST', headers: { apikey: SUPABASE_KEY, ...authSb(SUPABASE_KEY), 'Content-Type': 'application/json' }, body: JSON.stringify({ expiresIn: 7200 }),
+    });
+    if (r.ok) { const j = await r.json(); const u = j.signedURL || j.signedUrl || ''; if (u) return `${SUPABASE_URL}/storage/v1${u.startsWith('/') ? u : '/' + u}`; }
+  } catch { /* cai no link público */ }
+  return `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${caminho}`;
+}
 
-const publico = m => ({ nome: m.nome, disciplina: m.disciplina || '', versao: m.versao || '', observacao: m.observacao || '',
-  arquivo: m.arquivo || '', tamanhoKb: m.tamanho_kb || 0, criadoEm: m.created_at, token: m.token, url: urlArquivo(m.path_storage) });
+const publico = async m => ({ nome: m.nome, disciplina: m.disciplina || '', versao: m.versao || '', observacao: m.observacao || '',
+  arquivo: m.arquivo || '', tamanhoKb: m.tamanho_kb || 0, criadoEm: m.created_at, token: m.token, url: await urlArquivo(m.path_storage) });
 
 // /modelo/<token> abre um modelo; /modelo/<tokenA>-<tokenB>-... abre os modelos sobrepostos
 export default async function handler(req) {
@@ -58,7 +69,8 @@ export default async function handler(req) {
     }
 
     // Campos do 1º modelo no topo (compatível com links antigos) + lista completa
-    return json({ ...publico(m), projeto, outros, modelos: ativos.map(publico), indisponiveis: tokens.length - ativos.length });
+    const modelos = await Promise.all(ativos.map(publico));
+    return json({ ...modelos[0], projeto, outros, modelos, indisponiveis: tokens.length - ativos.length });
   } catch (err) {
     console.error('Erro modelo API:', err);
     return json({ error: 'Erro interno' }, 500);

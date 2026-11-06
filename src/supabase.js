@@ -346,7 +346,6 @@ function toUsuarioFront(r) {
     id:             r.id,
     nome:           r.nome,
     email:          r.email,
-    senha:          r.senha,
     perfil:         r.perfil,
     cor:            r.cor || '#2563a8',
     iniciais:       r.iniciais || r.nome?.slice(0,2).toUpperCase(),
@@ -363,7 +362,6 @@ function toUsuarioBack(u) {
     id:             u.id,
     nome:           u.nome,
     email:          u.email,
-    senha:          u.senha,
     perfil:         u.perfil,
     cor:            u.cor,
     iniciais:       u.iniciais,
@@ -681,9 +679,7 @@ export const chat = {
   assinarCanal(canalId, onMensagem) {
     const nomeCanal = `chat-msgs-${canalId}`;
     const sub = supabase.channel(nomeCanal);
-    sub.on('broadcast', { event: 'nova_msg' }, ({ payload }) => {
-      if(payload) onMensagem(payload);
-    });
+    // Segurança: só mensagens gravadas no banco (o Realtime aplica o RLS); sem broadcast forjável
     sub.on('postgres_changes',
       { event: 'INSERT', schema: 'public', table: 'chat_mensagens', filter: `canal_id=eq.${canalId}` },
       payload => { if(payload.new) onMensagem(payload.new); }
@@ -706,8 +702,6 @@ export const chat = {
                 arquivo_tamanho: arquivo?.tamanho||null })
       .select().single();
     if(error) throw error;
-    const ch = supabase.channel(`chat-msgs-${canalId}`);
-    ch.send({ type: 'broadcast', event: 'nova_msg', payload: data }).catch(()=>{});
     return data;
   },
 
@@ -731,21 +725,12 @@ export const chat = {
     return { url: publicUrl, nome: arquivo.name, tipo: tipoAudio?'audio':tipoImagem?'imagem':'documento', tamanho: arquivo.size };
   },
 
-  // Notifica um usuário de novo DM via Broadcast
-  async notificarNovoDM(paraUserId, canal) {
-    const ch = supabase.channel(`dm-notify-${paraUserId}`);
-    await ch.subscribe();
-    await ch.send({ type: 'broadcast', event: 'novo_dm', payload: canal });
-    supabase.removeChannel(ch);
-  },
+  // DM novo chega ao outro usuário pela inserção em chat_membros (Realtime com RLS)
+  async notificarNovoDM() { /* mantido por compatibilidade: o aviso agora vem do banco */ },
 
   // Escuta quando o usuário é adicionado a um DM
   assinarMembros(userId, onNovoCanal) {
     const sub = supabase.channel(`dm-notify-${userId}`);
-    sub.on('broadcast', { event: 'novo_dm' }, ({ payload }) => {
-      console.log('[Chat DM] Novo DM recebido via broadcast:', payload);
-      if(payload) onNovoCanal(payload);
-    });
     sub.on('postgres_changes',
       { event: 'INSERT', schema: 'public', table: 'chat_membros', filter: `usuario_id=eq.${userId}` },
       async payload => {

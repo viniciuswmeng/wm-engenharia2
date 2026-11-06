@@ -751,8 +751,8 @@ function carregarScript(src){
 }
 // Gera o PDF (4 folhas A4) a partir das páginas da proposta
 async function gerarArquivoPdf(nome){
-  await carregarScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
-  await carregarScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+  await carregarScript('/vendor/html2canvas-1.4.1.min.js');
+  await carregarScript('/vendor/jspdf-2.5.1.umd.min.js');
   const paginas=[...document.querySelectorAll('#docStack .page')];
   document.body.classList.add('gerando-pdf');
   try{

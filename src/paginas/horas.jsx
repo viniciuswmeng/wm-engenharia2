@@ -9,7 +9,7 @@ export function carregarJsPDF() {
   return new Promise((resolve) => {
     if (window.jspdf) { resolve(window.jspdf.jsPDF); return; }
     const s = document.createElement('script');
-    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    s.src = '/vendor/jspdf-2.5.1.umd.min.js';
     s.onload = () => resolve(window.jspdf.jsPDF);
     document.head.appendChild(s);
   });
@@ -19,7 +19,7 @@ export function carregarAutoTable() {
   return new Promise((resolve) => {
     if (window.jspdf?.jsPDF?.API?.autoTable) { resolve(); return; }
     const s = document.createElement('script');
-    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js';
+    s.src = '/vendor/jspdf-autotable-3.8.2.min.js';
     s.onload = () => resolve();
     document.head.appendChild(s);
   });

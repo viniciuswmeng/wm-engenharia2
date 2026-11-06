@@ -86,9 +86,10 @@ export const modelosIfc = {
   urlArquivo(path) { return supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl; },
 
   async baixar(modelo) {
-    const res = await fetch(this.urlArquivo(modelo.path));
-    if (!res.ok) throw new Error(`Não foi possível baixar o arquivo (${res.status}).`);
-    return res.arrayBuffer();
+    // download autenticado (o bucket fica privado; só a equipe logada lê)
+    const { data, error } = await supabase.storage.from(BUCKET).download(modelo.path);
+    if (error || !data) throw new Error(`Não foi possível baixar o arquivo (${error?.message || "erro"}).`);
+    return data.arrayBuffer();
   },
 
   linkCliente(token) { return `${window.location.origin}/modelo/${token}`; },

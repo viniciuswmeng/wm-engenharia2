@@ -1,7 +1,7 @@
 // Importação de quantitativos do Eberick (Resumo de Materiais exportado em .xlsx)
 import { BITOLAS_CMP, ELEMS_CMP, PRECO_ACO, PRECO_CONCRETO, novoModelo } from "./calculo.js";
 
-const XLSX_CDN = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+const XLSX_CDN = "/vendor/xlsx-0.18.5.full.min.js";
 
 function carregarScript(src) {
   return new Promise((resolve, reject) => {
