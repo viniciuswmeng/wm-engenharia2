@@ -1,5 +1,5 @@
 // Materiais de apoio enviados pelo sistema (Supabase: tabela materiais_apoio + Storage "materiais-apoio")
-import { supabase } from "../supabase.js";
+import { supabase, cabecalhoAuth } from "../supabase.js";
 import { corDisciplina } from "./materiais.js";
 
 const BUCKET = "materiais-apoio";
@@ -63,6 +63,7 @@ export const materiaisDb = {
   async excluir(m) {
     const { error } = await supabase.from("materiais_apoio").delete().eq("id", m.idBanco);
     if (error) throw amigavel(error, "a exclusão");
+    await supabase.from("materiais_texto").delete().eq("material_id", String(m.idBanco)).then(() => {}, () => {});
     await supabase.storage.from(BUCKET).remove([m.pathPdf, m.pathCapa].filter(Boolean)).catch(() => {});
   },
 };
@@ -107,4 +108,76 @@ export async function baixarArquivo(url, nome) {
     const a = document.createElement("a"); a.href = b; a.download = nome; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(b), 4000);
   } catch { window.open(url, "_blank", "noopener"); }
+}
+
+// ─── BUSCA NO CONTEÚDO E PERGUNTAS RÁPIDAS ─────────────────────────────────────
+export const chaveMaterial = m => (m.idBanco ? String(m.idBanco) : "padrao-" + m.id);
+const normTxt = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+// Lê o texto de todas as páginas (arquivo escolhido ou link do PDF)
+export async function extrairTexto(fonte) {
+  const pdfjs = await import("pdfjs-dist");
+  const { default: workerUrl } = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
+  pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+  const dados = fonte instanceof Blob ? new Uint8Array(await fonte.arrayBuffer()) : new Uint8Array(await (await fetch(fonte)).arrayBuffer());
+  const doc = await pdfjs.getDocument({ data: dados }).promise;
+  const paginas = [];
+  for (let i = 1; i <= Math.min(doc.numPages, 1500); i++) {
+    try {
+      const tc = await (await doc.getPage(i)).getTextContent();
+      const t = tc.items.map(x => x.str).join(" ").replace(/\s+/g, " ").trim().slice(0, 8000);
+      if (t) paginas.push({ n: i, t });
+    } catch { /* página ilegível */ }
+  }
+  await doc.destroy();
+  return paginas;
+}
+
+export const textoDb = {
+  async todos() {
+    const { data, error } = await supabase.from("materiais_texto").select("material_id,paginas,perguntas");
+    if (error) throw error;
+    return Object.fromEntries((data || []).map(r => [r.material_id, { paginas: r.paginas || [], perguntas: r.perguntas || [] }]));
+  },
+  async salvar(materialId, campos) {
+    const { error } = await supabase.from("materiais_texto").upsert({ material_id: materialId, ...campos, atualizado_em: new Date().toISOString() });
+    if (error) throw error;
+  },
+  async excluir(materialId) { await supabase.from("materiais_texto").delete().eq("material_id", materialId); },
+};
+
+export async function gerarPerguntas(titulo, paginas) {
+  const r = await fetch("/api/material-perguntas", { method: "POST", headers: { "Content-Type": "application/json", ...(await cabecalhoAuth()) }, body: JSON.stringify({ titulo, paginas }) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.erro || `erro ${r.status}`);
+  return j.perguntas || [];
+}
+
+// Lê o PDF, guarda o texto e (opcional) gera as perguntas rápidas
+export async function indexarMaterial(m, { arquivo, comPerguntas = true } = {}) {
+  const paginas = await extrairTexto(arquivo || m.arquivo);
+  let perguntas = [];
+  if (comPerguntas && paginas.length) { try { perguntas = await gerarPerguntas(m.titulo, paginas); } catch (e) { console.warn("perguntas:", e.message); } }
+  await textoDb.salvar(chaveMaterial(m), { paginas, perguntas });
+  return { paginas, perguntas };
+}
+
+// Procura o termo no texto: devolve [{ m, pagina, trecho:[antes, achado, depois] }]
+export function buscarConteudo(lista, indice, busca, limite = 30) {
+  const q = normTxt(busca).trim();
+  if (q.length < 3) return [];
+  const termos = q.split(/\s+/).filter(t => t.length >= 2);
+  const achados = [];
+  for (const m of lista) {
+    const ix = indice[chaveMaterial(m)];
+    for (const p of ix?.paginas || []) {
+      const n = normTxt(p.t);
+      if (!termos.every(t => n.includes(t))) continue;
+      const pos = n.indexOf(termos[0]);
+      const ini = Math.max(0, pos - 70), fim = Math.min(p.t.length, pos + termos[0].length + 110);
+      achados.push({ m, pagina: p.n, trecho: [(ini ? "…" : "") + p.t.slice(ini, pos), p.t.slice(pos, pos + termos[0].length), p.t.slice(pos + termos[0].length, fim) + (fim < p.t.length ? "…" : "")] });
+      if (achados.length >= limite) return achados;
+    }
+  }
+  return achados;
 }

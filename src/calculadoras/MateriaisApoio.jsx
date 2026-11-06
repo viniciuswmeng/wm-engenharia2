@@ -3,7 +3,7 @@ import { useMemo, useRef, useState } from "react";
 import Icone from "../ui/Icone.jsx";
 import { fundoModal, caixaModal, CabecalhoModal } from "../ui/ds.jsx";
 import { DISCIPLINAS_MATERIAL, filtrarMateriais } from "./materiais.js";
-import { analisarPdf, baixarArquivo, materiaisDb, LIMITE_MB_MATERIAL } from "./dadosMateriais.js";
+import { analisarPdf, baixarArquivo, buscarConteudo, materiaisDb, LIMITE_MB_MATERIAL } from "./dadosMateriais.js";
 
 const K = { mar: "#0a2557", azul: "#1565d8", tx: "#0f1f3d", sub: "#6b7a90", borda: "#e6ecf4", fundo: "#f3f6fb" };
 const btn = (pri, extra = {}) => ({
@@ -24,10 +24,35 @@ function Capa({ m, largura }) {
       </div>;
 }
 
-export function ListaMateriais({ lista, busca = "", disciplina = "", onAbrir, onAdicionar, onExcluir }) {
+// Resultados da busca dentro do texto dos PDFs
+function ResultadosConteudo({ achados, status, onAbrir }) {
+  if (!achados.length && !status) return null;
+  return (
+    <section aria-label="Encontrado dentro dos PDFs" style={{ background: "#fff", border: `1px solid ${K.borda}`, borderRadius: 16, padding: "14px 16px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: achados.length ? 10 : 0 }}>
+        <span style={{ color: K.azul }}><Icone nome="busca" tam={16} /></span>
+        <b style={{ fontSize: 14, color: K.mar }}>Dentro dos PDFs</b>
+        <span style={{ fontSize: 12.5, color: K.sub }}>{achados.length ? `${achados.length}${achados.length >= 30 ? "+" : ""} trecho(s)` : ""}{status ? (achados.length ? " · " : "") + status : ""}</span>
+      </div>
+      <div style={{ display: "grid", gap: 6, maxHeight: 360, overflowY: "auto" }}>
+        {achados.map((a, i) => (
+          <button key={i} onClick={() => onAbrir(a.m, a.pagina)} style={{ textAlign: "left", border: `1px solid ${K.borda}`, background: K.fundo, borderRadius: 10, padding: "8px 11px", cursor: "pointer", fontFamily: "inherit" }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: K.mar }}>{a.m.titulo} <span style={{ color: K.azul, fontWeight: 600 }}>· página {a.pagina}</span></div>
+            <div style={{ fontSize: 12.5, color: K.tx, lineHeight: 1.45, marginTop: 2 }}>{a.trecho[0]}<mark style={{ background: "#fde68a", color: K.tx, padding: "0 1px", borderRadius: 3 }}>{a.trecho[1]}</mark>{a.trecho[2]}</div>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export function ListaMateriais({ lista, busca = "", disciplina = "", indice = {}, statusIndice = "", onAbrir, onAdicionar, onExcluir }) {
   const filtrados = filtrarMateriais(lista, busca, disciplina);
+  const daDisciplina = lista.filter(m => !disciplina || m.disciplina === disciplina);
+  const achados = useMemo(() => buscarConteudo(daDisciplina, indice, busca), [daDisciplina, indice, busca]);
   return (
     <div style={{ display: "grid", gap: 14 }}>
+      {busca.trim().length >= 3 && <ResultadosConteudo achados={achados} status={statusIndice} onAbrir={onAbrir} />}
       <button onClick={onAdicionar} className="wm-card-projeto"
         style={{ display: "flex", alignItems: "center", gap: 14, background: "#fff", border: `1.5px dashed #b9cff2`, borderRadius: 16, padding: "14px 18px", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
         <span style={{ width: 42, height: 42, borderRadius: 12, background: "#e9f1fd", color: K.azul, display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}><Icone nome="mais" tam={22} /></span>
@@ -37,7 +62,7 @@ export function ListaMateriais({ lista, busca = "", disciplina = "", onAbrir, on
         </span>
       </button>
       {!filtrados.length ? (
-        <p style={{ color: K.sub, fontSize: 14, margin: "6px 0" }}>Nenhum material encontrado{disciplina ? ` em ${disciplina}` : ""}{busca ? ` para “${busca}”` : ""}.</p>
+        <p style={{ color: K.sub, fontSize: 14, margin: "6px 0" }}>Nenhum material com esse nome ou norma{disciplina ? ` em ${disciplina}` : ""}{busca ? ` para “${busca}”` : ""}.</p>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(420px,1fr))", gap: 14 }} className="wm-materiais">
           {filtrados.map(m => (
@@ -110,7 +135,7 @@ export function ModalAdicionarMaterial({ usuarioAtual, onSalvo, onFechar }) {
         arquivo, capa: analise?.capa, titulo: f.titulo.trim(), disciplina, revisao: f.revisao.trim(), autor: f.autor.trim(), resumo: f.resumo.trim(),
         normas: f.normas.split(/[,;]/).map(x => x.trim()).filter(Boolean), paginas: analise?.paginas || null, criadoPor: usuarioAtual?.nome,
       });
-      onSalvo(m);
+      onSalvo(m, arquivo);
     } catch (e) { setErro(e.message); } finally { setSalvando(false); }
   }
   const capaUrl = useMemo(() => (analise?.capa ? URL.createObjectURL(analise.capa) : null), [analise]);
@@ -167,8 +192,34 @@ export function ModalAdicionarMaterial({ usuarioAtual, onSalvo, onFechar }) {
   );
 }
 
-export function LeitorMaterial({ material: m, onVoltar }) {
+// Perguntas rápidas geradas a partir do PDF (clique mostra a resposta e leva à página)
+function PerguntasRapidas({ perguntas, status, onGerar, onPagina }) {
+  const [aberta, setAberta] = useState(null);
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: K.sub, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8 }}>Perguntas rápidas</div>
+      {perguntas?.length ? (
+        <div style={{ display: "grid", gap: 6 }}>
+          {perguntas.map((q, i) => (
+            <div key={i} style={{ border: `1px solid ${aberta === i ? "#bcd3f5" : K.borda}`, borderRadius: 10, background: aberta === i ? "#f7faff" : "#fff" }}>
+              <button onClick={() => setAberta(aberta === i ? null : i)} aria-expanded={aberta === i} style={{ width: "100%", textAlign: "left", border: "none", background: "none", padding: "8px 10px", cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, color: K.tx, lineHeight: 1.4 }}>{q.pergunta}</button>
+              {aberta === i && <div style={{ padding: "0 10px 9px", fontSize: 12.5, color: K.tx, lineHeight: 1.5 }}>
+                {q.resposta}
+                <div><button onClick={() => onPagina(q.pagina)} style={{ border: "none", background: "none", color: K.azul, fontWeight: 600, fontSize: 12, padding: "4px 0 0", cursor: "pointer", fontFamily: "inherit" }}>Ver na página {q.pagina} →</button></div>
+              </div>}
+            </div>
+          ))}
+        </div>
+      ) : <p style={{ margin: "0 0 6px", fontSize: 12.5, color: K.sub }}>{status || "Ainda não geradas para este material."}</p>}
+      {onGerar && <button onClick={onGerar} disabled={!!status} style={btn(false, { marginTop: 8, padding: "6px 10px", fontSize: 12.5, opacity: status ? 0.6 : 1 })}>{perguntas?.length ? "Gerar novas perguntas" : "Gerar perguntas rápidas"}</button>}
+      <div style={{ fontSize: 11, color: "#8a97ab", marginTop: 6 }}>Geradas por IA a partir do texto do PDF — confira na página indicada.</div>
+    </div>
+  );
+}
+
+export function LeitorMaterial({ material: m, pagina = 1, perguntas, statusPerguntas = "", onGerarPerguntas, onVoltar }) {
   const [semVisualizador] = useState(() => window.matchMedia?.("(pointer: coarse), (max-width: 760px)").matches);
+  const [pag, setPag] = useState(pagina);
   if (!m) return null;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -190,6 +241,7 @@ export function LeitorMaterial({ material: m, onVoltar }) {
       </div>
       <div className="wm-leitor" style={{ display: "grid", gridTemplateColumns: "260px minmax(0,1fr)", gap: 16, alignItems: "start" }}>
         <aside className="wm-leitor-sumario" style={{ background: "#fff", border: `1px solid ${K.borda}`, borderRadius: 16, padding: 16 }}>
+          <PerguntasRapidas perguntas={perguntas} status={statusPerguntas} onGerar={onGerarPerguntas} onPagina={setPag} />
           {m.topicos?.length > 0 && <>
             <div style={{ fontSize: 11, fontWeight: 700, color: K.sub, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 8 }}>Conteúdo</div>
             <ol style={{ margin: "0 0 16px", paddingLeft: 20, display: "grid", gap: 6, fontSize: 13, color: K.tx, lineHeight: 1.4 }}>
@@ -211,7 +263,7 @@ export function LeitorMaterial({ material: m, onVoltar }) {
           </a>
         ) : (
           <div style={{ background: "#525659", borderRadius: 16, overflow: "hidden", border: `1px solid ${K.borda}`, height: "calc(100vh - 250px)", minHeight: 520 }}>
-            <iframe src={`${m.arquivo}#view=FitH`} title={m.titulo} style={{ width: "100%", height: "100%", border: "none", display: "block" }} />
+            <iframe key={pag} src={`${m.arquivo}#page=${Math.max(1, Number(pag) || 1)}&view=FitH`} title={m.titulo} style={{ width: "100%", height: "100%", border: "none", display: "block" }} />
           </div>
         )}
       </div>

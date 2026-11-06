@@ -3,7 +3,7 @@ import Icone from "../ui/Icone.jsx";
 import { Abas } from "../ui/ds.jsx";
 import { ListaMateriais, LeitorMaterial, ModalAdicionarMaterial } from "./MateriaisApoio.jsx";
 import { MATERIAIS_PADRAO } from "./materiais.js";
-import { materiaisDb } from "./dadosMateriais.js";
+import { chaveMaterial, indexarMaterial, materiaisDb, textoDb, gerarPerguntas } from "./dadosMateriais.js";
 
 const numParseBR = (v, def=0) => parseFloat(String(v||'').replace(',','.')) || def;
 
@@ -1868,6 +1868,45 @@ export function AbaCalculadoras({ usuarioAtual } = {}) {
     return () => { vivo = false; };
   }, []);
   const materiais = [...MATERIAIS_PADRAO, ...enviados];
+  // Índice do texto dos PDFs (busca no conteúdo) e perguntas rápidas
+  const [indice, setIndice] = useState({});
+  const [statusIndice, setStatusIndice] = useState("");
+  const [statusPerg, setStatusPerg] = useState("");
+  const tentados = useRef(new Set());
+  useEffect(() => {
+    if (aba !== 'materiais') return;
+    let vivo = true;
+    textoDb.todos().then(ix => { if (vivo) setIndice(i => ({ ...ix, ...i })); }).catch(() => {});
+    return () => { vivo = false; };
+  }, [aba]);
+  // Ao buscar, lê no navegador os PDFs que ainda não têm o texto guardado (uma vez por material)
+  useEffect(() => {
+    if (aba !== 'materiais' || busca.trim().length < 3) return;
+    const faltam = materiais.filter(m => !indice[chaveMaterial(m)] && !tentados.current.has(chaveMaterial(m)));
+    if (!faltam.length) return;
+    let vivo = true;
+    (async () => {
+      for (let i = 0; i < faltam.length && vivo; i++) {
+        const m = faltam[i]; tentados.current.add(chaveMaterial(m));
+        setStatusIndice(`preparando a busca nos PDFs (${i + 1}/${faltam.length})…`);
+        try { const ix = await indexarMaterial(m, { comPerguntas: false }); if (vivo) setIndice(x => ({ ...x, [chaveMaterial(m)]: ix })); }
+        catch (e) { console.warn("índice", m.titulo, e.message); }
+      }
+      if (vivo) setStatusIndice("");
+    })();
+    return () => { vivo = false; setStatusIndice(""); };
+  }, [aba, busca, materiais.length, indice]); // eslint-disable-line react-hooks/exhaustive-deps
+  async function gerarPerguntasDe(m) {
+    setStatusPerg("Gerando perguntas a partir do PDF…");
+    try {
+      const k = chaveMaterial(m);
+      const paginas = indice[k]?.paginas?.length ? indice[k].paginas : (await indexarMaterial(m, { comPerguntas: false })).paginas;
+      const perguntas = await gerarPerguntas(m.titulo, paginas);
+      await textoDb.salvar(k, { paginas, perguntas });
+      setIndice(x => ({ ...x, [k]: { paginas, perguntas } }));
+      setStatusPerg("");
+    } catch (e) { setStatusPerg("Não foi possível gerar: " + e.message); setTimeout(() => setStatusPerg(""), 6000); }
+  }
   const disciplinasMat = [...new Set(materiais.map(m => m.disciplina))].sort((a, b) => a.localeCompare(b, "pt-BR"));
   async function excluirMaterial(m) {
     if (!window.confirm(`Excluir "${m.titulo}"? O PDF sai do sistema para toda a equipe.`)) return;
@@ -1938,7 +1977,8 @@ export function AbaCalculadoras({ usuarioAtual } = {}) {
   }
 
   // ── Material aberto ──
-  if (material) return <LeitorMaterial material={material} onVoltar={()=>setMaterial(null)}/>;
+  if (material) return <LeitorMaterial key={material.m.id + ':' + material.pagina} material={material.m} pagina={material.pagina} perguntas={indice[chaveMaterial(material.m)]?.perguntas}
+    statusPerguntas={statusPerg} onGerarPerguntas={()=>gerarPerguntasDe(material.m)} onVoltar={()=>setMaterial(null)}/>;
 
   // ── Grade de calculadoras ──
   const q = busca.trim().toLowerCase();
@@ -1957,7 +1997,7 @@ export function AbaCalculadoras({ usuarioAtual } = {}) {
               {disciplinasMat.map(d => <option key={d} value={d}>{d} ({materiais.filter(m=>m.disciplina===d).length})</option>)}
             </select>
           )}
-          <input value={busca} onChange={e=>setBusca(e.target.value)} placeholder={aba==='calc'?'Buscar calculadora…':'Buscar por nome, norma ou assunto…'} aria-label="Buscar"
+          <input value={busca} onChange={e=>setBusca(e.target.value)} placeholder={aba==='calc'?'Buscar calculadora…':'Buscar no nome, nas normas e dentro dos PDFs…'} aria-label="Buscar"
             style={{border:'1px solid #d9e2ee',borderRadius:10,padding:'10px 14px',fontSize:14,minWidth:260,background:'#fff'}}/>
         </div>
       </div>
@@ -1969,10 +2009,12 @@ export function AbaCalculadoras({ usuarioAtual } = {}) {
 
       {aba==='materiais' && avisoMat && <div role="status" style={{fontSize:13.5,fontWeight:600,color:'#166534',background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:12,padding:'10px 14px'}}>{avisoMat}</div>}
       {aba==='materiais' && erroMat && <div role="alert" style={{fontSize:13,color:'#92400e',background:'#fffbeb',border:'1px solid #fde68a',borderRadius:12,padding:'10px 14px'}}>Os guias padrão estão disponíveis, mas os materiais enviados não puderam ser carregados: {erroMat}</div>}
-      {aba==='materiais' && <ListaMateriais lista={materiais} busca={busca} disciplina={disciplina} onAbrir={setMaterial}
+      {aba==='materiais' && <ListaMateriais lista={materiais} busca={busca} disciplina={disciplina} indice={indice} statusIndice={statusIndice} onAbrir={(m, pagina)=>setMaterial({ m, pagina: pagina || 1 })}
         onAdicionar={()=>setAdicionando(true)} onExcluir={excluirMaterial}/>}
       {adicionando && <ModalAdicionarMaterial usuarioAtual={usuarioAtual} onFechar={()=>setAdicionando(false)}
-        onSalvo={m=>{ setEnviados(l=>[m,...l]); setAdicionando(false); setDisciplina(""); setAvisoMat(`“${m.titulo}” adicionado aos materiais de apoio.`); setTimeout(()=>setAvisoMat(""),4000); }}/>}
+        onSalvo={(m, arquivo)=>{ setEnviados(l=>[m,...l]); setAdicionando(false); setDisciplina(""); setAvisoMat(`“${m.titulo}” adicionado. Lendo o PDF e gerando as perguntas rápidas…`);
+          indexarMaterial(m, { arquivo }).then(ix => { setIndice(x => ({ ...x, [chaveMaterial(m)]: ix })); setAvisoMat(ix.perguntas.length ? `“${m.titulo}”: busca no conteúdo e ${ix.perguntas.length} perguntas rápidas prontas.` : `“${m.titulo}”: busca no conteúdo pronta.`); })
+            .catch(() => setAvisoMat(`“${m.titulo}” adicionado (não foi possível ler o texto do PDF).`)).finally(() => setTimeout(()=>setAvisoMat(""),6000)); }}/>}
 
       {aba==='calc' && GRUPOS.map(grupo => {
         const itens = grupo.items.filter(i => !q || `${i.label} ${i.desc}`.toLowerCase().includes(q));
