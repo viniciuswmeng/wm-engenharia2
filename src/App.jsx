@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from "react";
 import { db, supabase, authClient, iniciarRealtime, enviarEmail, chat, portal, cabecalhoAuth } from "./supabase.js";
+import { usePermissoes } from "./seguranca/permissoes.js";
 import { SinoNotificacoes, PaginaTarefas } from "./lembretes/Central.jsx";
 import { useCentral, usePush, useAvisosAbertos } from "./lembretes/hooks.js";
 import * as syncHoras from "./sessoesSync.js";
@@ -900,6 +901,9 @@ export default function App(){
     authClient.auth.signOut().catch(()=>{});
   };
 
+  // ── Permissões dos colaboradores (definidas pelos gestores) ──
+  const permissoes = usePermissoes(user);
+
   // ── Central de lembretes e tarefas ──
   const central = useCentral({ supabase, user, usuarios, projetos, registros });
   const push = usePush({ supabase, user });
@@ -1043,6 +1047,13 @@ export default function App(){
 
 
 
+  // Colaborador: só as abas liberadas pelos gestores (dashboard, configurações e ajuda sempre)
+  const abasPermitidas = abasMenu.filter(a => ["dashboard","config","ajuda"].includes(a.id) || permissoes.abas[a.id] !== false);
+  abasMenu.length = 0; abasMenu.push(...abasPermitidas);
+  if (!abasMenu.some(a => a.id === aba) && !["ajuda","config","dashboard"].includes(aba)) queueMicrotask(() => setAba("dashboard"));
+  const ehMeuProjeto = p => [p.responsavel, p.coresponsavel, p.coresponsavel2, p.coresponsavel3].includes(user.nome);
+  const projetosAba = isColab && !permissoes.projetos.todosProjetos ? projetos.filter(ehMeuProjeto) : projetos;
+
   // Itens do menu lateral: as abas de um mesmo grupo aparecem como um item só
   const itensMenu = [];
   abasMenu.filter(a=>a.grupo!=="config").forEach(a=>{
@@ -1136,8 +1147,8 @@ export default function App(){
           <Suspense fallback={<CarregandoPagina/>}>
             {barraSubAbas}
             {CABECALHOS[aba]&&<CabecalhoPagina {...CABECALHOS[aba]}/>} 
-        {aba==="dashboard" &&<Dashboard projetos={projetos} onAbrirProjeto={abrirP} drive={drive} onImportar={importar} usuarioAtual={user} onIrPara={setAba}/>}
-        {aba==="projetos"  &&<ListaProjetos projetos={projetos} onAbrirProjeto={abrirP} onNovoProjeto={novoP} usuarios={usuarios} usuarioAtual={user}/>}
+        {aba==="dashboard" &&<Dashboard projetos={projetos} onAbrirProjeto={abrirP} drive={drive} onImportar={importar} usuarioAtual={user} onIrPara={setAba} permissoes={permissoes.dashboard}/>}
+        {aba==="projetos"  &&<ListaProjetos projetos={projetosAba} onAbrirProjeto={abrirP} onNovoProjeto={novoP} usuarios={usuarios} usuarioAtual={user}/>}
         {aba==="financeiro"&&<Financeiro projetos={projetos}/>}
         {aba==="horas"     &&<AbaHoras registros={registros} setRegistros={setRegistros} usuarios={usuarios} projetos={projetos} usuarioAtual={user} calendario={calendario} onAbrirEncerramento={()=>setModalH("encerramento")}/>}
         {aba==="agenda"    &&<AbaAgenda calendario={calendario} usuarioAtual={user} registros={registros} usuarios={usuarios} projetos={projetos}/>}

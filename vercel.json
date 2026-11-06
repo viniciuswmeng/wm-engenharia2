@@ -67,5 +67,18 @@
         }
       ]
     }
+  ],
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "wm-engenharia2.vercel.app"
+        }
+      ],
+      "destination": "https://sistema.wmengenhariaintegrada.com.br/:path*",
+      "permanent": true
+    }
   ]
 }

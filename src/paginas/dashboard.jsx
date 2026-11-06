@@ -131,11 +131,14 @@ function GraficoReceita({ meses }) {
   );
 }
 
-export function Dashboard({ projetos, onAbrirProjeto, drive, onImportar, usuarioAtual, onIrPara }) {
+export function Dashboard({ projetos, onAbrirProjeto, drive, onImportar, usuarioAtual, onIrPara, permissoes }) {
   const [abaD, setAbaD] = useState("visao");
   const isColab = usuarioAtual?.perfil === "colaborador";
+  // o que o colaborador pode ver (gestor/admin recebem tudo liberado)
+  const pd = { todosProjetos: true, indicadores: true, receita: true, porTipo: true, abertos: true, alertas: true, entregas: true, drive: true, ...(permissoes || {}) };
+  const soMeus = isColab && !pd.todosProjetos;
   const ehMeu = p => [p.responsavel, p.coresponsavel, p.coresponsavel2, p.coresponsavel3].includes(usuarioAtual?.nome);
-  const visiveis = useMemo(() => projetos.filter(p => !isColab || ehMeu(p)), [projetos, isColab]); // eslint-disable-line react-hooks/exhaustive-deps
+  const visiveis = useMemo(() => projetos.filter(p => !soMeus || ehMeu(p)), [projetos, soMeus]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const d = useMemo(() => {
     const meses = ultimosMeses(6), agora = new Date(), mes30 = new Date(agora.getTime() - 30 * 864e5);
@@ -168,22 +171,22 @@ export function Dashboard({ projetos, onAbrirProjeto, drive, onImportar, usuario
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
-      <TituloPagina titulo="Visão Geral" subtitulo={isColab ? `Projetos atribuídos a ${usuarioAtual?.nome}` : "Acompanhe o desempenho dos seus projetos e da sua empresa em um só lugar."} direita={<CartaoData />} />
+      <TituloPagina titulo="Visão Geral" subtitulo={soMeus ? `Projetos atribuídos a ${usuarioAtual?.nome}` : "Acompanhe o desempenho dos seus projetos e da sua empresa em um só lugar."} direita={<CartaoData />} />
 
-      <Abas style={{alignSelf:"flex-start"}} valor={abaD} onChange={setAbaD} itens={[{ id:"visao", label:"Visão geral" }, { id:"alertas", label:"Alertas", badge:totalAlertas || null }, { id:"entregas", label:"Entregas" }]} />
+      <Abas style={{alignSelf:"flex-start"}} valor={abaD} onChange={setAbaD} itens={[{ id:"visao", label:"Visão geral" }, ...(pd.alertas ? [{ id:"alertas", label:"Alertas", badge:totalAlertas || null }] : []), ...(pd.entregas ? [{ id:"entregas", label:"Entregas" }] : [])]} />
 
-      {abaD === "alertas" && <PainelAlertas projetos={visiveis} onAbrirProjeto={onAbrirProjeto} />}
-      {abaD === "entregas" && <PainelEntregas projetos={visiveis} onAbrirProjeto={onAbrirProjeto} />}
+      {abaD === "alertas" && pd.alertas && <PainelAlertas projetos={visiveis} onAbrirProjeto={onAbrirProjeto} />}
+      {abaD === "entregas" && pd.entregas && <PainelEntregas projetos={visiveis} onAbrirProjeto={onAbrirProjeto} />}
 
       {abaD === "visao" && <>
-        {!isColab && <PainelDrive drive={drive} projetosExistentes={projetos} onImportar={onImportar} />}
+        {pd.drive && <PainelDrive drive={drive} projetosExistentes={projetos} onImportar={onImportar} />}
 
-        <div className="wm-kpis">
+        {pd.indicadores && <div className="wm-kpis">
           <Indicador tema="azul" icone="pasta" titulo="Projetos ativos" valor={d.ativos.length} legenda="em andamento" variacao={d.novos30} barras={d.barrasAtivos} onClick={() => ir("projetos")} />
           <Indicador tema="verde" icone="check" titulo="Projetos concluídos" valor={d.concl.length} legenda="finalizados" variacao={d.concl30} barras={d.barrasConcl} onClick={() => ir("projetos")} />
           <Indicador tema="vermelho" icone="alerta" titulo="Projetos atrasados" valor={d.atrasados} legenda="em atraso" onClick={() => setAbaD("alertas")} />
           <Indicador tema="ambar" icone="pausa" titulo="Projetos pausados" valor={d.pausados} legenda="temporariamente" onClick={() => ir("projetos")} />
-          {!isColab && (
+          {pd.receita && (
             <Indicador tema="verde" icone="dinheiro" titulo="Receita recebida" valor={fmt(d.recebido)} legenda={`de ${fmt(d.contratado)}`} onClick={() => ir("financeiro")}>
               <div style={{ display:"flex", alignItems:"center", gap:10 }}>
                 <div style={{ flex:1, height:7, background:"#e3efe8", borderRadius:5, overflow:"hidden" }}><div style={{ width:`${pctReceb}%`, height:"100%", background:C.verde, borderRadius:5 }} /></div>
@@ -192,10 +195,10 @@ export function Dashboard({ projetos, onAbrirProjeto, drive, onImportar, usuario
             </Indicador>
           )}
           <Indicador tema="laranja" icone="documento" titulo="Sem contrato" valor={d.semContrato} legenda="aguardando contrato" onClick={() => setAbaD("alertas")} />
-        </div>
+        </div>}
 
         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,440px),1fr))", gap:16 }}>
-          <Painel titulo="Projetos por tipo" subtitulo="Distribuição dos projetos por área de atuação." icone="grafico" acao={{ rotulo:"Ver todos", onClick:() => ir("projetos") }}>
+          {pd.porTipo && <Painel titulo="Projetos por tipo" subtitulo="Distribuição dos projetos por área de atuação." icone="grafico" acao={{ rotulo:"Ver todos", onClick:() => ir("projetos") }}>
             <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))", gap:10 }}>
               {Object.entries(d.porTipo).sort((a, b) => b[1] - a[1]).map(([tipo, qtd]) => {
                 const cor = COR_TIPO[tipo] || C.azulEscuro;
@@ -212,9 +215,9 @@ export function Dashboard({ projetos, onAbrirProjeto, drive, onImportar, usuario
               })}
               {!Object.keys(d.porTipo).length && <span style={{ color:C.sub, fontSize:13 }}>Nenhum projeto ainda.</span>}
             </div>
-          </Painel>
+          </Painel>}
 
-          {!isColab && (
+          {pd.receita && (
             <Painel titulo="Evolução da receita" subtitulo="Valor contratado por mês (data do contrato), últimos 6 meses." icone="tendencia" acao={{ rotulo:"Ver financeiro", onClick:() => ir("financeiro") }}>
               <div style={{ display:"flex", gap:18, alignItems:"stretch", flexWrap:"wrap" }}>
                 <div style={{ flex:"1 1 260px", minWidth:0, paddingBottom:6 }}><GraficoReceita meses={d.receitaMes} /></div>
@@ -232,14 +235,14 @@ export function Dashboard({ projetos, onAbrirProjeto, drive, onImportar, usuario
           )}
         </div>
 
-        <Painel titulo={isColab ? "Meus projetos em aberto" : "Projetos em aberto"} subtitulo="Acompanhe os projetos em andamento, prazos e evolução financeira." icone="pasta" acao={{ rotulo:"Ver todos os projetos", onClick:() => ir("projetos") }}>
+        {pd.abertos && <Painel titulo={soMeus ? "Meus projetos em aberto" : "Projetos em aberto"} subtitulo="Acompanhe os projetos em andamento, prazos e evolução financeira." icone="pasta" acao={{ rotulo:"Ver todos os projetos", onClick:() => ir("projetos") }}>
           {d.abertos.length ? (
             <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(250px,1fr))", gap:14 }}>
               {d.abertos.slice(0, 12).map(p => <CardProjeto key={p.id} p={p} onClick={() => onAbrirProjeto(p)} />)}
             </div>
           ) : <div style={{ padding:24, textAlign:"center", color:C.sub, fontSize:14 }}>Nenhum projeto em aberto.</div>}
           {d.abertos.length > 12 && <div style={{ textAlign:"center", marginTop:14 }}><button onClick={() => ir("projetos")} className="wm-btn" style={{ border:`1px solid ${C.borda}`, background:"#fff", borderRadius:10, padding:"8px 16px", fontWeight:600, color:C.azulMedio, cursor:"pointer" }}>Ver os outros {d.abertos.length - 12}</button></div>}
-        </Painel>
+        </Painel>}
       </>}
     </div>
   );
