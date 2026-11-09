@@ -6,7 +6,9 @@ import EditorDisponibilidade from "./EditorDisponibilidade.jsx";
 import { blocoValido, disponibilidade, planoSemanal } from "./dados.js";
 import { DIAS_NOME, DIAS_ROT, PERIODOS, PERIODO_ROT, diasDaSemana, inicioSemana, periodosDoExpediente, somarSemanas } from "./semana.js";
 import { aplicarAjustes, corDoProjeto, montarPlano } from "./plano.js";
-import { lerPreferencias, gravarPreferencias, lerCalendarioGeral, prefPadrao, sincronizarAgenda } from "./agendaGoogle.js";
+import { lerPreferencias, gravarPreferencias, lerCalendarioGeral, prefPadrao, sincronizarAgenda, sincronizarUmaTarefa } from "./agendaGoogle.js";
+import { CartaoTarefa, EditorTarefa } from "./TarefasAgenda.jsx";
+import { limparTarefa, novaTarefa } from "./tarefasDados.js";
 
 const K = { mar: "#0a2557", azul: "#1565d8", tx: "#0f1f3d", sub: "#6b7a90", borda: "#e6ecf4", fundo: "#f3f6fb", verde: "#16a34a" };
 const cartao = { background: "#fff", border: `1px solid ${K.borda}`, borderRadius: 16, padding: 18, marginBottom: 16, boxShadow: "0 1px 2px rgba(15,31,61,.04),0 6px 20px rgba(15,31,61,.05)" };
@@ -48,7 +50,23 @@ function EditorBloco({ bloco, dias, opcoes, onSalvar, onExcluir, onFechar }) {
   );
 }
 
-export function VisaoPlano({ plano, compacto = false, editavel = false, opcoes = [], onMudar }) {
+// Botão + do dia: incluir bloco de trabalho ou tarefa
+function MenuIncluir({ dia, comTarefa, onBloco, onTarefa }) {
+  const [aberto, setAberto] = useState(false);
+  if (!comTarefa) return <button type="button" aria-label={`Incluir bloco em ${dia}`} onClick={onBloco} style={{ marginLeft: "auto", border: "none", background: "none", color: K.azul, fontWeight: 800, fontSize: 15, cursor: "pointer", lineHeight: 1 }}>+</button>;
+  const item = { display: "block", width: "100%", textAlign: "left", border: "none", background: "none", padding: "7px 10px", fontSize: 12.5, fontFamily: "inherit", color: K.tx, cursor: "pointer", borderRadius: 7 };
+  return (
+    <span style={{ marginLeft: "auto", position: "relative" }} onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget)) setAberto(false); }}>
+      <button type="button" aria-label={`Incluir em ${dia}`} aria-expanded={aberto} onClick={() => setAberto(a => !a)} style={{ border: "none", background: "none", color: K.azul, fontWeight: 800, fontSize: 15, cursor: "pointer", lineHeight: 1 }}>+</button>
+      {aberto && <div style={{ position: "absolute", right: 0, top: 20, zIndex: 20, background: "#fff", border: `1px solid ${K.borda}`, borderRadius: 10, boxShadow: "0 10px 24px rgba(15,31,61,.14)", padding: 4, minWidth: 150 }}>
+        <button type="button" style={item} onClick={() => { setAberto(false); onTarefa(); }}>✅ Nova tarefa</button>
+        <button type="button" style={item} onClick={() => { setAberto(false); onBloco(); }}>🛠 Bloco de trabalho</button>
+      </div>}
+    </span>
+  );
+}
+
+export function VisaoPlano({ plano, compacto = false, editavel = false, opcoes = [], onMudar, tarefas = [], semData = [], onTarefa, pessoa, usuarioAtual }) {
   const ids = [...new Set(plano.metas.map(m => m.id))];
   const dias = diasDaSemana(plano.semana);
   const hoje = new Date().toISOString().slice(0, 10);
@@ -57,14 +75,32 @@ export function VisaoPlano({ plano, compacto = false, editavel = false, opcoes =
   const [sobre, setSobre] = useState(null);
   const blocos = plano.blocos.map((b, i) => (b.id ? b : { ...b, id: `${b.data}-${b.periodo}-${i}` }));
   const trocar = novo => { onMudar(blocos.some(b => b.id === novo.id) ? blocos.map(b => (b.id === novo.id ? novo : b)) : [...blocos, novo]); setEditando(null); };
+  const [editTarefa, setEditTarefa] = useState(null);
+  const projetoDe = id => opcoes.find(o => String(o.id) === String(id));
   const soltar = (data, dia) => {
-    const b = blocos.find(x => x.id === arrastando);
+    const a = arrastando;
     setArrastando(null); setSobre(null);
+    if (!a) return;
+    if (a.tipo === "tarefa") {
+      const t = [...tarefas, ...semData].find(x => x.id === a.id);
+      if (t && t.vence_em !== data && onTarefa) onTarefa({ ...t, vence_em: data });
+      return;
+    }
+    const b = blocos.find(x => x.id === a.id);
     if (b && b.data !== data) onMudar(blocos.map(x => (x.id === b.id ? { ...x, data, dia } : x)));
   };
+  const cartaoT = (t, atrasada) => <CartaoTarefa key={t.id} tarefa={t} projeto={projetoDe(t.projeto_id)} editavel={editavel && !!onTarefa} ativo={editTarefa?.id === t.id} atrasada={atrasada}
+    onAbrir={() => { setEditando(null); setEditTarefa(t); }} onArrastar={() => setArrastando({ tipo: "tarefa", id: t.id })}
+    onConcluir={() => onTarefa({ ...t, status: "feita", concluida_em: new Date().toISOString() })} />;
   return (
     <div>
-      {editavel && <div style={{ fontSize: 12, color: K.sub, marginBottom: 8 }}>Arraste um bloco para outro dia ou clique nele para trocar o projeto e o horário. Use <b>+</b> para incluir um bloco.</div>}
+      {editavel && <div style={{ fontSize: 12, color: K.sub, marginBottom: 8 }}>Arraste um bloco ou uma tarefa para outro dia, ou clique para trocar projeto e horário. Use <b>+</b> para incluir um bloco ou uma tarefa.</div>}
+      {onTarefa && semData.length > 0 && (
+        <div onDragOver={editavel ? e => e.preventDefault() : undefined} style={{ border: `1px dashed #d8c8fb`, background: "#faf7ff", borderRadius: 12, padding: "8px 10px", marginBottom: 10 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#6d28d9" }}>Tarefas para encaixar ({semData.length}) <span style={{ fontWeight: 500, color: K.sub }}>· sem data ou atrasadas: arraste para um dia</span></div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(170px,1fr))", gap: 6 }}>{semData.map(t => cartaoT(t, !!t.vence_em))}</div>
+        </div>
+      )}
       <div style={{ display: "grid", gridTemplateColumns: `repeat(${dias.length}, minmax(${compacto ? 96 : 120}px, 1fr))`, gap: 8, overflowX: "auto" }}>
         {dias.map(({ dia, data }) => {
           const doDia = blocos.filter(b => b.data === data).sort((a, b) => a.inicio.localeCompare(b.inicio));
@@ -72,10 +108,13 @@ export function VisaoPlano({ plano, compacto = false, editavel = false, opcoes =
             <div key={dia} onDragOver={editavel ? e => { e.preventDefault(); setSobre(data); } : undefined} onDragLeave={editavel ? () => setSobre(s0 => (s0 === data ? null : s0)) : undefined} onDrop={editavel ? e => { e.preventDefault(); soltar(data, dia); } : undefined}
               style={{ background: sobre === data ? "#e3eefe" : data === hoje ? "#f2f7fe" : K.fundo, border: `1px ${sobre === data ? "dashed" : "solid"} ${sobre === data || data === hoje ? "#bcd3f5" : K.borda}`, borderRadius: 12, padding: 8, minHeight: 90 }}>
               <div style={{ fontSize: 12, fontWeight: 800, color: K.mar, display: "flex", alignItems: "center" }}>{DIAS_ROT[dia]}&nbsp;<span style={{ fontWeight: 500, color: K.sub }}>{fmtD(data)}</span>
-                {editavel && <button type="button" aria-label={`Incluir bloco em ${DIAS_NOME[dia]}`} onClick={() => setEditando({ id: "n" + Date.now().toString(36), data, dia, periodo: "manha", inicio: "08:00", fim: "10:00", horas: 2, projetoId: "", codigo: "", cliente: "", tipo: "", novo: true })} style={{ marginLeft: "auto", border: "none", background: "none", color: K.azul, fontWeight: 800, fontSize: 15, cursor: "pointer", lineHeight: 1 }}>+</button>}
+                {editavel && <MenuIncluir dia={DIAS_NOME[dia]} comTarefa={!!onTarefa}
+                  onBloco={() => { setEditTarefa(null); setEditando({ id: "n" + Date.now().toString(36), data, dia, periodo: "manha", inicio: "08:00", fim: "10:00", horas: 2, projetoId: "", codigo: "", cliente: "", tipo: "", novo: true }); }}
+                  onTarefa={() => { setEditando(null); setEditTarefa(novaTarefa(pessoa, data, usuarioAtual)); }} />}
               </div>
+              {tarefas.filter(t => t.vence_em === data).sort((a, b) => (a.hora || "00").localeCompare(b.hora || "00")).map(t => cartaoT(t, false))}
               {PERIODOS.map(k => doDia.filter(b => b.periodo === k).map(b => (
-                <div key={b.id} title={`${b.codigo} · ${b.cliente}`} draggable={editavel} onDragStart={editavel ? () => setArrastando(b.id) : undefined} onClick={editavel ? () => setEditando(b) : undefined}
+                <div key={b.id} title={`${b.codigo} · ${b.cliente}`} draggable={editavel} onDragStart={editavel ? () => setArrastando({ tipo: "bloco", id: b.id }) : undefined} onClick={editavel ? () => { setEditTarefa(null); setEditando(b); } : undefined}
                   role={editavel ? "button" : undefined} tabIndex={editavel ? 0 : undefined} onKeyDown={editavel ? e => { if (e.key === "Enter") setEditando(b); } : undefined}
                   style={{ marginTop: 6, background: editando?.id === b.id ? "#eef5ff" : "#fff", borderLeft: `4px solid ${corDoProjeto(b.projetoId, ids)}`, borderRadius: 8, padding: "5px 7px", boxShadow: "0 1px 2px rgba(15,31,61,.06)", cursor: editavel ? "grab" : "default" }}>
                   <div style={{ fontSize: 10.5, color: K.sub, fontWeight: 600 }}>{PERIODO_ROT[k]} · {b.inicio}–{b.fim}</div>
@@ -83,7 +122,7 @@ export function VisaoPlano({ plano, compacto = false, editavel = false, opcoes =
                   <div style={{ fontSize: 11, color: K.sub, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{b.cliente} · {fmtH(b.horas)}</div>
                 </div>
               )))}
-              {!doDia.length && <div style={{ fontSize: 11.5, color: "#a3afc0", marginTop: 8 }}>—</div>}
+              {!doDia.length && !tarefas.some(t => t.vence_em === data) && <div style={{ fontSize: 11.5, color: "#a3afc0", marginTop: 8 }}>—</div>}
             </div>
           );
         })}
@@ -91,6 +130,8 @@ export function VisaoPlano({ plano, compacto = false, editavel = false, opcoes =
       {editavel && editando && <EditorBloco key={editando.id} bloco={editando} dias={dias} opcoes={opcoes}
         onSalvar={trocar} onFechar={() => setEditando(null)}
         onExcluir={editando.novo ? null : () => { onMudar(blocos.filter(b => b.id !== editando.id)); setEditando(null); }} />}
+      {editavel && onTarefa && editTarefa && <EditorTarefa key={editTarefa.id} tarefa={editTarefa} opcoes={opcoes} onFechar={() => setEditTarefa(null)}
+        onSalvar={t => { onTarefa(t); setEditTarefa(null); }} onConcluir={t => { onTarefa({ ...t, status: "feita", concluida_em: new Date().toISOString() }); setEditTarefa(null); }} />}
       {!compacto && plano.metas.length > 0 && (
         <div style={{ overflowX: "auto", marginTop: 14 }}>
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 760 }}>
@@ -123,7 +164,7 @@ export function VisaoPlano({ plano, compacto = false, editavel = false, opcoes =
   );
 }
 
-export function CartaoAgendaGoogle({ usuarioAtual, usuarios, projetos, plano }) {
+export function CartaoAgendaGoogle({ usuarioAtual, usuarios, projetos, plano, tarefas }) {
   const [pref, setPref] = useState(prefPadrao);
   const [cal, setCal] = useState(null);
   const [msg, setMsg] = useState(null);
@@ -134,9 +175,10 @@ export function CartaoAgendaGoogle({ usuarioAtual, usuarios, projetos, plano }) 
   async function sincronizar() {
     setIndo(true); setMsg(null);
     try {
-      const r = await sincronizarAgenda({ pref, plano, projetos, usuarioAtual, usuarios });
+      const r = await sincronizarAgenda({ pref, plano, projetos, usuarioAtual, usuarios, tarefas });
       const partes = [];
       if (r.entregas) partes.push(r.entregas.somenteLeitura ? "calendário WM · Entregas adicionado à sua agenda" : `${r.entregas.eventos} entrega(s) no calendário WM · Entregas`);
+      if (r.tarefas) partes.push(`${r.tarefas.eventos} tarefa(s) na sua agenda${r.tarefas.removidas ? ` (${r.tarefas.removidas} concluída(s) ou removida(s) tirada(s))` : ""}`);
       if (r.blocos) partes.push(`${r.blocos.eventos} bloco(s) de trabalho na sua agenda${r.blocos.removidos ? ` (${r.blocos.removidos} antigo(s) removido(s))` : ""}`);
       setMsg({ ok: true, t: partes.length ? `Pronto: ${partes.join(" e ")}.` : "Nada marcado para sincronizar." });
       lerCalendarioGeral().then(setCal);
@@ -159,18 +201,19 @@ export function CartaoAgendaGoogle({ usuarioAtual, usuarios, projetos, plano }) 
           <div style={{ fontSize: 15, fontWeight: 700, color: K.mar }}>Google Agenda</div>
           <div style={{ fontSize: 12.5, color: K.sub }}>Escolha o que vai para a sua agenda ({usuarioAtual.email || "sua conta Google"})</div>
         </div>
-        <button onClick={sincronizar} disabled={indo || (!pref.entregas && !pref.blocos)} style={btn("pri", { opacity: indo ? .6 : 1 })}><Icone nome="agenda" tam={15} />{indo ? "Sincronizando…" : "Sincronizar agora"}</button>
+        <button onClick={sincronizar} disabled={indo || (!pref.entregas && !pref.blocos && !pref.tarefas)} style={btn("pri", { opacity: indo ? .6 : 1 })}><Icone nome="agenda" tam={15} />{indo ? "Sincronizando…" : "Sincronizar agora"}</button>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 10 }}>
         {linha("entregas", "Calendário geral WM · Entregas", cal?.id ? "Entregas previstas e concluídas de todos os projetos, num calendário compartilhado da equipe." : gestor ? "Ainda não criado: ao sincronizar, o sistema cria o calendário e compartilha com a equipe." : "Ainda não criado: um gestor precisa sincronizar uma vez.")}
         {linha("blocos", "Meus blocos de trabalho", "Os blocos do plano desta semana (projeto e horário) na sua agenda principal, com lembrete 10 min antes.")}
+        {linha("tarefas", "Minhas tarefas", "Tarefas abertas com data na sua agenda principal (com hora: lembrete 10 min antes). Depois de sincronizar uma vez, o que você mudar na Agenda vai para o Google na hora.")}
       </div>
       {msg && <div role="status" style={{ marginTop: 10, fontSize: 13, fontWeight: 600, borderRadius: 10, padding: "8px 12px", color: msg.ok ? "#166534" : "#9f1239", background: msg.ok ? "#f0fdf4" : "#fff1f2", border: `1px solid ${msg.ok ? "#bbf7d0" : "#fecdd3"}` }}>{msg.t}</div>}
     </div>
   );
 }
 
-export function MinhaSemana({ usuarioAtual, usuarios = [], projetos = [], registros = [] }) {
+export function MinhaSemana({ usuarioAtual, usuarios = [], projetos = [], registros = [], tarefas = [], salvarTarefa }) {
   const gestor = ["admin", "gestor"].includes(usuarioAtual.perfil);
   const [semana, setSemana] = useState(inicioSemana());
   const [quem, setQuem] = useState(usuarioAtual.id);
@@ -228,6 +271,26 @@ export function MinhaSemana({ usuarioAtual, usuarios = [], projetos = [], regist
   const atual = semana === inicioSemana();
   const dias = diasDaSemana(semana);
 
+  // Tarefas da pessoa (abertas): as da semana vão para os dias; sem data ou atrasadas ficam para encaixar
+  const [prefG, setPrefG] = useState(prefPadrao);
+  useEffect(() => { lerPreferencias(usuarioAtual.id).then(p => setPrefG({ ...prefPadrao, ...(p || {}) })).catch(() => {}); }, [usuarioAtual.id, aba]);
+  const abertas = tarefas.filter(t => String(t.responsavel_id) === String(pessoa.id) && t.status !== "feita");
+  const daSemana = abertas.filter(t => t.vence_em && t.vence_em >= dias[0].data && t.vence_em <= dias[6].data);
+  const semData = abertas.filter(t => !t.vence_em || (atual && t.vence_em < dias[0].data));
+  const [msgTarefa, setMsgTarefa] = useState("");
+  async function mudarTarefa(t) {
+    if (!salvarTarefa) return;
+    const limpa = limparTarefa({ ...t, responsavel_id: t.responsavel_id || pessoa.id });
+    if (!limpa.titulo) return;
+    const ok = await salvarTarefa(limpa);
+    if (!ok) { setMsgTarefa("Não foi possível salvar a tarefa. Tente de novo."); setTimeout(() => setMsgTarefa(""), 5000); return; }
+    if (prefG.tarefas && String(limpa.responsavel_id) === String(usuarioAtual.id)) {
+      const foi = await sincronizarUmaTarefa(limpa, { projetos, usuario: usuarioAtual });
+      setMsgTarefa(foi ? "Tarefa salva e atualizada no Google Agenda." : "Tarefa salva. Para levar ao Google, use Google Agenda → Sincronizar agora.");
+    } else setMsgTarefa(limpa.status === "feita" ? "Tarefa concluída." : "Tarefa salva.");
+    setTimeout(() => setMsgTarefa(""), 4000);
+  }
+
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
@@ -263,7 +326,8 @@ export function MinhaSemana({ usuarioAtual, usuarios = [], projetos = [], regist
             {ajustes && podeEditar && <button type="button" onClick={voltarSugestao} style={btn("sec", { padding: "6px 10px", fontSize: 12.5 })}>Voltar à sugestão automática</button>}
             {msgPlano && <span role="status" style={{ fontSize: 12.5, color: K.verde, fontWeight: 600 }}>{msgPlano}</span>}
           </div>}
-          {plano.metas.length || plano.blocos.length ? <VisaoPlano plano={plano} editavel={podeEditar} opcoes={opcoes} onMudar={mudarBlocos} /> : <p style={{ color: K.sub, textAlign: "center", padding: 20, margin: 0 }}>Nenhum projeto em andamento com {pessoa.id === usuarioAtual.id ? "você" : pessoa.nome} na equipe.</p>}
+          {msgTarefa && <div role="status" style={{ fontSize: 12.5, color: /Não foi/.test(msgTarefa) ? "#b91c1c" : K.verde, fontWeight: 600, marginBottom: 8 }}>{msgTarefa}</div>}
+          {plano.metas.length || plano.blocos.length || abertas.length || (podeEditar && salvarTarefa) ? <VisaoPlano plano={plano} editavel={podeEditar} opcoes={opcoes} onMudar={mudarBlocos} tarefas={daSemana} semData={semData} onTarefa={salvarTarefa ? mudarTarefa : null} pessoa={pessoa} usuarioAtual={usuarioAtual} /> : <p style={{ color: K.sub, textAlign: "center", padding: 20, margin: 0 }}>Nenhum projeto em andamento com {pessoa.id === usuarioAtual.id ? "você" : pessoa.nome} na equipe.</p>}
           {plano.semEspaco > 0 && <div style={{ marginTop: 12, fontSize: 12.5, color: "#92400e" }}>As metas somam {fmtH(plano.metaTotal)}, mas só há {fmtH(plano.capacidade)} disponíveis: cada projeto recebeu uma parte proporcional, com prioridade para as entregas mais próximas.</div>}
           <div style={{ marginTop: 10, fontSize: 11.5, color: K.sub, lineHeight: 1.5 }}>
             Como é calculado: a estimativa de cada projeto é a média de horas dos projetos já concluídos do mesmo tipo (banco de horas). Sua parte vem das disciplinas suas que faltam entregar; o que falta é dividido pelas semanas até a entrega e encaixado nos seus períodos livres, a entrega mais próxima primeiro.
@@ -284,7 +348,7 @@ export function MinhaSemana({ usuarioAtual, usuarios = [], projetos = [], regist
       )}
 
       {aba === "google" && (String(pessoa.id) === String(usuarioAtual.id)
-        ? <CartaoAgendaGoogle usuarioAtual={usuarioAtual} usuarios={usuarios} projetos={projetos} plano={plano} />
+        ? <CartaoAgendaGoogle usuarioAtual={usuarioAtual} usuarios={usuarios} projetos={projetos} plano={plano} tarefas={tarefas} />
         : <div style={cartao}><p style={{ margin: 0, color: K.sub }}>A Google Agenda é configurada por cada pessoa, com a própria conta. Volte para a sua semana para sincronizar.</p></div>)}
     </div>
   );

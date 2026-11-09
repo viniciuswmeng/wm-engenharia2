@@ -21,6 +21,12 @@ function carregarGis() {
 const tokens = {}; // escopo → { token, expira }
 const valido = escopo => tokens[escopo] && tokens[escopo].expira > Date.now() + 60000;
 
+// Token já concedido nesta sessão (sem abrir janela do Google); null se não houver
+export function tokenEmCache(escopos = [ESCOPO_DRIVE]) {
+  const chave = [...escopos].sort().join(" ");
+  return valido(chave) ? tokens[chave].token : null;
+}
+
 // Pede (ou reaproveita) um token com os escopos informados
 export async function obterToken(escopos = [ESCOPO_DRIVE], { dica } = {}) {
   const chave = [...escopos].sort().join(" ");

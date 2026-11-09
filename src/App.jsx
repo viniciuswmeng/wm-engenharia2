@@ -1147,11 +1147,11 @@ export default function App(){
           <Suspense fallback={<CarregandoPagina/>}>
             {barraSubAbas}
             {CABECALHOS[aba]&&<CabecalhoPagina {...CABECALHOS[aba]}/>} 
-        {aba==="dashboard" &&<Dashboard projetos={projetos} onAbrirProjeto={abrirP} drive={drive} onImportar={importar} usuarioAtual={user} onIrPara={setAba} permissoes={permissoes.dashboard}/>}
+        {aba==="dashboard" &&<Dashboard projetos={projetos} onAbrirProjeto={abrirP} drive={drive} onImportar={importar} usuarioAtual={user} onIrPara={setAba} permissoes={permissoes.dashboard} tarefas={central.tarefas} registros={registros} calendario={calendario}/>}
         {aba==="projetos"  &&<ListaProjetos projetos={projetosAba} onAbrirProjeto={abrirP} onNovoProjeto={novoP} usuarios={usuarios} usuarioAtual={user}/>}
         {aba==="financeiro"&&<Financeiro projetos={projetos}/>}
         {aba==="horas"     &&<AbaHoras registros={registros} setRegistros={setRegistros} usuarios={usuarios} projetos={projetos} usuarioAtual={user} calendario={calendario} onAbrirEncerramento={()=>setModalH("encerramento")}/>}
-        {aba==="agenda"    &&<AbaAgenda calendario={calendario} usuarioAtual={user} registros={registros} usuarios={usuarios} projetos={projetos}/>}
+        {aba==="agenda"    &&<AbaAgenda calendario={calendario} usuarioAtual={user} registros={registros} usuarios={usuarios} projetos={projetos} central={central}/>}
         {aba==="config"    &&<Configuracoes usuarios={usuarios} onSalvarUsuarios={salvarUsuarios} usuarioAtual={user} onFoto={alterarFoto}/>}
         {aba==="contratos"  &&<GeradorContratos projetos={projetos} usuarios={usuarios} usuarioAtual={user} drive={drive}
           onSalvarProjeto={salvarProjetoFluxo} onAbrirProjeto={abrirProjetoPorId}

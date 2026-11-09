@@ -3,12 +3,12 @@ import { useState, useEffect, useMemo } from "react";
 import { MinhaSemana } from "../planejamento/MinhaSemana.jsx";
 import { Avatar, Btn, C, Card, InpC, calcHorasDia, carregar, fmtData, labelExpediente, salvar } from "../nucleo.jsx";
 
-export function AbaAgenda({ calendario, usuarioAtual, registros, usuarios, projetos }) {
+export function AbaAgenda({ calendario, usuarioAtual, registros, usuarios, projetos, central }) {
   const [subAba, setSubAba] = useState("semana");
   return (
     <div>
       <Abas style={{marginBottom:20}} valor={subAba} onChange={setSubAba} itens={[{id:"semana",label:"Minha semana",icone:"tarefa"},{id:"calendario",label:"Calendário",icone:"agenda"},{id:"escalas",label:"Escalas",icone:"equipe"}]}/>
-      {subAba==="semana"    &&<MinhaSemana usuarioAtual={usuarioAtual} usuarios={usuarios} projetos={projetos||[]} registros={registros}/>}
+      {subAba==="semana"    &&<MinhaSemana usuarioAtual={usuarioAtual} usuarios={usuarios} projetos={projetos||[]} registros={registros} tarefas={central?.tarefas||[]} salvarTarefa={central?.salvarTarefa}/>}
       {subAba==="calendario"&&<ModuloCalendario calendario={calendario} usuarioAtual={usuarioAtual} registros={registros} usuarios={usuarios}/>}
       {subAba==="escalas"   &&<Escalas usuarioAtual={usuarioAtual} usuarios={usuarios}/>}
     </div>

@@ -2,12 +2,12 @@
 //  • calendário geral "WM · Entregas" (um só para a equipe, criado por um gestor e compartilhado);
 //  • blocos de trabalho da semana na agenda principal de cada usuário.
 // Cada usuário escolhe o que quer receber (preferência salva em config_sistema).
-import { ESCOPO_AGENDA, agenda, idEvento, obterToken } from "../google/googleApi.js";
+import { ESCOPO_AGENDA, agenda, idEvento, obterToken, tokenEmCache } from "../google/googleApi.js";
 import { configSistema } from "./dados.js";
 import { diasDaSemana } from "./semana.js";
 
 const CHAVE_CAL = "calendario_entregas";
-export const prefPadrao = { entregas: true, blocos: true };
+export const prefPadrao = { entregas: true, blocos: true, tarefas: false };
 export const lerPreferencias = usuarioId => configSistema.ler(`agenda_google:${usuarioId}`, null); // null = ainda não escolheu
 export const gravarPreferencias = (usuarioId, pref) => configSistema.gravar(`agenda_google:${usuarioId}`, pref);
 export const lerCalendarioGeral = () => configSistema.ler(CHAVE_CAL, null);
@@ -105,12 +105,59 @@ export async function sincronizarBlocos(token, { plano, usuario }) {
   return { eventos: n, removidos };
 }
 
+// ── Tarefas do usuário na agenda principal (só as abertas e com data) ──────────
+const HORA_OK = /^([01]\d|2[0-3]):[0-5]\d$/;
+const DATA_OK = /^\d{4}-\d{2}-\d{2}$/;
+const maisMinutos = (hhmm, min) => { const [h, m] = hhmm.split(":").map(Number); const t = Math.min(h * 60 + m + min, 23 * 60 + 59); return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`; };
+export const idEventoTarefa = t => idEvento("wmtarefa", t.id);
+const vaiParaAgenda = t => t && t.status !== "feita" && DATA_OK.test(String(t.vence_em || ""));
+
+function eventoTarefa(t, projetos) {
+  const p = (projetos || []).find(x => String(x.id) === String(t.projeto_id));
+  const com = HORA_OK.test(String(t.hora || ""));
+  return {
+    id: idEventoTarefa(t),
+    summary: `✅ ${String(t.titulo || "Tarefa").slice(0, 200)}${p ? ` · ${p.codigo || ""}` : ""}`,
+    description: [String(t.descricao || "").slice(0, 2000), p && `Projeto: ${p.codigo || ""} · ${p.cliente || ""}`, "Tarefa do sistema WM. Mude o dia e o horário em Agenda → Minha semana."].filter(Boolean).join("\n"),
+    ...(com
+      ? { start: { dateTime: `${t.vence_em}T${t.hora}:00`, timeZone: "America/Sao_Paulo" }, end: { dateTime: `${t.vence_em}T${maisMinutos(t.hora, 30)}:00`, timeZone: "America/Sao_Paulo" } }
+      : { start: { date: t.vence_em }, end: { date: proximoDia(t.vence_em) }, transparency: "transparent" }),
+    colorId: t.prioridade === "alta" ? "11" : "5",
+    reminders: com ? { useDefault: false, overrides: [{ method: "popup", minutes: 10 }] } : { useDefault: false },
+    extendedProperties: { private: { wm: "tarefa", tarefa: String(t.id) } },
+  };
+}
+
+export async function sincronizarTarefas(token, { tarefas, projetos, usuario }) {
+  const minhas = (tarefas || []).filter(t => String(t.responsavel_id) === String(usuario.id) && vaiParaAgenda(t));
+  const ids = new Set();
+  for (const t of minhas) { const ev = eventoTarefa(t, projetos); ids.add(ev.id); await agenda.gravarEvento(token, "primary", ev); }
+  // remove da agenda as tarefas concluídas, excluídas ou passadas para outra pessoa
+  const de = new Date(Date.now() - 60 * 86400000).toISOString();
+  const existentes = await agenda.listar(token, "primary", { de, propriedade: "wm=tarefa" }).catch(() => []);
+  let removidas = 0;
+  for (const e of existentes) if (!ids.has(e.id)) { await agenda.apagar(token, "primary", e.id); removidas++; }
+  return { eventos: minhas.length, removidas };
+}
+
+// Atualiza uma tarefa só se o Google já estiver conectado nesta sessão (nunca abre janela)
+export async function sincronizarUmaTarefa(t, { projetos, usuario }) {
+  const token = tokenEmCache([ESCOPO_AGENDA]);
+  if (!token || !t) return false;
+  try {
+    if (String(t.responsavel_id) === String(usuario.id) && vaiParaAgenda(t)) await agenda.gravarEvento(token, "primary", eventoTarefa(t, projetos));
+    else await agenda.apagar(token, "primary", idEventoTarefa(t));
+    return true;
+  } catch (e) { console.warn("Google Agenda (tarefa):", e.message); return false; }
+}
+
 // Chamar a partir de um clique
-export async function sincronizarAgenda({ pref, plano, projetos, usuarioAtual, usuarios }) {
+export async function sincronizarAgenda({ pref, plano, projetos, usuarioAtual, usuarios, tarefas }) {
   const token = await obterToken([ESCOPO_AGENDA], { dica: usuarioAtual.email });
   const r = {};
   if (pref.entregas) r.entregas = await sincronizarEntregas(token, { projetos, usuarioAtual, usuarios });
   if (pref.blocos && plano) r.blocos = await sincronizarBlocos(token, { plano, usuario: usuarioAtual });
+  if (pref.tarefas && tarefas) r.tarefas = await sincronizarTarefas(token, { tarefas, projetos, usuario: usuarioAtual });
   await configSistema.gravar(`agenda_google_ultima:${usuarioAtual.id}`, { em: new Date().toISOString(), ...r }).catch(() => {});
   return r;
 }

@@ -3,6 +3,7 @@ import { C, COR_TIPO, TIPOS, diasAte, estaAtrasado, fmt, statusN } from "../nucl
 import { CardProjeto, PainelAlertas, PainelDrive, PainelEntregas } from "./projetos.jsx";
 import Icone from "../ui/Icone.jsx";
 import { Abas } from "../ui/ds.jsx";
+import CartaoDataComAgenda from "../planejamento/CalendarioHoje.jsx";
 
 const MESES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 const somaParcelas = (p, soPagas) => (p.parcelas || []).reduce((a, x) => a + ((!soPagas || x.pago) ? (Number(x.valor) || 0) : 0), 0);
@@ -29,17 +30,17 @@ export function TituloPagina({ titulo, subtitulo, direita }) {
   );
 }
 
-function CartaoData() {
+function CartaoData(props) {
   const h = new Date();
   const dia = h.toLocaleDateString("pt-BR", { weekday:"long" });
   return (
-    <div style={{ display:"flex", alignItems:"center", gap:14, background:"#fff", border:`1px solid ${C.borda}`, borderRadius:14, padding:"12px 18px", boxShadow:C.sombra }}>
+    <CartaoDataComAgenda {...props} estiloCartao={{ display:"flex", alignItems:"center", gap:14, background:"#fff", border:`1px solid ${C.borda}`, borderRadius:14, padding:"12px 18px", boxShadow:C.sombra }}>
       <span style={{ color:C.azulMedio }}><Icone nome="agenda" tam={26} /></span>
-      <div style={{ lineHeight:1.35 }}>
-        <div style={{ fontSize:13.5, color:C.cinzaMedio, textTransform:"capitalize" }}>{dia}</div>
-        <div style={{ fontSize:13.5, color:C.texto, fontWeight:600 }}>{h.toLocaleDateString("pt-BR", { day:"numeric", month:"long", year:"numeric" })}</div>
-      </div>
-    </div>
+      <span style={{ lineHeight:1.35, display:"block" }}>
+        <span style={{ display:"block", fontSize:13.5, color:C.cinzaMedio, textTransform:"capitalize" }}>{dia}</span>
+        <span style={{ display:"block", fontSize:13.5, color:C.texto, fontWeight:600 }}>{h.toLocaleDateString("pt-BR", { day:"numeric", month:"long", year:"numeric" })}</span>
+      </span>
+    </CartaoDataComAgenda>
   );
 }
 
@@ -131,7 +132,7 @@ function GraficoReceita({ meses }) {
   );
 }
 
-export function Dashboard({ projetos, onAbrirProjeto, drive, onImportar, usuarioAtual, onIrPara, permissoes }) {
+export function Dashboard({ projetos, onAbrirProjeto, drive, onImportar, usuarioAtual, onIrPara, permissoes, tarefas, registros, calendario }) {
   const [abaD, setAbaD] = useState("visao");
   const isColab = usuarioAtual?.perfil === "colaborador";
   // o que o colaborador pode ver (gestor/admin recebem tudo liberado)
@@ -171,7 +172,7 @@ export function Dashboard({ projetos, onAbrirProjeto, drive, onImportar, usuario
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
-      <TituloPagina titulo="Visão Geral" subtitulo={soMeus ? `Projetos atribuídos a ${usuarioAtual?.nome}` : "Acompanhe o desempenho dos seus projetos e da sua empresa em um só lugar."} direita={<CartaoData />} />
+      <TituloPagina titulo="Visão Geral" subtitulo={soMeus ? `Projetos atribuídos a ${usuarioAtual?.nome}` : "Acompanhe o desempenho dos seus projetos e da sua empresa em um só lugar."} direita={<CartaoData usuario={usuarioAtual} projetos={projetos} visiveis={visiveis} tarefas={tarefas} registros={registros} calendario={calendario} onIrPara={onIrPara} />} />
 
       <Abas style={{alignSelf:"flex-start"}} valor={abaD} onChange={setAbaD} itens={[{ id:"visao", label:"Visão geral" }, ...(pd.alertas ? [{ id:"alertas", label:"Alertas", badge:totalAlertas || null }] : []), ...(pd.entregas ? [{ id:"entregas", label:"Entregas" }] : [])]} />
 
