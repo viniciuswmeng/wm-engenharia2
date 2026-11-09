@@ -5,6 +5,7 @@ import { db, portal } from "../supabase.js";
 import ModelosDoProjeto from "../ifc/ModelosDoProjeto.jsx";
 import EntregasPortal from "../portal/EntregasPortal.jsx";
 import ProgressoDisciplinas from "../portal/ProgressoDisciplinas.jsx";
+import EnviarPortalWhatsApp from "../portal/EnviarPortalWhatsApp.jsx";
 import { Badge, Btn, C, Card, DISCIPLINAS_CB, InpC, STATUS_CONFIG, SelC, TIPOS, TipoBadge, calcStatusAuto, diasAte, estaAtrasado, fmt, fmtData, resumoEntregas, obrasProgressoListeners, statusN } from "../nucleo.jsx";
 
 export function PainelDrive({drive,projetosExistentes,onImportar}){
@@ -848,6 +849,7 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[],
                     <Btn variant="ghost" small>↗ Abrir</Btn>
                   </a>
                 </div>
+                <EnviarPortalWhatsApp key={form.tokenCliente||form.token_cliente} link={`${window.location.origin}/cliente/${form.tokenCliente||form.token_cliente}`} ativo={!!(form.linkClienteAtivo||form.link_cliente_ativo)}/>
               </div>
             )}
 
