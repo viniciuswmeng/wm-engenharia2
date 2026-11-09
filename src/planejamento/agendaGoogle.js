@@ -4,6 +4,7 @@
 // Cada usuário escolhe o que quer receber (preferência salva em config_sistema).
 import { ESCOPO_AGENDA, agenda, idEvento, obterToken, tokenEmCache } from "../google/googleApi.js";
 import { configSistema } from "./dados.js";
+import { ehDaPessoa } from "../lembretes/pessoasTarefa.js";
 import { diasDaSemana } from "./semana.js";
 
 const CHAVE_CAL = "calendario_entregas";
@@ -129,7 +130,7 @@ function eventoTarefa(t, projetos) {
 }
 
 export async function sincronizarTarefas(token, { tarefas, projetos, usuario }) {
-  const minhas = (tarefas || []).filter(t => String(t.responsavel_id) === String(usuario.id) && vaiParaAgenda(t));
+  const minhas = (tarefas || []).filter(t => ehDaPessoa(t, usuario.id) && vaiParaAgenda(t));
   const ids = new Set();
   for (const t of minhas) { const ev = eventoTarefa(t, projetos); ids.add(ev.id); await agenda.gravarEvento(token, "primary", ev); }
   // remove da agenda as tarefas concluídas, excluídas ou passadas para outra pessoa
@@ -145,7 +146,7 @@ export async function sincronizarUmaTarefa(t, { projetos, usuario }) {
   const token = tokenEmCache([ESCOPO_AGENDA]);
   if (!token || !t) return false;
   try {
-    if (String(t.responsavel_id) === String(usuario.id) && vaiParaAgenda(t)) await agenda.gravarEvento(token, "primary", eventoTarefa(t, projetos));
+    if (ehDaPessoa(t, usuario.id) && vaiParaAgenda(t)) await agenda.gravarEvento(token, "primary", eventoTarefa(t, projetos));
     else await agenda.apagar(token, "primary", idEventoTarefa(t));
     return true;
   } catch (e) { console.warn("Google Agenda (tarefa):", e.message); return false; }

@@ -5,6 +5,7 @@ import Icone from "../ui/Icone.jsx";
 import { disponibilidade, planoSemanal } from "./dados.js";
 import { inicioSemana, isoLocal, periodosDoExpediente } from "./semana.js";
 import { aplicarAjustes, montarPlano } from "./plano.js";
+import { ehDaPessoa } from "../lembretes/pessoasTarefa.js";
 
 const K = { mar: "#0a2557", azul: "#1565d8", tx: "#0f1f3d", sub: "#6b7a90", borda: "#e6ecf4", fundo: "#f3f6fb", roxo: "#7c3aed", vermelho: "#be123c", verde: "#16a34a" };
 const SEM = ["S", "T", "Q", "Q", "S", "S", "D"];
@@ -38,7 +39,7 @@ function Painel({ usuario, projetos, visiveis, tarefas, registros, calendario, o
   const hoje = isoLocal(new Date());
   const [mes, setMes] = useState(() => { const d = new Date(); return { a: d.getFullYear(), m: d.getMonth() }; });
   const [dia, setDia] = useState(hoje);
-  const minhas = useMemo(() => (tarefas || []).filter(t => String(t.responsavel_id) === String(usuario?.id) && t.status !== "feita"), [tarefas, usuario?.id]);
+  const minhas = useMemo(() => (tarefas || []).filter(t => ehDaPessoa(t, usuario?.id) && t.status !== "feita"), [tarefas, usuario?.id]);
   const entregas = useMemo(() => (visiveis || projetos || []).filter(p => p.dataEntregaPrevista && !p.dataEntregaReal && !["CONCLUÍDO", "CONCLUIDO", "CANCELADO"].includes(String(p.status || "").toUpperCase())), [visiveis, projetos]);
   const porDia = useMemo(() => {
     const m = {};

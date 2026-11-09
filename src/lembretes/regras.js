@@ -1,3 +1,4 @@
+import { pessoasDa } from "./pessoasTarefa.js";
 // src/lembretes/regras.js
 // Regras dos lembretes automáticos. Função pura: recebe os dados do sistema e
 // devolve a lista de lembretes com os destinatários. Usada no navegador (sino)
@@ -80,6 +81,17 @@ export function gerarLembretes(d) {
   });
 
   // 5. Tarefas
+  // 5a. Tarefa nova atribuída por outra pessoa (até 3 dias depois de criada)
+  (d.tarefas || []).forEach(t => {
+    if (t.status === "feita" || !t.created_at) return;
+    if (agora - new Date(t.created_at) > 3 * 86400000) return;
+    const para = pessoasDa(t).filter(id => id !== String(t.criado_por || ""));
+    if (!para.length) return;
+    const autor = usuarios.find(u => String(u.id) === String(t.criado_por));
+    const outros = pessoasDa(t).length - 1;
+    add({ chave: `tarefa-nova:${t.id}`, tipo: "tarefa", nivel: "info", para,
+      titulo: t.titulo, corpo: `${autor ? autor.nome.split(" ")[0] : "A equipe"} atribuiu esta tarefa a você${outros > 0 ? ` e a mais ${outros}` : ""}${t.vence_em ? ` · prazo ${fmt(t.vence_em)}` : ""}`, link: { aba: "tarefas", tarefaId: t.id } });
+  });
   (d.tarefas || []).forEach(t => {
     if (t.status === "feita" || !t.vence_em) return;
     const dias = diasEntre(hoje, t.vence_em);
@@ -87,7 +99,7 @@ export function gerarLembretes(d) {
     const nivel = dias < 0 ? "urgente" : dias === 0 ? "aviso" : "info";
     const quando = dias < 0 ? `atrasada desde ${fmt(t.vence_em)}` : dias === 0 ? `para hoje${t.hora ? " às " + t.hora : ""}` : `para amanhã${t.hora ? " às " + t.hora : ""}`;
     const proj = t.projeto_id && projPorId[t.projeto_id];
-    add({ chave: `tarefa:${t.id}:${t.vence_em}:${nivel}`, tipo: "tarefa", nivel, para: [t.responsavel_id],
+    add({ chave: `tarefa:${t.id}:${t.vence_em}:${nivel}`, tipo: "tarefa", nivel, para: pessoasDa(t),
       titulo: t.titulo, corpo: `Tarefa ${quando}${proj ? " · " + proj.codigo : ""}`, link: { aba: "tarefas", tarefaId: t.id } });
   });
 

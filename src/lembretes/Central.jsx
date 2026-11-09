@@ -4,6 +4,8 @@
 import { useEffect, useRef, useState } from "react";
 import Icone from "../ui/Icone.jsx";
 import { CabecalhoModal } from "../ui/ds.jsx";
+import SeletorPessoas from "./SeletorPessoas.jsx";
+import { comPessoas, ehDaPessoa, pessoasDa } from "./pessoasTarefa.js";
 
 const C = {
   azulEscuro: "#0b2350", azulMedio: "#1565d8", azulClaro: "#3b82f6", ciano: "#60a5fa",
@@ -103,7 +105,7 @@ export function SinoNotificacoes({ central, push, user, usuarios, projetos, onAb
     document.addEventListener("mousedown", fora); document.addEventListener("keydown", esc);
     return () => { document.removeEventListener("mousedown", fora); document.removeEventListener("keydown", esc); };
   }, [aberto]);
-  const minhas = central.tarefas.filter(t => t.responsavel_id === user.id && t.status !== "feita");
+  const minhas = central.tarefas.filter(t => ehDaPessoa(t, user.id) && t.status !== "feita");
   const urg = central.meus.filter(l => l.nivel === "urgente").length;
   const total = central.meus.length;
   const addRapida = async () => {
@@ -153,7 +155,7 @@ function LinhaTarefa({ t, projetos, usuarios, onConcluir, onEditar, compacta }) 
   const feita = t.status === "feita";
   const atrasada = !feita && t.vence_em && t.vence_em < hoje;
   const proj = t.projeto_id && (projetos || []).find(p => p.id === t.projeto_id);
-  const resp = (usuarios || []).find(u => u.id === t.responsavel_id);
+  const pessoas = pessoasDa(t).map(id => (usuarios || []).find(u => String(u.id) === id)).filter(Boolean);
   const pr = PRIOR[t.prioridade] || PRIOR.normal;
   return (
     <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: compacta ? "9px 14px" : "11px 16px", borderBottom: `1px solid ${C.cinzaFundo}`, background: "#fff" }}>
@@ -165,19 +167,21 @@ function LinhaTarefa({ t, projetos, usuarios, onConcluir, onEditar, compacta }) 
           {t.vence_em && <span style={{ color: atrasada ? "#dc2626" : t.vence_em === hoje ? "#d97706" : C.cinzaClaro, fontWeight: atrasada || t.vence_em === hoje ? 700 : 400 }}>{t.vence_em === hoje ? "Hoje" : fmtData(t.vence_em)}{t.hora ? " " + t.hora : ""}{atrasada ? " · atrasada" : ""}</span>}
           {t.prioridade !== "normal" && <span style={{ color: pr.cor, fontWeight: 700 }}>● {pr.rot}</span>}
           {proj && <span>{proj.codigo}</span>}
-          {!compacta && resp && <span>{resp.nome}</span>}
+          {!compacta && pessoas.length > 0 && <span>{pessoas.map(u => u.nome.split(" ")[0]).join(", ")}</span>}
+          {compacta && pessoas.length > 1 && <span>+{pessoas.length - 1} pessoa(s)</span>}
         </div>
       </div>
     </div>);
 }
 
 // ── Modal de tarefa ──────────────────────────────────────────────────────────
-function ModalTarefa({ tarefa, usuarios, projetos, user, onSalvar, onExcluir, onFechar }) {
+function ModalTarefa({ tarefa, usuarios, projetos, user, onSalvar, onExcluir, onFechar, semParticipantes }) {
   const [f, setF] = useState(() => tarefa || { id: uid(), titulo: "", descricao: "", responsavel_id: user.id, criado_por: user.id, projeto_id: null, obra_id: null, vence_em: hojeISO(), hora: "", prioridade: "normal", status: "aberta", concluida_em: null, created_at: new Date().toISOString() });
   const s = (k, v) => setF(x => ({ ...x, [k]: v }));
   const ativos = (projetos || []).filter(p => !["CONCLUÍDO", "CANCELADO"].includes(String(p.status || "").toUpperCase())).sort((a, b) => String(a.codigo).localeCompare(String(b.codigo)));
   const rot = { fontSize: 11, fontWeight: 700, color: C.cinzaClaro, textTransform: "uppercase", letterSpacing: .6, marginBottom: 4, display: "block" };
-  const salvar = () => { if (!f.titulo.trim()) return; onSalvar({ ...f, titulo: f.titulo.trim() }); };
+  const [pessoas, setPessoas] = useState(() => pessoasDa(f));
+  const salvar = () => { if (!f.titulo.trim()) return; onSalvar(comPessoas({ ...f, titulo: f.titulo.trim() }, semParticipantes ? pessoas.slice(0, 1) : pessoas)); };
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(10,25,55,.5)", backdropFilter: "blur(2px)", zIndex: 2100, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }} onMouseDown={e => e.target === e.currentTarget && onFechar()}>
       <div style={{ background: "#fff", borderRadius: 18, width: "100%", maxWidth: 480, boxShadow: "0 24px 70px rgba(10,25,55,.28)", overflow: "hidden" }}>
@@ -187,11 +191,10 @@ function ModalTarefa({ tarefa, usuarios, projetos, user, onSalvar, onExcluir, on
             <input id="tf-t" autoFocus value={f.titulo} onChange={e => s("titulo", e.target.value)} onKeyDown={e => e.key === "Enter" && salvar()} placeholder="Ex.: Ligar para o cliente sobre a sondagem" style={campo} /></div>
           <div><label style={rot} htmlFor="tf-d">Detalhes (opcional)</label>
             <textarea id="tf-d" rows={2} value={f.descricao} onChange={e => s("descricao", e.target.value)} style={{ ...campo, resize: "vertical" }} /></div>
+          <div><span style={rot}>Pessoas {pessoas.length > 1 && <span style={{ textTransform: "none", letterSpacing: 0, fontWeight: 500 }}>· ★ responsável principal (a primeira marcada)</span>}</span>
+            <SeletorPessoas usuarios={usuarios} valor={pessoas} euId={user.id} onChange={setPessoas} />
+            {semParticipantes && pessoas.length > 1 && <div style={{ fontSize: 11.5, color: "#b45309", marginTop: 4 }}>Para salvar várias pessoas, rode supabase/tarefas_participantes.sql no Supabase. Por enquanto fica só a primeira.</div>}</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            <div><label style={rot} htmlFor="tf-r">Responsável</label>
-              <select id="tf-r" value={f.responsavel_id} onChange={e => s("responsavel_id", e.target.value)} style={campo}>
-                {(usuarios || []).filter(u => u.ativo !== false).map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
-              </select></div>
             <div><label style={rot} htmlFor="tf-p">Prioridade</label>
               <select id="tf-p" value={f.prioridade} onChange={e => s("prioridade", e.target.value)} style={campo}>
                 {Object.entries(PRIOR).map(([k, v]) => <option key={k} value={k}>{v.rot}</option>)}
@@ -233,7 +236,7 @@ export function PaginaTarefas({ central, user, usuarios, projetos, gestor, taref
     if (t) { setModal(t); onFocoUsado && onFocoUsado(); }
   }, [tarefaFoco, central.tarefas]); // eslint-disable-line react-hooks/exhaustive-deps
   const hoje = hojeISO(), sem7 = somaDias(hoje, 7);
-  const vis = central.tarefas.filter(t => filtro === "todas" ? true : filtro === "minhas" ? t.responsavel_id === user.id : t.responsavel_id === filtro);
+  const vis = central.tarefas.filter(t => filtro === "todas" ? true : filtro === "minhas" ? ehDaPessoa(t, user.id) : filtro === "atribui" ? String(t.criado_por) === String(user.id) && !ehDaPessoa(t, user.id) : ehDaPessoa(t, filtro));
   const abertas = vis.filter(t => t.status !== "feita");
   const grupos = [
     ["Atrasadas", abertas.filter(t => t.vence_em && t.vence_em < hoje), "#dc2626"],
@@ -257,6 +260,7 @@ export function PaginaTarefas({ central, user, usuarios, projetos, gestor, taref
       {central.semTabela && <div style={{ background: "#fffbeb", border: "1px solid #fde68a", color: "#92400e", borderRadius: 10, padding: "10px 14px", fontSize: 13, marginBottom: 14 }}>Rode o arquivo <b>supabase/notificacoes.sql</b> no Supabase para ativar as tarefas.</div>}
       <div style={{ background: "#fff", border: `1px solid ${C.cinzaCard}`, borderRadius: 12, padding: "12px 16px", display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", boxShadow: "0 2px 12px rgba(13,30,53,0.06)", marginBottom: 16 }}>
         <button style={chip(filtro === "minhas")} onClick={() => setFiltro("minhas")}>Minhas</button>
+        <button style={chip(filtro === "atribui")} onClick={() => setFiltro("atribui")}>Que eu passei</button>
         {gestor && <button style={chip(filtro === "todas")} onClick={() => setFiltro("todas")}>Equipe toda</button>}
         {gestor && (usuarios || []).filter(u => u.ativo !== false && u.id !== user.id).map(u => <button key={u.id} style={chip(filtro === u.id)} onClick={() => setFiltro(u.id)}>{u.nome.split(" ")[0]}</button>)}
         <span style={{ flex: 1 }} />
@@ -277,7 +281,7 @@ export function PaginaTarefas({ central, user, usuarios, projetos, gestor, taref
             {feitas.map(t => <LinhaTarefa key={t.id} t={t} projetos={projetos} usuarios={usuarios} onConcluir={central.concluir} onEditar={setModal} />)}
           </div>
         </div>)}
-      {modal && <ModalTarefa tarefa={modal === "nova" ? null : modal} usuarios={usuarios} projetos={projetos} user={user}
+      {modal && <ModalTarefa tarefa={modal === "nova" ? null : modal} usuarios={usuarios} projetos={projetos} user={user} semParticipantes={central.semParticipantes}
         onSalvar={async t => { await central.salvarTarefa(t); setModal(null); }}
         onExcluir={async id => { await central.excluirTarefa(id); setModal(null); }}
         onFechar={() => setModal(null)} />}

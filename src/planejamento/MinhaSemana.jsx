@@ -9,6 +9,7 @@ import { aplicarAjustes, corDoProjeto, montarPlano } from "./plano.js";
 import { lerPreferencias, gravarPreferencias, lerCalendarioGeral, prefPadrao, sincronizarAgenda, sincronizarUmaTarefa } from "./agendaGoogle.js";
 import { CartaoTarefa, EditorTarefa } from "./TarefasAgenda.jsx";
 import { limparTarefa, novaTarefa } from "./tarefasDados.js";
+import { ehDaPessoa as tarefaEhDe } from "../lembretes/pessoasTarefa.js";
 
 const K = { mar: "#0a2557", azul: "#1565d8", tx: "#0f1f3d", sub: "#6b7a90", borda: "#e6ecf4", fundo: "#f3f6fb", verde: "#16a34a" };
 const cartao = { background: "#fff", border: `1px solid ${K.borda}`, borderRadius: 16, padding: 18, marginBottom: 16, boxShadow: "0 1px 2px rgba(15,31,61,.04),0 6px 20px rgba(15,31,61,.05)" };
@@ -66,7 +67,7 @@ function MenuIncluir({ dia, comTarefa, onBloco, onTarefa }) {
   );
 }
 
-export function VisaoPlano({ plano, compacto = false, editavel = false, opcoes = [], onMudar, tarefas = [], semData = [], onTarefa, pessoa, usuarioAtual }) {
+export function VisaoPlano({ plano, compacto = false, editavel = false, opcoes = [], onMudar, tarefas = [], semData = [], onTarefa, pessoa, usuarioAtual, usuarios = [], semParticipantes }) {
   const ids = [...new Set(plano.metas.map(m => m.id))];
   const dias = diasDaSemana(plano.semana);
   const hoje = new Date().toISOString().slice(0, 10);
@@ -89,7 +90,7 @@ export function VisaoPlano({ plano, compacto = false, editavel = false, opcoes =
     const b = blocos.find(x => x.id === a.id);
     if (b && b.data !== data) onMudar(blocos.map(x => (x.id === b.id ? { ...x, data, dia } : x)));
   };
-  const cartaoT = (t, atrasada) => <CartaoTarefa key={t.id} tarefa={t} projeto={projetoDe(t.projeto_id)} editavel={editavel && !!onTarefa} ativo={editTarefa?.id === t.id} atrasada={atrasada}
+  const cartaoT = (t, atrasada) => <CartaoTarefa key={t.id} tarefa={t} usuarios={usuarios} projeto={projetoDe(t.projeto_id)} editavel={editavel && !!onTarefa} ativo={editTarefa?.id === t.id} atrasada={atrasada}
     onAbrir={() => { setEditando(null); setEditTarefa(t); }} onArrastar={() => setArrastando({ tipo: "tarefa", id: t.id })}
     onConcluir={() => onTarefa({ ...t, status: "feita", concluida_em: new Date().toISOString() })} />;
   return (
@@ -130,7 +131,7 @@ export function VisaoPlano({ plano, compacto = false, editavel = false, opcoes =
       {editavel && editando && <EditorBloco key={editando.id} bloco={editando} dias={dias} opcoes={opcoes}
         onSalvar={trocar} onFechar={() => setEditando(null)}
         onExcluir={editando.novo ? null : () => { onMudar(blocos.filter(b => b.id !== editando.id)); setEditando(null); }} />}
-      {editavel && onTarefa && editTarefa && <EditorTarefa key={editTarefa.id} tarefa={editTarefa} opcoes={opcoes} onFechar={() => setEditTarefa(null)}
+      {editavel && onTarefa && editTarefa && <EditorTarefa key={editTarefa.id} tarefa={editTarefa} opcoes={opcoes} usuarios={usuarios} euId={usuarioAtual?.id} semParticipantes={semParticipantes} onFechar={() => setEditTarefa(null)}
         onSalvar={t => { onTarefa(t); setEditTarefa(null); }} onConcluir={t => { onTarefa({ ...t, status: "feita", concluida_em: new Date().toISOString() }); setEditTarefa(null); }} />}
       {!compacto && plano.metas.length > 0 && (
         <div style={{ overflowX: "auto", marginTop: 14 }}>
@@ -213,7 +214,7 @@ export function CartaoAgendaGoogle({ usuarioAtual, usuarios, projetos, plano, ta
   );
 }
 
-export function MinhaSemana({ usuarioAtual, usuarios = [], projetos = [], registros = [], tarefas = [], salvarTarefa }) {
+export function MinhaSemana({ usuarioAtual, usuarios = [], projetos = [], registros = [], tarefas = [], salvarTarefa, semParticipantes }) {
   const gestor = ["admin", "gestor"].includes(usuarioAtual.perfil);
   const [semana, setSemana] = useState(inicioSemana());
   const [quem, setQuem] = useState(usuarioAtual.id);
@@ -274,7 +275,7 @@ export function MinhaSemana({ usuarioAtual, usuarios = [], projetos = [], regist
   // Tarefas da pessoa (abertas): as da semana vão para os dias; sem data ou atrasadas ficam para encaixar
   const [prefG, setPrefG] = useState(prefPadrao);
   useEffect(() => { lerPreferencias(usuarioAtual.id).then(p => setPrefG({ ...prefPadrao, ...(p || {}) })).catch(() => {}); }, [usuarioAtual.id, aba]);
-  const abertas = tarefas.filter(t => String(t.responsavel_id) === String(pessoa.id) && t.status !== "feita");
+  const abertas = tarefas.filter(t => tarefaEhDe(t, pessoa.id) && t.status !== "feita");
   const daSemana = abertas.filter(t => t.vence_em && t.vence_em >= dias[0].data && t.vence_em <= dias[6].data);
   const semData = abertas.filter(t => !t.vence_em || (atual && t.vence_em < dias[0].data));
   const [msgTarefa, setMsgTarefa] = useState("");
@@ -284,7 +285,7 @@ export function MinhaSemana({ usuarioAtual, usuarios = [], projetos = [], regist
     if (!limpa.titulo) return;
     const ok = await salvarTarefa(limpa);
     if (!ok) { setMsgTarefa("Não foi possível salvar a tarefa. Tente de novo."); setTimeout(() => setMsgTarefa(""), 5000); return; }
-    if (prefG.tarefas && String(limpa.responsavel_id) === String(usuarioAtual.id)) {
+    if (prefG.tarefas && (tarefaEhDe(limpa, usuarioAtual.id) || tarefaEhDe(t, usuarioAtual.id))) {
       const foi = await sincronizarUmaTarefa(limpa, { projetos, usuario: usuarioAtual });
       setMsgTarefa(foi ? "Tarefa salva e atualizada no Google Agenda." : "Tarefa salva. Para levar ao Google, use Google Agenda → Sincronizar agora.");
     } else setMsgTarefa(limpa.status === "feita" ? "Tarefa concluída." : "Tarefa salva.");
@@ -327,7 +328,7 @@ export function MinhaSemana({ usuarioAtual, usuarios = [], projetos = [], regist
             {msgPlano && <span role="status" style={{ fontSize: 12.5, color: K.verde, fontWeight: 600 }}>{msgPlano}</span>}
           </div>}
           {msgTarefa && <div role="status" style={{ fontSize: 12.5, color: /Não foi/.test(msgTarefa) ? "#b91c1c" : K.verde, fontWeight: 600, marginBottom: 8 }}>{msgTarefa}</div>}
-          {plano.metas.length || plano.blocos.length || abertas.length || (podeEditar && salvarTarefa) ? <VisaoPlano plano={plano} editavel={podeEditar} opcoes={opcoes} onMudar={mudarBlocos} tarefas={daSemana} semData={semData} onTarefa={salvarTarefa ? mudarTarefa : null} pessoa={pessoa} usuarioAtual={usuarioAtual} /> : <p style={{ color: K.sub, textAlign: "center", padding: 20, margin: 0 }}>Nenhum projeto em andamento com {pessoa.id === usuarioAtual.id ? "você" : pessoa.nome} na equipe.</p>}
+          {plano.metas.length || plano.blocos.length || abertas.length || (podeEditar && salvarTarefa) ? <VisaoPlano plano={plano} editavel={podeEditar} opcoes={opcoes} onMudar={mudarBlocos} tarefas={daSemana} semData={semData} onTarefa={salvarTarefa ? mudarTarefa : null} pessoa={pessoa} usuarioAtual={usuarioAtual} usuarios={usuarios} semParticipantes={semParticipantes} /> : <p style={{ color: K.sub, textAlign: "center", padding: 20, margin: 0 }}>Nenhum projeto em andamento com {pessoa.id === usuarioAtual.id ? "você" : pessoa.nome} na equipe.</p>}
           {plano.semEspaco > 0 && <div style={{ marginTop: 12, fontSize: 12.5, color: "#92400e" }}>As metas somam {fmtH(plano.metaTotal)}, mas só há {fmtH(plano.capacidade)} disponíveis: cada projeto recebeu uma parte proporcional, com prioridade para as entregas mais próximas.</div>}
           <div style={{ marginTop: 10, fontSize: 11.5, color: K.sub, lineHeight: 1.5 }}>
             Como é calculado: a estimativa de cada projeto é a média de horas dos projetos já concluídos do mesmo tipo (banco de horas). Sua parte vem das disciplinas suas que faltam entregar; o que falta é dividido pelas semanas até a entrega e encaixado nos seus períodos livres, a entrega mais próxima primeiro.

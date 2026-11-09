@@ -8,7 +8,7 @@ export function AbaAgenda({ calendario, usuarioAtual, registros, usuarios, proje
   return (
     <div>
       <Abas style={{marginBottom:20}} valor={subAba} onChange={setSubAba} itens={[{id:"semana",label:"Minha semana",icone:"tarefa"},{id:"calendario",label:"Calendário",icone:"agenda"},{id:"escalas",label:"Escalas",icone:"equipe"}]}/>
-      {subAba==="semana"    &&<MinhaSemana usuarioAtual={usuarioAtual} usuarios={usuarios} projetos={projetos||[]} registros={registros} tarefas={central?.tarefas||[]} salvarTarefa={central?.salvarTarefa}/>}
+      {subAba==="semana"    &&<MinhaSemana usuarioAtual={usuarioAtual} usuarios={usuarios} projetos={projetos||[]} registros={registros} tarefas={central?.tarefas||[]} salvarTarefa={central?.salvarTarefa} semParticipantes={central?.semParticipantes}/>}
       {subAba==="calendario"&&<ModuloCalendario calendario={calendario} usuarioAtual={usuarioAtual} registros={registros} usuarios={usuarios}/>}
       {subAba==="escalas"   &&<Escalas usuarioAtual={usuarioAtual} usuarios={usuarios}/>}
     </div>

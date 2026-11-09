@@ -137,6 +137,7 @@ const TOPICOS = [
   { id:"tarefas", icone:"✅", titulo:"Tarefas e notificações", aba:"tarefas",
     resumo:"Lembretes automáticos (sino), tarefas da equipe e notificações no computador.",
     secoes:[{ t:"Usar", itens:[
+        "Uma tarefa pode ter uma ou várias pessoas: na tarefa, toque nos nomes em Pessoas (a primeira marcada é a responsável principal, com ★). Ela aparece nas tarefas, na agenda e nos lembretes de todas, e quem recebeu é avisado no sino. Quando alguém conclui, fica concluída para todos. Use o filtro Que eu passei para acompanhar o que você atribuiu.",
         "Na Agenda → Minha semana as suas tarefas aparecem em cada dia, junto com os blocos de trabalho. Arraste uma tarefa para outro dia, clique para trocar o projeto, a hora e a prioridade, ou marque a caixinha para concluir. Use + no dia para criar uma tarefa. Tarefas sem data ou atrasadas ficam em Tarefas para encaixar.",
         "Para levar as tarefas ao Google: Agenda → Minha semana → Google Agenda, marque Minhas tarefas e clique em Sincronizar agora. Depois disso, o que você mudar na Agenda vai para o Google na hora (enquanto o sistema estiver aberto).",
         "No Dashboard, passe o mouse (ou clique) na data de hoje para ver o calendário do mês e a agenda do dia.",

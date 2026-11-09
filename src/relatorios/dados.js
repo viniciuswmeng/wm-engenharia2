@@ -1,3 +1,4 @@
+import { ehDaPessoa, pessoasDa } from "../lembretes/pessoasTarefa.js";
 // Cálculos dos relatórios (sem interface). Recebe os dados do sistema e o filtro escolhido
 // e devolve tudo pronto para a prévia, o PDF e a planilha.
 
@@ -80,13 +81,13 @@ export function montarRelatorio({ projetos = [], usuarios = [], sessoes = [], ta
   // Tarefas
   let tars = tarefas;
   if (filtrouProjetos) tars = tars.filter(t => ids.has(t.projeto_id));
-  if (filtro.responsavel && filtro.responsavel !== "todos") tars = tars.filter(t => t.responsavel_id === filtro.responsavel);
+  if (filtro.responsavel && filtro.responsavel !== "todos") tars = tars.filter(t => ehDaPessoa(t, filtro.responsavel));
   const hoje = iso(new Date());
   const tFeitas = tars.filter(t => t.status === "feita" && naFaixa(t.concluida_em || t.updated_at, f));
   const tAbertas = tars.filter(t => t.status !== "feita");
   const tAtrasadas = tAbertas.filter(t => t.vence_em && t.vence_em < hoje);
   const tPorPessoa = {};
-  [...tFeitas, ...tAbertas].forEach(t => { const k = t.responsavel_id; tPorPessoa[k] = tPorPessoa[k] || { nome:nomeU(k), feitas:0, abertas:0, atrasadas:0 }; if (t.status === "feita") tPorPessoa[k].feitas++; else { tPorPessoa[k].abertas++; if (t.vence_em && t.vence_em < hoje) tPorPessoa[k].atrasadas++; } });
+  [...tFeitas, ...tAbertas].forEach(t => pessoasDa(t).forEach(k => { tPorPessoa[k] = tPorPessoa[k] || { nome:nomeU(k), feitas:0, abertas:0, atrasadas:0 }; if (t.status === "feita") tPorPessoa[k].feitas++; else { tPorPessoa[k].abertas++; if (t.vence_em && t.vence_em < hoje) tPorPessoa[k].atrasadas++; } }));
 
   // Financeiro
   const fin = projs.map(p => ({ codigo:p.codigo, cliente:p.cliente, status:rotuloStatus(p.status), total:somaParc(p), recebido:somaParc(p, true), pendente:somaParc(p, false) })).filter(x => x.total > 0);
@@ -126,8 +127,8 @@ export function montarRelatorio({ projetos = [], usuarios = [], sessoes = [], ta
       porProjeto:Object.values(porProjetoH).sort((a, b) => b.min - a.min), porAtividade:Object.values(porAtividade).sort((a, b) => b.min - a.min) },
     sessoes:[...ses].sort((a, b) => String(b.data).localeCompare(String(a.data)) || String(b.horaInicio).localeCompare(String(a.horaInicio)))
       .map(s => ({ data:s.data, pessoa:nomeU(s.usuarioId), projeto:s.projetoId ? (projetos.find(p => p.id === s.projetoId)?.codigo || s.projetoId) : (cats.find(c => c.id === s.categoriaAdmin)?.label || "Administrativo"), inicio:s.horaInicio, fim:s.horaFim, min:s.duracaoMin || 0, extra:s.minutosExtras || 0, obs:s.obsInicio || s.obs || "" })),
-    tarefas:{ feitas:tFeitas.map(t => ({ titulo:t.titulo, pessoa:nomeU(t.responsavel_id), quando:t.concluida_em, projeto:projetos.find(p => p.id === t.projeto_id)?.codigo || "" })),
-      abertas:tAbertas.map(t => ({ titulo:t.titulo, pessoa:nomeU(t.responsavel_id), vence:t.vence_em, atrasada:!!(t.vence_em && t.vence_em < hoje), projeto:projetos.find(p => p.id === t.projeto_id)?.codigo || "" })),
+    tarefas:{ feitas:tFeitas.map(t => ({ titulo:t.titulo, pessoa:pessoasDa(t).map(nomeU).join(", "), quando:t.concluida_em, projeto:projetos.find(p => p.id === t.projeto_id)?.codigo || "" })),
+      abertas:tAbertas.map(t => ({ titulo:t.titulo, pessoa:pessoasDa(t).map(nomeU).join(", "), vence:t.vence_em, atrasada:!!(t.vence_em && t.vence_em < hoje), projeto:projetos.find(p => p.id === t.projeto_id)?.codigo || "" })),
       atrasadas:tAtrasadas.length, porPessoa:Object.values(tPorPessoa) },
     comercial:{ orcamentos:orcs.length, porStatusOrc, valorStatusOrc, conversao:decididos ? Math.round((porStatusOrc.fechado / decididos) * 100) : null, assinados:assinados.length,
       contratosAssinados:assinados.map(c => ({ titulo:c.titulo, quando:c.dados._fluxo.assinadoEm, valor:Number(c.dados.valorTotal) || 0 })) },

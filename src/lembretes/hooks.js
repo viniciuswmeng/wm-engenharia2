@@ -45,10 +45,17 @@ export function useCentral({ supabase, user, usuarios, projetos, registros }) {
     [projetos, usuarios, registros, tarefas, obras, briefings, tique]); // eslint-disable-line react-hooks/exhaustive-deps
   const meus = useMemo(() => lembretesDoUsuario(todos, uidUser, estado), [todos, uidUser, estado]);
 
+  const [semParticipantes, setSemParticipantes] = useState(false);
   const salvarTarefa = async t => {
     const row = { ...t, updated_at: new Date().toISOString() };
     setTarefas(ls => ls.some(x => x.id === t.id) ? ls.map(x => x.id === t.id ? row : x) : [...ls, row]);
-    const { error } = await supabase.from("tarefas").upsert(row);
+    let { error } = await supabase.from("tarefas").upsert(row);
+    // coluna participantes ainda não criada (supabase/tarefas_participantes.sql): grava só o responsável
+    if (error && /participantes/.test(error.message || "")) {
+      setSemParticipantes(true);
+      const { participantes, ...semP } = row; // eslint-disable-line no-unused-vars
+      ({ error } = await supabase.from("tarefas").upsert(semP));
+    }
     if (error) { console.error("Tarefa:", error); carregar(); return false; }
     return true;
   };
@@ -59,7 +66,7 @@ export function useCentral({ supabase, user, usuarios, projetos, registros }) {
     setEstado(es => [...es.filter(e => e.chave !== chave), { chave, ate }]);
     await supabase.from("lembretes_estado").upsert({ usuario_id: uidUser, chave, ate, updated_at: new Date().toISOString() });
   };
-  return { tarefas, meus, semTabela, salvarTarefa, excluirTarefa, concluir, ocultar, recarregar: carregar };
+  return { tarefas, meus, semTabela, semParticipantes, salvarTarefa, excluirTarefa, concluir, ocultar, recarregar: carregar };
 }
 
 const b64ToBytes = s => { const p = "=".repeat((4 - (s.length % 4)) % 4); const b = atob((s + p).replace(/-/g, "+").replace(/_/g, "/")); return Uint8Array.from(b, c => c.charCodeAt(0)); };
