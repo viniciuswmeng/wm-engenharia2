@@ -1,0 +1,79 @@
+// api/modelo.js
+// Endpoint público — dados do modelo IFC pelo token do link do cliente
+// Chamado pela página /modelo/[token]
+
+import { registrar } from "./_seguranca.js";
+import { chaveServidor, authSb } from "./_sb.js";
+export const config = { runtime: 'edge' };
+
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = chaveServidor();
+const BUCKET = 'modelos-ifc';
+
+async function supabaseGet(tabela, filtros = '') {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${tabela}?${filtros}`, {
+    headers: { apikey: SUPABASE_KEY, ...authSb(SUPABASE_KEY) },
+  });
+  if (!res.ok) throw new Error(`Supabase error: ${res.status}`);
+  return res.json();
+}
+
+const json = (corpo, status = 200) => new Response(JSON.stringify(corpo), {
+  status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+});
+
+const TIPOS = {
+  PE: 'Projeto Estrutural', PR: 'Projeto de Reforço', LT: 'Laudo Técnico', CB: 'Compatibilização', EL: 'Projeto Elétrico',
+  PH: 'Projeto Hidrossanitário', PA: 'Projeto Arquitetônico', PF: 'Projeto de Fundação', CT: 'Consultoria', RE: 'Revisão',
+  PP: 'Projeto de Piscina', PI: 'Projeto de Interiores',
+};
+
+// Link temporário (2 h) assinado no servidor: desativar ou trocar o link corta o acesso ao arquivo
+async function urlArquivo(path) {
+  const caminho = String(path || '').split('/').map(encodeURIComponent).join('/');
+  if (!caminho || String(path).includes('..')) return '';
+  try {
+    const r = await fetch(`${SUPABASE_URL}/storage/v1/object/sign/${BUCKET}/${caminho}`, {
+      method: 'POST', headers: { apikey: SUPABASE_KEY, ...authSb(SUPABASE_KEY), 'Content-Type': 'application/json' }, body: JSON.stringify({ expiresIn: 7200 }),
+    });
+    if (r.ok) { const j = await r.json(); const u = j.signedURL || j.signedUrl || ''; if (u) return `${SUPABASE_URL}/storage/v1${u.startsWith('/') ? u : '/' + u}`; }
+  } catch { /* cai no link público */ }
+  return `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${caminho}`;
+}
+
+const publico = async m => ({ nome: m.nome, disciplina: m.disciplina || '', versao: m.versao || '', observacao: m.observacao || '',
+  arquivo: m.arquivo || '', tamanhoKb: m.tamanho_kb || 0, criadoEm: m.created_at, token: m.token, url: await urlArquivo(m.path_storage) });
+
+// /modelo/<token> abre um modelo; /modelo/<tokenA>-<tokenB>-... abre os modelos sobrepostos
+export default async function handler(req) {
+  const param = new URL(req.url).searchParams.get('token') || '';
+  if (!/^[a-f0-9]{16,64}(-[a-f0-9]{16,64}){0,9}$/i.test(param)) { await registrar(req, 'token_invalido', { rota: 'modelo' }); return json({ error: 'Link inválido' }, 400); }
+  const tokens = [...new Set(param.split('-'))];
+
+  try {
+    const achados = await supabaseGet('modelos_ifc', `token=in.(${tokens.join(',')})&select=*`);
+    const porToken = new Map(achados.map(m => [m.token, m]));
+    const lista = tokens.map(t => porToken.get(t)).filter(Boolean);
+    const ativos = lista.filter(m => m.link_ativo !== false);
+    if (!lista.length) { await registrar(req, 'token_invalido', { rota: 'modelo' }); return json({ error: 'Link inválido ou expirado' }, 404); }
+    if (!ativos.length) return json({ error: 'Este link foi desativado pelo escritório' }, 403);
+    const m = ativos[0];
+
+    let projeto = null, outros = [];
+    if (m.projeto_id) {
+      const pid = encodeURIComponent(m.projeto_id);
+      const [p] = await supabaseGet('projetos', `id=eq.${pid}&select=codigo,cliente,tipo`).catch(() => []);
+      if (p) projeto = { codigo: p.codigo || '', cliente: p.cliente || '', tipo: TIPOS[p.tipo] || p.tipo || '' };
+      const doProjeto = await supabaseGet('modelos_ifc', `projeto_id=eq.${pid}&link_ativo=eq.true&order=created_at.desc&select=nome,disciplina,versao,token,created_at`).catch(() => []);
+      const usados = new Set(ativos.map(x => x.token));
+      outros = doProjeto.filter(x => !usados.has(x.token)).map(x => ({ nome: x.nome, disciplina: x.disciplina || '', versao: x.versao || '', token: x.token }));
+    }
+
+    // Campos do 1º modelo no topo (compatível com links antigos) + lista completa
+    const modelos = await Promise.all(ativos.map(publico));
+    return json({ ...modelos[0], projeto, outros, modelos, indisponiveis: tokens.length - ativos.length });
+  } catch (err) {
+    console.error('Erro modelo API:', err);
+    return json({ error: 'Erro interno' }, 500);
+  }
+}

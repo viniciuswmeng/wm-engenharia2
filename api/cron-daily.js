@@ -2,27 +2,44 @@
 // Vercel Cron Job — executa todo dia às 08h (BRT = UTC-3, então 11h UTC)
 // Configurado no vercel.json
 
+import { registrar } from "./_seguranca.js";
+import { chaveServidor, authSb } from "./_sb.js";
 export const config = { runtime: 'edge' };
 
 const SUPABASE_URL  = process.env.VITE_SUPABASE_URL;
-const SUPABASE_KEY  = process.env.VITE_SUPABASE_ANON_KEY;
+const SUPABASE_KEY = chaveServidor();
 const BASE_URL      = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
 
 async function supabaseGet(tabela, filtros = '') {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${tabela}?${filtros}`, {
     headers: {
       'apikey': SUPABASE_KEY,
-      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      ...authSb(SUPABASE_KEY),
     }
   });
   return res.json();
 }
 
+// Mantém o Supabase ativo: o plano gratuito pausa o projeto após 7 dias sem uso.
+// Roda antes da checagem do CRON_SECRET, para funcionar mesmo se a variável faltar.
+async function manterSupabaseAtivo() {
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/projetos?select=id&limit=1`, {
+      headers: { apikey: SUPABASE_KEY, ...authSb(SUPABASE_KEY) },
+    });
+    return r.ok;
+  } catch { return false; }
+}
+
+import { cronAutorizado } from './_auth.js';
+
 export default async function handler(req) {
+  const ativo = await manterSupabaseAtivo();
   // Segurança: só Vercel pode chamar este endpoint
   const authHeader = req.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return new Response('Unauthorized', { status: 401 });
+  if (!cronAutorizado(authHeader)) {
+    await registrar(req, 'cron_negado', { rota: 'cron-daily' });
+    return new Response(JSON.stringify({ supabaseAtivo: ativo, aviso: 'não autorizado: só o keep-alive rodou' }), { status: 401 });
   }
 
   try {
@@ -62,7 +79,7 @@ export default async function handler(req) {
         const usuario = usuarios.find(u => u.nome === responsavel);
         await fetch(`${BASE_URL}/api/email`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', authorization: `Bearer ${process.env.CRON_SECRET}` },
           body: JSON.stringify({
             tipo: 'projetos_vencendo',
             dados: {
@@ -78,12 +95,19 @@ export default async function handler(req) {
     // Enviar resumo diário para o gestor
     await fetch(`${BASE_URL}/api/email`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', authorization: `Bearer ${process.env.CRON_SECRET}` },
       body: JSON.stringify({
         tipo: 'resumo_diario',
         dados: { projetos, sessoesDia: sessoes, usuarios }
       })
     });
+
+    // Segurança: procura contas novas no login que não são da equipe (alerta os gestores)
+    let seguranca = null;
+    try {
+      const r = await fetch(`${BASE_URL}/api/alerta-seguranca`, { method: 'POST', headers: { 'Content-Type': 'application/json', authorization: `Bearer ${process.env.CRON_SECRET}` }, body: JSON.stringify({ acao: 'auditoria' }) });
+      seguranca = await r.json().catch(() => null);
+    } catch (e) { console.error('auditoria segurança:', e); }
 
     // Notificação da manhã no computador (dias úteis) — lembretes e tarefas
     let lembretes = null;

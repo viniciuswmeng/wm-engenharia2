@@ -1,74 +1,85 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+<script>if(location.hostname==="wm-engenharia2.vercel.app")location.replace("https://sistema.wmengenhariaintegrada.com.br"+location.pathname+location.search+location.hash)</script>
 <title>Formulário de cadastro</title>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap">
+<link rel="icon" href="/favicon.svg">
 <style>
-:root{--bg:#f4f5f8;--card:#fff;--line:#d9dee7;--ink:#18202e;--muted:#5a6578;--acc:#3d4a5c;--ok:#1e8e4e;--err:#c0392b}
+/* Visual padrão do sistema WM (mesmas cores, fontes, cartões e botões) */
+:root{--bg:#f3f6fb;--card:#fff;--line:#e6ecf4;--campo:#d9e2ee;--ink:#0f1f3d;--muted:#6b7a90;--acc:#1565d8;--mar:#0a2557;--ok:#16a34a;--err:#be123c;
+  --sombra:0 1px 2px rgba(15,31,61,.04),0 6px 20px rgba(15,31,61,.05)}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Open Sans",system-ui,-apple-system,"Segoe UI",sans-serif}
-.top{background:var(--acc);color:#fff;padding:22px 16px 18px}
-.top .in,.wrap{max-width:760px;margin:0 auto}
-.emp{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.85}
-h1{margin:6px 0 2px;font-size:24px;line-height:1.2}
-.sub{opacity:.9;font-size:14px}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Inter,"Segoe UI",system-ui,-apple-system,sans-serif}
+.top{background:radial-gradient(900px 400px at 90% 120%,#1565d8 0%,transparent 60%),linear-gradient(160deg,#0c2b62 0%,#0a2252 55%,#081c45 100%);color:#fff;padding:18px 16px 24px}
+.top .in,.wrap{max-width:780px;margin:0 auto}
+.top .logo{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px}
+.top .logo img{height:36px;display:block}
+.top .logo span{font-size:11.5px;font-weight:700;letter-spacing:1.4px;color:#a9c8f5;text-transform:uppercase}
+.emp{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#a9c8f5}
+h1{margin:4px 0 2px;font-size:clamp(22px,4vw,28px);line-height:1.2;font-weight:800;letter-spacing:-.3px}
+.sub{color:#d6e4fb;font-size:14px}
 .wrap{padding:0 16px 80px}
-.bar{position:sticky;top:0;z-index:5;background:var(--bg);padding:12px 0 10px;border-bottom:1px solid var(--line)}
+.bar{position:sticky;top:0;z-index:5;background:rgba(243,246,251,.94);backdrop-filter:blur(8px);padding:12px 0 10px;border-bottom:1px solid var(--line)}
 .bar .row{display:flex;justify-content:space-between;gap:10px;font-size:13px;color:var(--muted);flex-wrap:wrap}
-.bar .row b{color:var(--ink)}
-.meter{height:6px;background:var(--line);border-radius:3px;margin-top:8px;overflow:hidden}
-.meter i{display:block;height:100%;width:0;background:var(--ok);transition:width .2s}
-.intro{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-top:16px;font-size:15px}
+.bar .row b{color:var(--mar)}
+.meter{height:8px;background:#e2e8f0;border-radius:6px;margin-top:8px;overflow:hidden}
+.meter i{display:block;height:100%;width:0;background:linear-gradient(90deg,#1565d8,#3b82f6);border-radius:6px;transition:width .25s}
+.intro{background:#e9f1fd;border:1px solid #c9daf5;border-radius:14px;padding:14px 16px;margin-top:16px;font-size:15px;color:#1e3a6b}
 .intro p{margin:0 0 8px}.intro p:last-child{margin:0}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-top:14px;overflow:hidden}
-.card>h2,.card>summary{margin:0;padding:14px 16px;font-size:17px;font-weight:700;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;margin-top:14px;overflow:hidden;box-shadow:var(--sombra)}
+.card>h2,.card>summary{margin:0;padding:15px 18px;font-size:16.5px;font-weight:700;color:var(--mar);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:8px}
 details.card>summary{cursor:pointer;list-style:none}
 details.card>summary::-webkit-details-marker{display:none}
+details.card>summary::after{content:"";width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);margin-left:4px;flex:none;transition:transform .15s}
+details.card[open]>summary::after{transform:rotate(-135deg)}
 details.card:not([open])>summary{border-bottom:0}
-.cnt{font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap}
-.cnt.done{color:var(--ok)}
-.qs{padding:10px 16px 16px;display:flex;flex-direction:column;gap:16px}
-.q label{display:block;font-weight:600;font-size:15px;margin-bottom:6px}
+.cnt{font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap;background:#eef1f6;border-radius:999px;padding:2px 9px;margin-left:auto}
+.cnt.done{color:#166534;background:#dcfce7}
+.qs{padding:12px 18px 18px;display:flex;flex-direction:column;gap:18px}
+.q label{display:block;font-weight:600;font-size:14.5px;margin-bottom:6px;color:var(--ink)}
 .q small{display:block;color:var(--muted);font-size:13px;font-weight:400}
-textarea,input[type=text],input[type=number],select{width:100%;font:inherit;font-size:16px;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:#fbfcfd}
+textarea,input[type=text],input[type=number],select{width:100%;font:inherit;font-size:15.5px;color:var(--ink);border:1px solid var(--campo);border-radius:10px;padding:10px 12px;background:#fff;transition:border-color .15s,box-shadow .15s}
 textarea{resize:vertical;min-height:46px;overflow:hidden}
-textarea:focus,input:focus,select:focus{outline:2px solid var(--acc);outline-offset:1px;background:#fff}
-.q.filled textarea{border-color:#9fd3b5}
+textarea:focus,input:focus,select:focus{outline:none;border-color:var(--acc);box-shadow:0 0 0 3px rgba(21,101,216,.14)}
+.q.filled textarea,.q.filled input{border-color:#9fd3b5;background:#fbfefc}
 .brow{display:grid;grid-template-columns:1fr 110px 110px auto;gap:8px;align-items:end;margin-top:8px}
 .brow span{font-size:12px;color:var(--muted);display:block}
-.btn{font:600 15px "Open Sans",system-ui,sans-serif;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--ink);padding:10px 14px;cursor:pointer}
-.btn.pri{background:var(--acc);border-color:var(--acc);color:#fff}
-.btn.big{width:100%;padding:15px;font-size:17px}
+.btn{font:600 15px Inter,"Segoe UI",system-ui,sans-serif;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--mar);padding:10px 16px;cursor:pointer;transition:filter .15s,border-color .15s}
+.btn:hover{border-color:#bcd3f5}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:#fff;box-shadow:0 1px 2px rgba(21,101,216,.25)}
+.btn.pri:hover{filter:brightness(.95)}
+.btn.big{width:100%;padding:15px;font-size:16.5px}
 .btn.x{color:var(--err)}
-.btn[disabled]{opacity:.6}
-.add{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;padding:14px 16px}
+.btn[disabled]{opacity:.6;cursor:default}
+.add{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;padding:14px 18px}
 .foot{margin-top:24px;display:flex;flex-direction:column;gap:10px}
 .save{font-size:13px;color:var(--muted)}
 .save.err{color:var(--err);font-weight:600}
-.msg{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:26px 18px;margin-top:22px;text-align:center}
-.msg h2{margin:0 0 8px}
-.namebox{padding:14px 16px}
-.hd{margin:28px 0 2px;font-size:18px}
+.msg{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:30px 20px;margin-top:22px;text-align:center;box-shadow:var(--sombra)}
+.msg h2{margin:0 0 8px;color:var(--mar)}
+.namebox{padding:14px 18px}
+.hd{margin:30px 0 2px;font-size:18px;color:var(--mar)}
 .hint{margin:0;color:var(--muted);font-size:14px}
 .empty{margin:4px 0 0;color:var(--muted);font-size:14px}
 .opts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
-.opt{font:600 14px "Open Sans",system-ui,sans-serif;padding:7px 12px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--muted);cursor:pointer}
-.opt[aria-pressed="true"]{background:#e6ebf2;border-color:var(--acc);color:var(--acc)}
-.pages{display:flex;gap:6px;margin-top:16px}
-.pg{flex:1;font:700 14px "Open Sans",system-ui,sans-serif;padding:11px 10px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--muted);cursor:pointer;text-align:left}
+.opt{font:600 13.5px Inter,"Segoe UI",system-ui,sans-serif;padding:7px 13px;border-radius:999px;border:1px solid var(--campo);background:#fff;color:var(--muted);cursor:pointer}
+.opt:hover{border-color:#bcd3f5}
+.opt[aria-pressed="true"]{background:#e9f1fd;border-color:var(--acc);color:var(--acc)}
+.pages{display:flex;gap:4px;margin-top:16px;background:#e9eef6;padding:4px;border-radius:12px}
+.pg{flex:1;font:700 14px Inter,"Segoe UI",system-ui,sans-serif;padding:10px 12px;border-radius:9px;border:none;background:transparent;color:var(--muted);cursor:pointer;text-align:left}
 .pg small{display:block;font-weight:600;font-size:12px;color:var(--muted)}
-.pg[aria-current="page"]{border-color:var(--acc);background:var(--acc);color:#fff}
-.pg[aria-current="page"] small{color:#dfe5ee}
+.pg[aria-current="page"]{background:#fff;color:var(--mar);box-shadow:0 1px 3px rgba(15,31,61,.12)}
+.pg[aria-current="page"] small{color:var(--acc)}
 .nav{display:flex;gap:8px;flex-wrap:wrap}
 .nav .btn{flex:1}
 @media (max-width:560px){.brow{grid-template-columns:1fr 1fr auto}.brow .n{grid-column:1/-1}.add{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
-<div class="top"><div class="in" id="top"></div></div>
+<div class="top"><div class="in"><div class="logo" id="logo" hidden><img src="/Logo_Branco.png" alt="WM Engenharia Integrada"><span>Formulário do cliente</span></div><div id="top"></div></div></div>
 <div class="wrap" id="app"></div>
 <script>
 function salvarApi(token, payload, final) {
@@ -96,6 +107,7 @@ function iniciar(D) {
     $('app').innerHTML = '<div class="msg"><p>' + esc(D.erro || 'Formulário não encontrado.') + '</p></div>';
     return;
   }
+  if (!F.empresa || /\bWM\b/i.test(F.empresa)) $('logo').hidden = false;
   $('top').innerHTML = '<div class="emp">' + esc(F.empresa || 'Cadastro de projeto') + '</div><h1>' + esc(F.projeto) + '</h1><div class="sub">Formulário de cadastro' + (F.cliente ? ' · ' + esc(F.cliente) : '') + '</div>';
   if (F.fechado) {
     $('app').innerHTML = '<div class="msg"><h2>Formulário encerrado</h2><p>Este formulário já foi fechado pela equipe de projeto. Em caso de dúvida, fale com o responsável.</p></div>';

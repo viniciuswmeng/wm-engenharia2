@@ -1,4 +1,5 @@
 // Fluxo orçamento → contrato → projeto: regras sem interface (testáveis isoladamente).
+import { parcelasDoProjeto } from "../contratos/pagamento.js";
 import { gerar as gerarCronograma, calcular, normalizar as normalizarCronograma } from "../contratos/cronograma.js";
 
 export const SERVICO_TIPO = {
@@ -127,13 +128,7 @@ export const nomePasta = (codigo, cliente) => `${codigo} - ${String(cliente || "
 export function montarProjeto({ codigo, cliente, form, inicioISO, driveUrl, usuarios = [], hoje = hojeISO() }) {
   const tipo = codigo.split(".")[1] || tipoDoProjeto(form);
   const valor = num2(form.valorTotal);
-  const perc = Number(form.percEntrada) || 0;
-  const entrada = num2(valor * perc / 100);
-  const parcelas = valor > 0
-    ? (perc > 0 && perc < 100
-      ? [{ desc: `Entrada (${perc}%) — assinatura`, valor: entrada, pago: false }, { desc: `Parcela final (${100 - perc}%) — entrega`, valor: num2(valor - entrada), pago: false }]
-      : [{ desc: "Valor do contrato", valor, pago: false }])
-    : [];
+  const parcelas = valor > 0 ? parcelasDoProjeto(form, inicioISO) : [];
   // Equipe: cada disciplina vai para quem tem aquela especialidade
   const tipos = tiposDoContrato(form);
   const equipe = [];

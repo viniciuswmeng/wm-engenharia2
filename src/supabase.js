@@ -7,13 +7,6 @@ import { createClient } from '@supabase/supabase-js';
 const SUPABASE_URL  = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// Cliente de dados: continua usando a chave pública (anon), sem sessão de usuário.
-// Assim o login com Google não altera o acesso às tabelas enquanto as regras do
-// banco (RLS) não forem revistas para usuários autenticados.
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, {
-  auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-});
-
 // "Manter conectado": com a opção ligada a sessão fica no localStorage (sobrevive ao
 // fechar o navegador); desligada, fica no sessionStorage (termina ao fechar).
 const LEMBRAR = 'wm-auth-lembrar';
@@ -36,6 +29,10 @@ const armazenamentoSessao = {
 export const authClient = createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth: { storageKey: 'wm-auth', storage: armazenamentoSessao, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
 });
+
+// Cliente de dados = o mesmo cliente da sessão: toda leitura/gravação vai com o login
+// Google de quem está usando, e o banco (RLS) só libera para membros ativos da equipe.
+export const supabase = authClient;
 
 // ─── PROJETOS ──────────────────────────────────────────────────────────────────
 export const db = {
@@ -101,13 +98,29 @@ export const db = {
     },
     async salvar(usuario) {
       const row = toUsuarioBack(usuario);
-      const { data, error } = await supabase
-        .from('usuarios')
-        .upsert(row, { onConflict: 'id' })
-        .select()
-        .single();
-      if (error) throw error;
-      return toUsuarioFront(data);
+      // A foto é gravada à parte (salvarFoto); aqui não se envia para não depender da coluna
+      const salvo = await upsertTolerante('usuarios', row);
+      return salvo ? toUsuarioFront(salvo) : usuario;
+    },
+    // Foto do usuário (imagem pequena em data URL). Exige a coluna "foto" (supabase/usuarios_foto.sql)
+    async salvarFoto(id, foto, usuario) {
+      const explicar = e => {
+        const m = (e && e.message) || '';
+        if (/foto/.test(m) && /column|schema cache/i.test(m)) return new Error('Falta a coluna "foto" na tabela usuarios. Rode supabase/usuarios_foto.sql no Supabase.');
+        if (e && (e.code === '42501' || /row-level security|permission/i.test(m))) return new Error('O banco recusou a gravação (permissão na tabela usuarios). Rode supabase/usuarios_foto.sql no Supabase.');
+        return e;
+      };
+      // update + select: sem o select, o Supabase responde "ok" mesmo quando nenhuma linha foi alterada
+      const { data, error } = await supabase.from('usuarios').update({ foto: foto || null }).eq('id', id).select('id,foto');
+      if (error) throw explicar(error);
+      if (data && data.length) return;
+      // Nenhuma linha: o usuário não está no banco com esse id (ou o banco bloqueou). Grava o cadastro completo.
+      if (usuario) {
+        const { data: d2, error: e2 } = await supabase.from('usuarios').upsert({ ...toUsuarioBack(usuario), foto: foto || null }, { onConflict: 'id' }).select('id,foto');
+        if (e2) throw explicar(e2);
+        if (d2 && d2.length) return;
+      }
+      throw new Error('A foto não foi gravada: o banco não alterou nenhum cadastro (permissão na tabela usuarios). Rode supabase/usuarios_foto.sql no Supabase.');
     },
   },
 
@@ -260,6 +273,7 @@ function toProjetoFront(r) {
     link_cliente_ativo:   r.link_cliente_ativo || false,
     linkClienteAtivo:     r.link_cliente_ativo || false,
     progresso:            r.progresso || 0,
+    progressoDisciplinas: (r.progresso_disciplinas && typeof r.progresso_disciplinas === 'object') ? r.progresso_disciplinas : {},
     obs_cliente:          r.obs_cliente || '',
   };
 }
@@ -332,7 +346,6 @@ function toUsuarioFront(r) {
     id:             r.id,
     nome:           r.nome,
     email:          r.email,
-    senha:          r.senha,
     perfil:         r.perfil,
     cor:            r.cor || '#2563a8',
     iniciais:       r.iniciais || r.nome?.slice(0,2).toUpperCase(),
@@ -340,6 +353,7 @@ function toUsuarioFront(r) {
     salario:        r.salario || 0,
     especialidades: r.especialidades || [],
     expediente:     normalizarExpediente(r.expediente),
+    foto:           r.foto || '',
   };
 }
 
@@ -348,7 +362,6 @@ function toUsuarioBack(u) {
     id:             u.id,
     nome:           u.nome,
     email:          u.email,
-    senha:          u.senha,
     perfil:         u.perfil,
     cor:            u.cor,
     iniciais:       u.iniciais,
@@ -402,6 +415,7 @@ function toSessaoFront(r) {
     obsInicio:      r.obs_inicio || r.obs || '',
     obsFim:         r.obs_fim    || '',
     visivelCliente: r.visivel_cliente !== false,
+    lancadoPor:     r.lancado_por || null,
   };
 }
 
@@ -421,6 +435,7 @@ function toSessaoBack(s) {
     obs_inicio:       s.obsInicio || s.obs || '',
     obs_fim:          s.obsFim || '',
     visivel_cliente:  s.visivelCliente !== false,
+    ...(s.lancadoPor ? { lancado_por: s.lancadoPor } : {}),
   };
 }
 
@@ -442,12 +457,21 @@ export function iniciarRealtime({ onProjetosChange, onSessoesChange }) {
   return () => supabase.removeChannel(canal); // retorna função de cleanup
 }
 
+// Cabeçalho com a sessão Google/Supabase de quem está logado (as rotas /api exigem)
+export async function cabecalhoAuth() {
+  try {
+    const { data } = await authClient.auth.getSession();
+    const t = data?.session?.access_token;
+    return t ? { Authorization: `Bearer ${t}` } : {};
+  } catch { return {}; }
+}
+
 // ─── EMAIL VIA RESEND (chama a API da Vercel) ─────────────────────────────────
 export async function enviarEmail(tipo, dados) {
   try {
     const res = await fetch('/api/email', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(await cabecalhoAuth()) },
       body: JSON.stringify({ tipo, dados }),
     });
     const result = await res.json();
@@ -516,6 +540,15 @@ export const portal = {
       .from('atualizacoes_projeto')
       .delete().eq('id', id);
     if (error) throw error;
+  },
+
+  // Progresso de cada disciplina mostrado no portal ({PE: 40, EL: 75, ...})
+  async salvarProgressoDisciplinas(projetoId, mapa) {
+    const { error } = await supabase.from('projetos').update({ progresso_disciplinas: mapa }).eq('id', projetoId);
+    if (error) {
+      if (/progresso_disciplinas|schema cache|column/i.test(error.message || '')) throw new Error('Falta rodar no Supabase o arquivo supabase/portal_disciplinas_ifc.sql.');
+      throw error;
+    }
   },
 
   // Atualizar progresso e obs do cliente
@@ -646,9 +679,7 @@ export const chat = {
   assinarCanal(canalId, onMensagem) {
     const nomeCanal = `chat-msgs-${canalId}`;
     const sub = supabase.channel(nomeCanal);
-    sub.on('broadcast', { event: 'nova_msg' }, ({ payload }) => {
-      if(payload) onMensagem(payload);
-    });
+    // Segurança: só mensagens gravadas no banco (o Realtime aplica o RLS); sem broadcast forjável
     sub.on('postgres_changes',
       { event: 'INSERT', schema: 'public', table: 'chat_mensagens', filter: `canal_id=eq.${canalId}` },
       payload => { if(payload.new) onMensagem(payload.new); }
@@ -671,8 +702,6 @@ export const chat = {
                 arquivo_tamanho: arquivo?.tamanho||null })
       .select().single();
     if(error) throw error;
-    const ch = supabase.channel(`chat-msgs-${canalId}`);
-    ch.send({ type: 'broadcast', event: 'nova_msg', payload: data }).catch(()=>{});
     return data;
   },
 
@@ -696,21 +725,12 @@ export const chat = {
     return { url: publicUrl, nome: arquivo.name, tipo: tipoAudio?'audio':tipoImagem?'imagem':'documento', tamanho: arquivo.size };
   },
 
-  // Notifica um usuário de novo DM via Broadcast
-  async notificarNovoDM(paraUserId, canal) {
-    const ch = supabase.channel(`dm-notify-${paraUserId}`);
-    await ch.subscribe();
-    await ch.send({ type: 'broadcast', event: 'novo_dm', payload: canal });
-    supabase.removeChannel(ch);
-  },
+  // DM novo chega ao outro usuário pela inserção em chat_membros (Realtime com RLS)
+  async notificarNovoDM() { /* mantido por compatibilidade: o aviso agora vem do banco */ },
 
   // Escuta quando o usuário é adicionado a um DM
   assinarMembros(userId, onNovoCanal) {
     const sub = supabase.channel(`dm-notify-${userId}`);
-    sub.on('broadcast', { event: 'novo_dm' }, ({ payload }) => {
-      console.log('[Chat DM] Novo DM recebido via broadcast:', payload);
-      if(payload) onNovoCanal(payload);
-    });
     sub.on('postgres_changes',
       { event: 'INSERT', schema: 'public', table: 'chat_membros', filter: `usuario_id=eq.${userId}` },
       async payload => {

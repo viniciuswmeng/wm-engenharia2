@@ -15,7 +15,7 @@
     --ink:#243746;
     --muted:#8a95a1;
     --line:#e2e7ec;
-    --bg:#eef1f4;
+    --bg:#f3f6fb;
     --card:#ffffff;
     --green:#2f8f5b;
     --green-bg:#e7f4ec;
@@ -346,10 +346,85 @@
     .integ,.recv-list,.prazo-box,table.invest,.ref-band,.pay-item,.quote,.proj-grid,.cta-band{
       break-inside:avoid;page-break-inside:avoid}
   }
+
+  /* ===== Linguagem visual do sistema WM (só a parte de edição; a proposta impressa não muda) ===== */
+  .topo,.panel,.modal,.toast{font-family:"Inter","Segoe UI",system-ui,-apple-system,sans-serif}
+  .wrap{max-width:1480px;padding:28px 28px 48px}
+  .topo{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:20px}
+  .topo h1{font-size:30px;font-weight:800;color:#0a2557;letter-spacing:-.5px;line-height:1.15}
+  .topo p{font-size:14.5px;color:#6b7a90;margin-top:6px}
+  .topo-acoes{display:flex;gap:8px;flex-wrap:wrap}
+  .topo-btn{display:inline-flex;align-items:center;gap:7px;border-radius:10px;padding:9px 16px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid #e6ecf4;background:#fff;color:#334866}
+  .topo-btn:hover{border-color:#bcd3f5}
+  .topo-btn.pri{background:#1565d8;color:#fff;border-color:transparent;box-shadow:0 1px 2px rgba(21,101,216,.25)}
+  .topo-btn.pri:hover{filter:brightness(.95)}
+  .topo-btn .badge{background:#eef1f6;color:#6b7a90;border-radius:10px;padding:0 7px;font-size:12px;font-weight:700}
+  .layout{grid-template-columns:420px 1fr}
+  .panel{border:1px solid #e6ecf4;border-radius:16px;padding:22px;box-shadow:0 1px 2px rgba(15,31,61,.04),0 6px 20px rgba(15,31,61,.05);top:16px;max-height:calc(100vh - 32px)}
+  .panel .brand{display:none}
+  .panel .sec-tit{font-size:15px;font-weight:700;color:#0a2557;margin:0 0 14px}
+  .panel .divider{margin:18px 0;background:#e6ecf4}
+  .panel .field .lbl,.panel .disc-title,.panel .pool-extra .lbl{text-transform:none;letter-spacing:0;font-size:12.5px;font-weight:600;color:#334866}
+  .panel .disc-title{font-size:15px;font-weight:700;color:#0a2557;margin:2px 0 12px}
+  .panel input[type=text],.panel input[type=number],.panel textarea{border:1px solid #d9e2ee;border-radius:10px;font-size:14px;padding:10px 12px;color:#0f1f3d}
+  .panel input:focus,.panel textarea:focus{border-color:#1565d8;box-shadow:0 0 0 3px rgba(21,101,216,.14)}
+  .panel .sub{color:#6b7a90;font-size:12px}
+  .panel .disc,.panel .opt-toggle{border:1px solid #e6ecf4;border-radius:12px;padding:11px 13px}
+  .panel .disc:hover,.panel .opt-toggle:hover{border-color:#bcd3f5}
+  .panel .disc.on{border-color:#9cc0f3;background:#f2f7fe}
+  .panel .disc input{accent-color:#1565d8}
+  .panel .disc .d-name,.panel .opt-toggle .ot-name{font-size:14px;font-weight:600;color:#0f1f3d}
+  .panel .disc.on .d-price{color:#1565d8}
+  .panel .opt-toggle.on{border-color:#bfe3cf;background:#f1fbf5}
+  .panel .opt-toggle input{accent-color:#16a34a}
+  .panel .pool-extra{background:#f6f8fc;border:1px dashed #c9d6e8;border-radius:12px}
+  .panel .manual-box{border-radius:12px}
+  .panel .pav-del{border-radius:9px;border-color:#e6ecf4;background:#f6f8fc}
+  .panel .btn-add{border:1px dashed #bcd3f5;background:#f6f9fe;color:#1565d8;border-radius:10px}
+  .panel .btn{border-radius:10px;font-size:14.5px;font-weight:600;padding:12px}
+  .panel .btn-print{background:#1565d8;box-shadow:0 1px 2px rgba(21,101,216,.25)}
+  .panel .btn-print:hover{background:#1257be}
+  .panel .btn-save{background:#16a34a}
+  .panel .btn-whats{background:#fff;color:#128c4a;border:1.5px solid #25d366;margin-top:6px}
+  .panel .btn-whats:hover{background:#effcf3}
+  .panel .btn-whats[disabled]{opacity:.6;cursor:wait}
+  /* captura do PDF para o WhatsApp: mesma aparência da impressão */
+  body.gerando-pdf .page{box-shadow:none!important;border-radius:0!important;width:210mm!important;height:297mm!important;min-height:297mm!important;padding:15mm 14mm!important;overflow:hidden!important}
+  body.gerando-pdf .page-num{position:absolute!important;bottom:7mm!important;right:14mm!important}
+  .panel .btn-ghost,.panel .btn-saved{border:1px solid #e6ecf4;color:#334866}
+  .panel .btn-saved .badge{background:#eef1f6;color:#6b7a90}
+  .modal-bg{background:rgba(10,25,55,.5);backdrop-filter:blur(2px)}
+  .modal{border-radius:18px;box-shadow:0 24px 70px rgba(10,25,55,.28)}
+  .modal-head{background:#fff;color:#0a2557;border-bottom:1px solid #e6ecf4;padding:18px 22px}
+  .modal-head h3{font-size:18px;font-weight:700}
+  .modal-head .m-close{background:#f1f4f9;color:#6b7a90;border-radius:10px;width:34px;height:34px}
+  .modal-head .m-close:hover{background:#e6ecf4}
+  .saved-item{border:1px solid #e6ecf4;border-radius:12px}
+  .saved-item:hover{border-color:#bcd3f5}
+  .si-act{border:1px solid #e6ecf4;border-radius:9px}
+  .si-act.load:hover{background:#1565d8;border-color:#1565d8}
+  .saved-filtros button{border:1px solid #e6ecf4}
+  .saved-filtros button.on{background:#0a2557;border-color:#0a2557}
+  @media(max-width:640px){.wrap{padding:18px 14px 40px}.topo h1{font-size:24px}}
+  /* Impressão: as regras de tela acima não podem mexer no papel (o espaçamento da página
+     empurrava cada folha alguns milímetros e gerava uma folha em branco entre elas) */
+  @media print{
+    .wrap{max-width:none!important;margin:0!important;padding:0!important}
+    .topo{display:none!important}
+    .layout{display:block!important}
+    .page{height:296.5mm!important;min-height:0!important;max-height:296.5mm}
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
+  <div class="topo no-print">
+    <div><h1>Orçamentos</h1><p>Monte a proposta, gere o PDF para o cliente e acompanhe a situação de cada orçamento.</p></div>
+    <div class="topo-acoes">
+      <button class="topo-btn" onclick="abrirSalvos()">Orçamentos salvos <span class="badge" id="savedBadgeTopo">0</span></button>
+      <button class="topo-btn pri" onclick="limpar()">+ Novo orçamento</button>
+    </div>
+  </div>
   <div class="layout">
 
     <!-- ============ FORM ============ -->
@@ -358,13 +433,16 @@
         <div class="brand-mark">WM</div>
         <div><h1>WM Engenharia</h1><p>Gerador de Orçamentos</p></div>
       </div>
-      <div class="divider"></div>
+      <div class="disc-title">Dados do cliente</div>
 
       <label class="field"><span class="lbl">Nome do cliente</span>
         <input type="text" id="cliente" placeholder="Ex: Gladstone" oninput="render()"></label>
 
       <label class="field"><span class="lbl">Cidade / UF da obra</span>
         <input type="text" id="local" placeholder="Ex: Chapada dos Guimarães / MT" oninput="render()"></label>
+
+      <label class="field"><span class="lbl">WhatsApp do cliente</span>
+        <input type="text" id="whats" inputmode="tel" placeholder="Ex: (33) 99999-9999"></label>
 
       <label class="field"><span class="lbl">Tipo de projeto</span>
         <input type="text" id="tipo" placeholder="Ex: residência unifamiliar com dois pavimentos" oninput="render()"></label>
@@ -436,6 +514,7 @@
       </div>
 
       <button class="btn btn-print" onclick="imprimirPDF()">Gerar / Imprimir PDF</button>
+      <button class="btn btn-whats" id="btnWhats" onclick="enviarWhatsApp()"><svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor" style="vertical-align:-3px;margin-right:6px"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91C21.95 6.45 17.5 2 12.04 2zm5.8 14.01c-.24.68-1.42 1.3-1.95 1.34-.5.05-.97.23-3.27-.68-2.77-1.09-4.52-3.92-4.66-4.1-.13-.18-1.11-1.48-1.11-2.82 0-1.34.7-2 .95-2.27.25-.27.54-.34.72-.34h.52c.17 0 .39-.06.61.47.24.56.79 1.93.86 2.07.07.14.11.3.02.48-.09.18-.14.3-.27.46-.14.16-.29.36-.41.48-.14.14-.28.29-.12.56.16.27.71 1.17 1.52 1.9 1.05.93 1.93 1.22 2.2 1.36.27.14.43.11.59-.07.16-.18.68-.79.86-1.06.18-.27.36-.23.61-.14.25.09 1.59.75 1.86.89.27.14.45.2.52.32.07.11.07.66-.17 1.33z"/></svg>Enviar pelo WhatsApp</button>
       <button class="btn btn-save" onclick="salvarOrcamento()">Salvar orçamento</button>
       <button class="btn btn-saved" onclick="abrirSalvos()">Orçamentos salvos <span class="badge" id="savedBadge">0</span></button>
       <button class="btn btn-ghost" onclick="limpar()">Limpar / Novo</button>
@@ -618,43 +697,138 @@ const PRICES = {
 };
 const MESES=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 
-// Monta o nome padrão: "ORÇAMENTO WM - NOME DO CLIENTE.CIDADE.ESTADO"
+// Monta o nome padrão: "Orçamento Nome do cliente - Cidade-UF - WM Engenharia"
 function nomeArquivo(cliente, local){
   cliente=(cliente||'').trim();
   local=(local||'').trim();
   let cidade='', estado='';
   if(local){
     // aceita "Cidade / UF", "Cidade - UF", "Cidade/UF" ou "Cidade, UF"
-    const m=local.split(/[\/,\-]/).map(s=>s.trim()).filter(Boolean);
+    const m=local.split(/\s*[\/,]\s*|\s+-\s+|-(?=[A-Za-z]{2}$)/).map(s=>s.trim()).filter(Boolean);
     cidade=m[0]||'';
-    estado=m[1]||'';
+    estado=(m[1]||'').toUpperCase();
   }
-  let base='ORÇAMENTO WM';
-  if(cliente) base+=' - '+cliente.toUpperCase();
-  const loc=[cidade,estado].filter(Boolean).join('.').toUpperCase();
-  if(loc) base+='.'+loc;
+  const partes=['Orçamento'+(cliente?' '+cliente:'')];
+  const loc=[cidade,estado].filter(Boolean).join('-');
+  if(loc) partes.push(loc);
+  partes.push('WM Engenharia');
   // remove caracteres inválidos para nome de arquivo
-  return base.replace(/[\\/:*?"<>|]/g,'').replace(/\s+/g,' ').trim();
+  return partes.join(' - ').replace(/[\\/:*?"<>|]/g,'').replace(/\s+/g,' ').trim();
 }
 
-function imprimirPDF(){
-  render();
-  // Gerar o PDF para o cliente salva o orçamento e marca como "Enviado"
+// Salva o orçamento e marca como "Enviado" (ao gerar o PDF para o cliente)
+function marcarEnviado(){
   const est0=coletarEstado();
   if(est0.cliente || est0.discs.length){
     salvarOrcamento(true);
     const arr=lerSalvos(); const o=arr.find(x=>x.id===window._editId);
     if(o && (!o.status || o.status==='aberto')){ o.status='enviado'; o.atualizadoEm=Date.now(); gravarSalvos(arr); }
   }
-  const cliente=document.getElementById('cliente').value;
-  const local=document.getElementById('local').value;
+}
+
+function imprimirPDF(){
+  render();
+  if(document.getElementById('docStack').style.display==='none'){ toast('Preencha os dados do orçamento primeiro.'); return; }
+  marcarEnviado();
+  const nome=nomeArquivo(document.getElementById('cliente').value, document.getElementById('local').value);
+  // o navegador usa o título da página como nome sugerido do PDF
+  // (dentro do sistema a página fica num quadro, então troca também o título da janela principal)
   const tituloAntigo=document.title;
-  // o navegador usa document.title como nome sugerido do PDF
-  document.title=nomeArquivo(cliente, local);
+  let pai=null, tituloPai='';
+  try{ if(window.parent!==window){ pai=window.parent.document; tituloPai=pai.title; pai.title=nome; } }catch(e){ pai=null; }
+  document.title=nome;
   window.print();
   // restaura após a caixa de impressão
-  setTimeout(()=>{ document.title=tituloAntigo; }, 1500);
+  setTimeout(()=>{ document.title=tituloAntigo; if(pai) pai.title=tituloPai; }, 1500);
 }
+
+// ── Envio pelo WhatsApp ─────────────────────────────────────────────
+function carregarScript(src){
+  return new Promise((ok,erro)=>{
+    if(document.querySelector('script[src="'+src+'"]')){ ok(); return; }
+    const sc=document.createElement('script'); sc.src=src; sc.onload=ok; sc.onerror=()=>erro(new Error('Não foi possível carregar '+src)); document.head.appendChild(sc);
+  });
+}
+// Gera o PDF (4 folhas A4) a partir das páginas da proposta
+async function gerarArquivoPdf(nome){
+  await carregarScript('/vendor/html2canvas-1.4.1.min.js');
+  await carregarScript('/vendor/jspdf-2.5.1.umd.min.js');
+  const paginas=[...document.querySelectorAll('#docStack .page')];
+  document.body.classList.add('gerando-pdf');
+  try{
+    if(document.fonts&&document.fonts.ready) await document.fonts.ready;
+    const pdf=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4',compress:true});
+    for(let i=0;i<paginas.length;i++){
+      const cv=await window.html2canvas(paginas[i],{scale:2,backgroundColor:'#ffffff',useCORS:true,logging:false,windowWidth:1200});
+      if(i) pdf.addPage();
+      pdf.addImage(cv.toDataURL('image/jpeg',0.92),'JPEG',0,0,210,297,undefined,'FAST');
+    }
+    pdf.setProperties({title:nome, author:'WM Engenharia Integrada'});
+    return new File([pdf.output('blob')], nome+'.pdf', {type:'application/pdf'});
+  } finally { document.body.classList.remove('gerando-pdf'); }
+}
+function numeroWhats(v){
+  let d=String(v||'').replace(/\D/g,'');
+  if(!d) return '';
+  if(d.startsWith('0')) d=d.replace(/^0+/,'');
+  if(d.length<=11) d='55'+d; // DDD + número, sem o código do país
+  return d;
+}
+function mensagemWhats(){
+  const cliente=document.getElementById('cliente').value.trim();
+  const primeiro=cliente.split(/\s+/)[0]||'';
+  return 'Olá'+(primeiro?', '+primeiro:'')+'! Tudo bem? Segue em anexo a proposta técnica e comercial da WM Engenharia para os projetos da sua obra. Fico à disposição para qualquer dúvida.';
+}
+async function compartilharArquivo(arquivo,nome,msg){
+  try{ await navigator.share({files:[arquivo], title:nome, text:msg}); window._pdfPronto=null; return 'ok'; }
+  catch(e){ if(e&&e.name==='AbortError'){ window._pdfPronto=null; return 'cancelado'; } if(e&&e.name==='NotAllowedError') return 'gesto'; throw e; }
+}
+async function enviarWhatsApp(){
+  const btn=document.getElementById('btnWhats'); const rotulo=btn.lastChild;
+  // 2º clique: o PDF já está pronto (o navegador exige um clique novo para abrir o compartilhamento)
+  if(window._pdfPronto){
+    const {arquivo,nome,msg}=window._pdfPronto; rotulo.textContent='Enviar pelo WhatsApp';
+    try{ await compartilharArquivo(arquivo,nome,msg); }catch(e){ window._pdfPronto=null; baixarEAbrir(arquivo,msg); }
+    return;
+  }
+  render();
+  if(document.getElementById('docStack').style.display==='none'){ toast('Preencha os dados do orçamento primeiro.'); return; }
+  const teste=new File(['x'],'t.pdf',{type:'application/pdf'});
+  // compartilhar com anexo só no celular; no computador usa o WhatsApp Web
+  const celular=/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints>1 && /Macintosh/.test(navigator.userAgent));
+  const podeCompartilhar=celular && !!(navigator.canShare && navigator.canShare({files:[teste]}));
+  // no computador abre a aba do WhatsApp Web já no clique (senão o navegador bloqueia a janela);
+  // usa sempre a mesma aba, para não abrir uma nova a cada envio
+  const janela=podeCompartilhar?null:window.open('','wm_whatsapp_web');
+  btn.disabled=true; rotulo.textContent='Gerando PDF…';
+  try{
+    marcarEnviado();
+    const nome=nomeArquivo(document.getElementById('cliente').value, document.getElementById('local').value);
+    const arquivo=await gerarArquivoPdf(nome);
+    const msg=mensagemWhats();
+    if(podeCompartilhar){
+      // celular (e alguns computadores): compartilhamento com o PDF anexado; é só escolher o WhatsApp
+      const r=await compartilharArquivo(arquivo,nome,msg);
+      if(r==='gesto'){ window._pdfPronto={arquivo,nome,msg}; btn.disabled=false; rotulo.textContent='PDF pronto · toque para compartilhar'; return; }
+      return;
+    }
+    baixarEAbrir(arquivo,msg,janela);
+  }catch(e){ console.error(e); if(janela) janela.close(); toast('Não foi possível gerar o PDF: '+(e.message||e)); }
+  finally{ btn.disabled=false; if(!window._pdfPronto) rotulo.textContent='Enviar pelo WhatsApp'; }
+}
+// Computador: baixa o PDF e abre a conversa no WhatsApp Web com a mensagem pronta
+function baixarEAbrir(arquivo,msg,janela){
+  const url=URL.createObjectURL(arquivo);
+  const a=document.createElement('a'); a.href=url; a.download=arquivo.name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),5000);
+  const num=numeroWhats(document.getElementById('whats').value);
+  const link='https://web.whatsapp.com/send?'+(num?'phone='+num+'&':'')+'text='+encodeURIComponent(msg);
+  if(janela){ try{ janela.opener=null; }catch(e){} janela.location.href=link; } else window.open(link,'wm_whatsapp_web');
+  toast(num
+    ? 'PDF baixado: "'+arquivo.name+'". No WhatsApp Web, arraste o arquivo para a conversa (ou use o clipe) e envie.'
+    : 'PDF baixado. Sem número do cliente: escolha a conversa no WhatsApp Web, cole a mensagem e anexe o arquivo.');
+}
+
 
 const CARD_CONTENT = {
   est:{cls:'est',ico:'🏗',t:'Projeto Estrutural',items:['Estudo e comparação de diferentes soluções estruturais','Dimensionamento completo da fundação e da estrutura','Verificação da capacidade de suportar todas as cargas','Análise de deformações e fissuras','Detalhamentos técnicos completos para a execução']},
@@ -664,12 +838,15 @@ const CARD_CONTENT = {
   arqB:{cls:'arq',ico:'📐',t:'Projeto Arquitetônico',items:['Concepção e partido arquitetônico','Plantas, cortes e fachadas','Estudo de layout e distribuição de ambientes','Compatibilização com as demais disciplinas','Detalhamentos executivos']},
 };
 
+// Escapa texto antes de ir para innerHTML (dados vêm do banco compartilhado)
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+const idSeguro=v=>String(v==null?'':v).replace(/[^A-Za-z0-9_-]/g,'');
 let pavs=[{nome:'Pavimento Térreo',area:''},{nome:'Pavimento Superior',area:''}];
 function renderPavList(){
   document.getElementById('pavList').innerHTML=pavs.map((p,i)=>`
     <div class="pav-row">
-      <input type="text" value="${p.nome.replace(/"/g,'&quot;')}" placeholder="Nome do pavimento" oninput="pavs[${i}].nome=this.value;render()">
-      <input type="number" value="${p.area}" min="0" step="0.01" placeholder="m²" oninput="pavs[${i}].area=this.value;render()">
+      <input type="text" value="${esc(p.nome)}" placeholder="Nome do pavimento" oninput="pavs[${i}].nome=this.value;render()">
+      <input type="number" value="${esc(p.area)}" min="0" step="0.01" placeholder="m²" oninput="pavs[${i}].area=this.value;render()">
       <button class="pav-del" onclick="delPav(${i})" title="Remover">×</button>
     </div>`).join('');
 }
@@ -714,8 +891,8 @@ function renderManualRows(){
   box.innerHTML=itens.map(it=>{
     const cur=(window._manualVals&&window._manualVals[it.k]!=null)?window._manualVals[it.k]:'';
     return `<div class="manual-row">
-      <span class="mr-name">${it.nome}</span>
-      <input type="number" min="0" step="10" placeholder="calc." value="${cur}"
+      <span class="mr-name">${esc(it.nome)}</span>
+      <input type="number" min="0" step="10" placeholder="calc." value="${esc(cur)}"
         oninput="setManual('${it.k}', this.value)">
     </div>`;
   }).join('');
@@ -762,9 +939,9 @@ function render(){
     `A presente proposta contempla a elaboração dos Projetos de ${discPhrase} para ${tipo||'a construção descrita'}${local?', localizada em '+local:''}, conforme descrito a seguir:`;
 
   let areaRows='';
-  pavs.forEach(p=>{ if(p.nome || p.area) areaRows+=`<div class="ar"><div class="ar-k">${p.nome||'—'}</div><div class="ar-v">${p.area?brl(parseFloat(p.area))+' m²':'—'}</div></div>`; });
+  pavs.forEach(p=>{ if(p.nome || p.area) areaRows+=`<div class="ar"><div class="ar-k">${esc(p.nome)||'—'}</div><div class="ar-v">${p.area?brl(parseFloat(p.area))+' m²':'—'}</div></div>`; });
   areaRows+=`<div class="ar total"><div class="ar-k">Área Total</div><div class="ar-v">${brl(area)} m²</div></div>`;
-  if(local) areaRows+=`<div class="ar"><div class="ar-k">Localização</div><div class="ar-v">${local}</div></div>`;
+  if(local) areaRows+=`<div class="ar"><div class="ar-k">Localização</div><div class="ar-v">${esc(local)}</div></div>`;
   document.getElementById('p2-areas').innerHTML=areaRows;
 
   let cards='', count=0;
@@ -828,6 +1005,7 @@ function cardHtml(c){
 function limpar(){
   document.getElementById('cliente').value='';
   document.getElementById('local').value='';
+  document.getElementById('whats').value='';
   document.getElementById('tipo').value='';
   document.getElementById('prazo').value='65';
   document.getElementById('validade').value='15';
@@ -925,6 +1103,7 @@ function coletarEstado(){
   return {
     cliente:document.getElementById('cliente').value.trim(),
     local:document.getElementById('local').value.trim(),
+    whats:document.getElementById('whats').value.trim(),
     tipo:document.getElementById('tipo').value.trim(),
     prazo:document.getElementById('prazo').value,
     validade:document.getElementById('validade').value,
@@ -945,6 +1124,7 @@ function coletarEstado(){
 function aplicarEstado(s){
   document.getElementById('cliente').value=s.cliente||'';
   document.getElementById('local').value=s.local||'';
+  document.getElementById('whats').value=s.whats||'';
   document.getElementById('tipo').value=s.tipo||'';
   document.getElementById('prazo').value=s.prazo||'65';
   document.getElementById('validade').value=s.validade||'15';
@@ -986,6 +1166,7 @@ function salvarOrcamento(silencioso){
 
 function atualizarBadge(){
   document.getElementById('savedBadge').textContent=lerSalvos().length;
+  const bt=document.getElementById('savedBadgeTopo'); if(bt) bt.textContent=lerSalvos().length;
 }
 
 function fmtData(ts){
@@ -1010,7 +1191,7 @@ function renderSalvos(){
   const box=document.getElementById('savedList');
   const cont=k=>todos.filter(o=>k==='todos'||(o.status||'aberto')===k).length;
   const filtros=`<div class="saved-filtros">${['todos','aberto','enviado','fechado','recusado'].map(k=>`<button class="${_filtro===k?'on':''}" onclick="filtrar('${k}')">${k==='todos'?'Todos':STATUS_ORC[k]} (${cont(k)})</button>`).join('')}</div>`
-    +(_syncMsg?`<div class="sync-info" style="color:#c0392b">${_syncMsg}</div>`:(SB?'<div class="sync-info">Salvos no sistema WM — todos da equipe veem a mesma lista.</div>':''));
+    +(_syncMsg?`<div class="sync-info" style="color:#c0392b">${esc(_syncMsg)}</div>`:(SB?'<div class="sync-info">Salvos no sistema WM — todos da equipe veem a mesma lista.</div>':''));
   const arr=todos.filter(o=>_filtro==='todos'||(o.status||'aberto')===_filtro);
   if(!arr.length){ box.innerHTML=filtros+'<div class="saved-empty">'+(todos.length?'Nenhum orçamento com este status.':'Nenhum orçamento salvo ainda.<br>Preencha os dados e clique em "Salvar orçamento".')+'</div>'; return; }
   // agrupar por data
@@ -1028,19 +1209,20 @@ function renderSalvos(){
     grupos[k].forEach(o=>{
       const nDisc=(o.discs||[]).length;
       const nome=nomeArquivo(o.cliente, o.local);
-      const meta=`${fmtHora(o.criadoEm)} · ${o.tipo||'Sem tipo'} · ${nDisc} disciplina${nDisc!==1?'s':''}`;
+      const oid=idSeguro(o.id), st=STATUS_ORC[o.status]?o.status:'aberto';
+      const meta=`${fmtHora(o.criadoEm)} · ${esc(o.tipo||'Sem tipo')} · ${nDisc} disciplina${nDisc!==1?'s':''}`;
       html+=`<div class="saved-item">
         <div class="si-info">
-          <div class="si-name">${nome}</div>
-          <div class="si-meta">${meta}${o.criadoPor?' · '+o.criadoPor:''}</div>
+          <div class="si-name">${esc(nome)}</div>
+          <div class="si-meta">${meta}${o.criadoPor?' · '+esc(o.criadoPor):''}</div>
           ${o.contratoId?'<div class="si-ctr">✔ Contrato gerado</div>':''}
         </div>
         <div class="si-total">R$ ${brl(o.total||0)}</div>
         <div class="si-btns">
-          <select class="si-status ${o.status||'aberto'}" onchange="mudarStatus('${o.id}',this.value)" title="Situação do orçamento">${Object.entries(STATUS_ORC).map(([v,l])=>`<option value="${v}" ${(o.status||'aberto')===v?'selected':''}>${l}</option>`).join('')}</select>
-          ${(o.status==='fechado'&&WMB)?`<button class="si-act ctr" onclick="gerarContrato('${o.id}')" title="Abrir o gerador de contratos já preenchido">${o.contratoId?'Ver contrato':'Gerar contrato'}</button>`:''}
-          <button class="si-act load" onclick="carregarOrcamento('${o.id}')">Abrir</button>
-          <button class="si-act del" onclick="excluirOrcamento('${o.id}')" title="Excluir">🗑</button>
+          <select class="si-status ${st}" onchange="mudarStatus('${oid}',this.value)" title="Situação do orçamento">${Object.entries(STATUS_ORC).map(([v,l])=>`<option value="${v}" ${st===v?'selected':''}>${l}</option>`).join('')}</select>
+          ${(o.status==='fechado'&&WMB)?`<button class="si-act ctr" onclick="gerarContrato('${oid}')" title="Abrir o gerador de contratos já preenchido">${o.contratoId?'Ver contrato':'Gerar contrato'}</button>`:''}
+          <button class="si-act load" onclick="carregarOrcamento('${oid}')">Abrir</button>
+          <button class="si-act del" onclick="excluirOrcamento('${oid}')" title="Excluir">🗑</button>
         </div>
       </div>`;
     });
@@ -1073,7 +1255,7 @@ function toast(msg){
   const t=document.getElementById('toast');
   t.textContent=msg; t.classList.add('show');
   clearTimeout(_toastT);
-  _toastT=setTimeout(()=>t.classList.remove('show'),2600);
+  _toastT=setTimeout(()=>t.classList.remove('show'),Math.max(2600,msg.length*55));
 }
 
 renderPavList();

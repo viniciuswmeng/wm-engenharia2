@@ -1,6 +1,7 @@
 // Anexar o contrato assinado: marca como assinado, cria/usa a pasta do projeto no Drive,
 // salva o PDF nela, cria o projeto "Em andamento", a obra com o checklist das disciplinas
 // contratadas (prazos do Anexo II) e fecha o orçamento de origem.
+import { CabecalhoModal } from "../ui/ds.jsx";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { listarPastas, criarPasta, enviarArquivo, criarObraAutomatica } from "./drive.js";
 import {
@@ -156,13 +157,9 @@ export default function AnexarContrato({ contrato, drive, driveRaizId, projetos,
 
   return (
     <div onClick={e => { if (e.target === e.currentTarget && !rodando) onFechar(); }}
-      style={{ position:"fixed", inset:0, background:"rgba(13,30,53,.55)", zIndex:1000, display:"flex", alignItems:"flex-start", justifyContent:"center", overflowY:"auto", padding:"32px 16px" }}>
+      style={{ position:"fixed", inset:0, background:"rgba(10,25,55,.5)", zIndex:1000, display:"flex", alignItems:"flex-start", justifyContent:"center", overflowY:"auto", padding:"32px 16px" }}>
       <div role="dialog" aria-label="Anexar contrato assinado" style={{ background:K.fundo, borderRadius:14, width:"100%", maxWidth:640, boxShadow:"0 20px 60px rgba(0,0,0,.3)", overflow:"hidden" }}>
-        <div style={{ background:K.azul, color:"#fff", padding:"16px 20px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-          <div><div style={{ fontWeight:800, fontSize:16 }}>📎 Anexar contrato assinado</div>
-            <div style={{ fontSize:12, opacity:.75, marginTop:2 }}>{contrato.titulo}</div></div>
-          <button onClick={() => onFechar()} disabled={rodando} aria-label="Fechar" style={{ background:"none", border:"none", color:"#fff", fontSize:22, cursor:"pointer" }}>×</button>
-        </div>
+        <CabecalhoModal titulo="Anexar contrato assinado" subtitulo={contrato.titulo} icone="documento" desabilitarFechar={rodando} onFechar={() => onFechar()} />
 
         {feito ? (
           <div style={{ padding:20, display:"flex", flexDirection:"column", gap:14 }}>

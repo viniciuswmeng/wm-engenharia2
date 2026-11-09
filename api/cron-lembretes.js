@@ -2,6 +2,8 @@
 // Notificação da manhã: calcula os lembretes de cada usuário (mesmas regras do
 // sino do sistema) e envia um resumo para os computadores com notificação ativa.
 // Chamado pelo /api/cron-daily (dias úteis às 8h) com o CRON_SECRET.
+import { registrar } from "./_seguranca.js";
+import { cronAutorizado } from "./_auth.js";
 import { sbGet, enviarParaUsuario, pushConfigurado } from "./_push.js";
 import { gerarLembretes, lembretesDoUsuario } from "../src/lembretes/regras.js";
 
@@ -15,7 +17,7 @@ const sessaoFront = r => ({ id: r.id, usuarioId: r.usuario_id, data: r.data, hor
 const opcional = p => p.catch(() => []);
 
 export default async function handler(req, res) {
-  if (req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) return res.status(401).end("Unauthorized");
+  if (!cronAutorizado(req.headers.authorization)) { await registrar(req, "cron_negado", { rota: "cron-lembretes" }); return res.status(401).end("Unauthorized"); }
   if (!pushConfigurado()) return res.status(200).json({ ok: true, aviso: "VAPID não configurado" });
   try {
     const [projetos, usuarios, sessoes, tarefas, obras, briefings, estado, subs] = await Promise.all([

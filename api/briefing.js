@@ -4,15 +4,17 @@
 // POST /api/briefing {token, payload, final} → salva rascunho ou envio
 // Substitui o Google Apps Script do app local. Página: /briefing/[token]
 
+import { registrar } from "./_seguranca.js";
+import { chaveServidor, authSb } from "./_sb.js";
 export const config = { runtime: 'edge' };
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
-const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY;
+const SUPABASE_KEY = chaveServidor();
 const TOKEN_OK = /^[A-Za-z0-9_-]{16,64}$/;
 
 const headers = {
   apikey: SUPABASE_KEY,
-  Authorization: `Bearer ${SUPABASE_KEY}`,
+  ...authSb(SUPABASE_KEY),
   'Content-Type': 'application/json',
 };
 
@@ -47,7 +49,8 @@ function sanitizar(p, ant, form, final) {
     Object.keys((a && a.ans) || {}).slice(0, 80).forEach((i) => {
       if (/^\d+$/.test(i)) ans[i] = limpa(a.ans[i]);
     });
-    return { id: limpa(a && a.id, 40), tipo: limpa(a && a.tipo, 20), nome: limpa(a && a.nome, 80), novo: !!(a && a.novo), ans };
+    const id = limpa(a && a.id, 40);
+    return { id: /^[a-z0-9]{1,40}$/i.test(id) ? id : "", tipo: /^[a-z]{1,20}$/.test(String(a && a.tipo || "")) ? a.tipo : "", nome: limpa(a && a.nome, 80), novo: !!(a && a.novo), ans };
   });
   const banho = (Array.isArray(p.banho) ? p.banho : []).slice(0, 30).map((r) => ({
     n: limpa(r && r.n, 80), t: limpa(r && r.t, 10), b: limpa(r && r.b, 10),
@@ -70,21 +73,21 @@ export default async function handler(req) {
   try {
     if (req.method === 'GET') {
       const token = new URL(req.url).searchParams.get('token') || '';
-      if (!TOKEN_OK.test(token)) return json({ erro: 'Link inválido. Confira se o endereço foi copiado por inteiro.' });
+      if (!TOKEN_OK.test(token)) { await registrar(req, 'token_invalido', { rota: 'briefing' }); return json({ erro: 'Link inválido. Confira se o endereço foi copiado por inteiro.' }); }
       const row = await lerBriefing(token);
       if (!row || !row.formulario || !row.formulario.token) {
-        return json({ erro: 'Formulário não encontrado. Peça um novo link ao responsável pelo projeto.' });
+        { await registrar(req, 'token_invalido', { rota: 'briefing' }); return json({ erro: 'Formulário não encontrado. Peça um novo link ao responsável pelo projeto.' }); }
       }
       return json({ form: row.formulario, resp: row.resposta || null, erro: '' });
     }
 
     if (req.method === 'POST') {
       const body = await req.json().catch(() => null);
-      if (!body || JSON.stringify(body).length > 400000) return json({ ok: false, error: 'Dados inválidos.' }, 400);
+      if (!body || JSON.stringify(body).length > 400000) { await registrar(req, 'dados_invalidos', { rota: 'briefing' }); return json({ ok: false, error: 'Dados inválidos.' }, 400); }
       const token = String(body.token || '');
-      if (!TOKEN_OK.test(token)) return json({ ok: false, error: 'Link inválido.' }, 400);
+      if (!TOKEN_OK.test(token)) { await registrar(req, 'token_invalido', { rota: 'briefing' }); return json({ ok: false, error: 'Link inválido.' }, 400); }
       const row = await lerBriefing(token);
-      if (!row || !row.formulario) return json({ ok: false, error: 'Formulário não encontrado.' }, 404);
+      if (!row || !row.formulario) { await registrar(req, 'token_invalido', { rota: 'briefing' }); return json({ ok: false, error: 'Formulário não encontrado.' }, 404); }
       if (row.formulario.fechado) return json({ ok: false, error: 'Este formulário foi encerrado pela equipe de projeto.' }, 403);
       const resposta = sanitizar(body.payload, row.resposta, row.formulario, !!body.final);
       const res = await fetch(`${SUPABASE_URL}/rest/v1/obras_briefing?token=eq.${encodeURIComponent(token)}`, {

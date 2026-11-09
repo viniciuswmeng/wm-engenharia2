@@ -2,20 +2,39 @@
 // Endpoint público — retorna dados do projeto pelo token do cliente
 // Chamado pela página /cliente/[token]
 
+import { chaveServidor, authSb } from "./_sb.js";
+import { registrar } from "./_seguranca.js";
 export const config = { runtime: 'edge' };
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
-const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY;
+const SUPABASE_KEY = chaveServidor();
 
 async function supabaseGet(tabela, filtros = '') {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${tabela}?${filtros}`, {
     headers: {
       'apikey': SUPABASE_KEY,
-      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      ...authSb(SUPABASE_KEY),
     }
   });
   if (!res.ok) throw new Error(`Supabase error: ${res.status}`);
   return res.json();
+}
+
+// Conjunto do modelo: "final" ou "preliminar" (modelos antigos: pelo nome do arquivo)
+const faseDe = m => (m.fase === 'final' || m.fase === 'preliminar') ? m.fase : (/final/i.test(`${m.nome || ''} ${m.arquivo || ''}`) ? 'final' : 'preliminar');
+
+// Link temporário (7 dias) para um arquivo do bucket privado das obras
+async function linkAssinado(caminho) {
+  try {
+    const r = await fetch(`${SUPABASE_URL}/storage/v1/object/sign/obras-arquivos/${caminho.split('/').map(encodeURIComponent).join('/')}`, {
+      method: 'POST', headers: { apikey: SUPABASE_KEY, ...authSb(SUPABASE_KEY), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ expiresIn: 7 * 86400 }),
+    });
+    if (!r.ok) return '';
+    const j = await r.json();
+    const u = j.signedURL || j.signedUrl || '';
+    return u ? (u.startsWith('http') ? u : `${SUPABASE_URL}/storage/v1${u.startsWith('/') ? '' : '/'}${u}`) : '';
+  } catch { return ''; }
 }
 
 export default async function handler(req) {
@@ -35,6 +54,7 @@ export default async function handler(req) {
     );
 
     if (!projetos || projetos.length === 0) {
+      await registrar(req, 'token_invalido', { rota: 'cliente' });
       return new Response(JSON.stringify({ error: 'Link inválido ou expirado' }), {
         status: 404, headers: { 'Content-Type': 'application/json' }
       });
@@ -49,15 +69,50 @@ export default async function handler(req) {
       });
     }
 
-    // Buscar atualizações manuais do projeto
-    const atualizacoes = await supabaseGet('atualizacoes_projeto',
-      `projeto_id=eq.${projeto.id}&order=created_at.desc&select=*`
-    );
+    // Modelos 3D (IFC) com link ativo — tabela opcional (ignora se ainda não existir)
+    const modelos3d = await supabaseGet('modelos_ifc',
+      `projeto_id=eq.${encodeURIComponent(projeto.id)}&link_ativo=eq.true&order=created_at.desc&select=*`
+    ).catch(() => []);
 
-    // Buscar sessões do banco de horas deste projeto (apenas encerradas)
-    const sessoes = await supabaseGet('sessoes_horas',
-      `projeto_id=eq.${projeto.id}&hora_fim=not.is.null&order=created_at.desc&select=*,usuarios(nome)`
-    );
+    // Formulário de cadastro (briefing) da obra ligada a este projeto — tabelas opcionais
+    let formularios = [], atas = [];
+    try {
+      const filtro = encodeURIComponent(JSON.stringify([projeto.id]));
+      const obras = await supabaseGet('obras', `select=id,nome,atas:dados->atas&dados->wm=cs.${filtro}`);
+      // Atas de reunião da obra: assinadas (com link para baixar) ou aguardando assinatura
+      for (const o of obras) {
+        for (const a of (Array.isArray(o.atas) ? o.atas : [])) {
+          const assinadas = Array.isArray(a.signed) ? a.signed : [];
+          if (!assinadas.length && !a.pdfAt) continue; // rascunho ainda em edição: não aparece
+          const ultima = assinadas[assinadas.length - 1];
+          atas.push({ numero: a.num || '', data: a.date || '', assunto: a.subject || '', obra: o.nome || '',
+            situacao: ultima ? 'assinada' : 'aguardando', assinadaEm: ultima?.date || null,
+            link: ultima && /^[^/\\]+$/.test(String(ultima.file || '')) && !String(ultima.file).includes('..') ? await linkAssinado(`atas_assinadas/${ultima.file}`) : '' });
+        }
+      }
+      atas.sort((x, y) => String(y.data).localeCompare(String(x.data)));
+      if (obras.length) {
+        const ids = obras.map(o => String(o.id)).filter(x => /^[A-Za-z0-9_-]{1,80}$/.test(x)).map(x => `"${x}"`).join(',');
+        const brief = await supabaseGet('obras_briefing', `obra_id=in.(${ids})&select=token,obra_id,resposta,updated_at`);
+        formularios = brief.map(b => {
+          const r = b.resposta || {};
+          const obra = obras.find(o => o.id === b.obra_id);
+          return { link: `/briefing/${b.token}`, obra: obra?.nome || '', situacao: r.status === 'enviado' ? 'enviado' : r.status === 'rascunho' ? 'rascunho' : 'pendente',
+            enviadoEm: r.enviadoEm ? new Date(r.enviadoEm).toISOString() : null, atualizadoEm: r.atualizadoEm ? new Date(r.atualizadoEm).toISOString() : null };
+        });
+      }
+    } catch (e) { console.error('briefing:', e.message); }
+
+    // Entregas publicadas (pastas do Drive) — coluna opcional
+    const entregas = (Array.isArray(projeto.entregas_portal) ? projeto.entregas_portal : []).map(p => ({
+      id: p.id, tipo: p.tipo === 'final' ? 'final' : 'parcial', titulo: p.titulo || '', nota: p.nota || '', data: p.data || null,
+      atualizadoEm: p.atualizadoEm || null, pastaLink: p.pastaLink || '',
+      arquivos: (p.arquivos || []).map(a => ({
+        nome: a.nome, pasta: a.pasta || '', tamanho: a.tamanho || 0, tipo: a.tipo || '',
+        ver: `https://drive.google.com/file/d/${encodeURIComponent(a.id)}/view`,
+        baixar: /^application\/vnd\.google-apps\./.test(a.tipo || '') ? `https://drive.google.com/file/d/${encodeURIComponent(a.id)}/view` : `https://drive.google.com/uc?export=download&id=${encodeURIComponent(a.id)}`,
+      })),
+    })).sort((a, b) => String(b.data || '').localeCompare(String(a.data || '')));
 
     // Retornar apenas dados públicos (sem financeiro, sem dados internos)
     const dadosPublicos = {
@@ -77,58 +132,39 @@ export default async function handler(req) {
       dataEntregaPrevista:  projeto.data_entrega_prevista || null,
       dataEntregaReal:      projeto.data_entrega_real || null,
       driveEntregaveis:      projeto.drive_entregaveis || '',
+      // Disciplinas e o que já foi entregue (entrega parcial por disciplina)
+      disciplinas: (() => {
+        const NOMES = { PE:'Projeto Estrutural', PR:'Projeto de Reforço', LT:'Laudo Técnico', EL:'Projeto Elétrico', PH:'Projeto Hidrossanitário',
+          PA:'Projeto Arquitetônico', PF:'Projeto de Fundação', CT:'Consultoria', CB:'Compatibilização' };
+        const disc = Array.isArray(projeto.disciplinas) ? projeto.disciplinas : [];
+        const linhas = disc.length && disc[0]?.usuarioNome !== undefined
+          ? disc.flatMap(m => (m.disciplinas || []).map(id => ({ id, entregue: (m.discEntregues || {})[id] || null, pausada: !!(m.discPausadas || {})[id] })))
+          : disc.filter(d => d?.id).map(d => ({ id: d.id, entregue: d.entregue || null, pausada: !!d.pausada }));
+        const porId = new Map();
+        linhas.forEach(l => { const a = porId.get(l.id); if (!a || (l.entregue && !a.entregue)) porId.set(l.id, l); });
+        const pd = (projeto.progresso_disciplinas && typeof projeto.progresso_disciplinas === 'object') ? projeto.progresso_disciplinas : {};
+        return [...porId.values()].map(l => ({ nome: NOMES[l.id] || l.id, entregue: l.entregue, situacao: l.entregue ? 'entregue' : l.pausada ? 'pausada' : 'andamento',
+          progresso: l.entregue ? 100 : Math.max(0, Math.min(100, Math.round(Number(pd[l.id]) || 0))) }));
+      })(),
+      // Modelos 3D
+      modelos3d: (modelos3d || []).map(m => ({ nome: m.nome, disciplina: m.disciplina || '', versao: m.versao || '', link: `/modelo/${m.token}`, data: m.created_at, fase: faseDe(m) })),
+      // Link com os modelos sobrepostos de cada conjunto (preliminar e final)
+      conjuntos3d: ['preliminar', 'final'].map(f => {
+        const l = (modelos3d || []).filter(m => faseDe(m) === f);
+        return { fase: f, link: l.length > 1 ? `/modelo/${l.slice(0, 10).map(m => m.token).join('-')}` : '', total: l.length };
+      }),
+      formularios,
+      atas,
+      entregas,
       // Portal
       progresso:            projeto.progresso || 0,
       obs:                  projeto.obs_cliente || '',
-      // Atualizações visíveis ao cliente
-      atualizacoes: (() => {
-        // Atualizações manuais visíveis ao cliente
-        const manuais = (atualizacoes || [])
-          .filter(a => a.visivel_cliente !== false)
-          .map(a => ({
-            id:        a.id,
-            tipo:      a.tipo || 'manual',
-            titulo:    a.titulo,
-            descricao: a.descricao || '',
-            autor:     a.autor_nome || '',
-            data:      a.created_at,
-            icone:     a.icone || '📝',
-            origem:    'manual',
-          }));
-
-        // Sessões do banco de horas como linha do tempo
-        const sessoesTimeline = (sessoes || []).filter(s => s.visivel_cliente !== false).map(s => {
-          const nomeColaborador = s.usuarios?.nome || 'Equipe WM';
-          const hIni  = s.hora_inicio || '';
-          const hFim  = s.hora_fim    || '';
-          const durMin= s.duracao_min || 0;
-          const horas = Math.floor(durMin/60);
-          const mins  = durMin % 60;
-          const durStr= durMin > 0 ? (horas>0 ? `${horas}h ${mins}min` : `${mins}min`) : '';
-          const obsStr= s.obs ? ` — ${s.obs}` : '';
-          return {
-            id:        s.id,
-            tipo:      'sessao',
-            titulo:    `Trabalho realizado por ${nomeColaborador}`,
-            descricao: `${s.data ? new Date(s.data+'T12:00:00').toLocaleDateString('pt-BR') : ''} ${durStr?'('+durStr+')':''} ${obsStr}`.trim(),
-            autor:     nomeColaborador,
-            data:      s.created_at,
-            icone:     '⚙️',
-            origem:    'sessao',
-          };
-        });
-
-        // Unir e ordenar por data decrescente
-        return [...manuais, ...sessoesTimeline]
-          .sort((a,b) => new Date(b.data) - new Date(a.data));
-      })(),
     };
 
     return new Response(JSON.stringify(dadosPublicos), {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
         'Cache-Control': 'no-store',
       }
     });
