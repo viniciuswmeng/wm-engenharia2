@@ -11,7 +11,7 @@ const W = {
   ambar: "FFB45309", ambarClaro: "FFFEF3C7", roxo: "FF7C3AED", roxoClaro: "FFF3E8FF", vermelho: "FFBE123C",
 };
 const FONTE = "Calibri";
-const CONTATO = "WM Engenharia Integrada · wmengenhariaintegrada@gmail.com · (33) 99931-7042";
+const CONTATO = "WM Engenharia Integrada · projeto@wmengenhariaintegrada.com.br · (33) 99931-7042";
 const MOEDA = '"R$" #,##0.00';
 const NUM = "#,##0.00";
 const hoje = () => new Date().toLocaleDateString("pt-BR");

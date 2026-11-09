@@ -94,7 +94,7 @@ export default function PaginaPublica() {
         </main>
       )}
       <footer style={{ textAlign: "center", fontSize: 11.5, color: K.sub, padding: "6px 12px 10px" }}>
-        WM Engenharia Integrada · wmengenhariaintegrada@gmail.com · (33) 99931-7042
+        WM Engenharia Integrada · projeto@wmengenhariaintegrada.com.br · (33) 99931-7042
       </footer>
     </div>
   );
