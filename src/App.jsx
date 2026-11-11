@@ -1029,12 +1029,12 @@ export default function App(){
   const abasMenu=[
     {id:"dashboard",  label:"Dashboard",     icone:"painel",      grupo:"principal"},
     {id:"projetos",   label:"Projetos",      icone:"pasta",       grupo:"principal"},
-    ...(!isColab ? [{id:"financeiro", label:"Financeiro", icone:"grafico", grupo:"principal"}] : []),
+    {id:"financeiro", label:"Financeiro",    icone:"grafico",     grupo:"principal"},
     {id:"horas",      label:"Horas",         icone:"relogio",     grupo:"principal", menu:"rotina"},
     {id:"agenda",     label:"Agenda",        icone:"agenda",      grupo:"principal", menu:"rotina"},
     {id:"tarefas",    label:"Tarefas",       icone:"tarefa",      grupo:"principal", menu:"rotina"},
-    ...(!isColab ? [{id:"orcamentos", label:"Orçamentos", icone:"calculadora", grupo:"principal", menu:"comercial"}] : []),
-    ...(!isColab ? [{id:"contratos",  label:"Contratos",  icone:"documento",   grupo:"principal", menu:"comercial"}] : []),
+    {id:"orcamentos", label:"Orçamentos",    icone:"calculadora", grupo:"principal", menu:"comercial"},
+    {id:"contratos",  label:"Contratos",     icone:"documento",   grupo:"principal", menu:"comercial"},
     {id:"obras",      label:"Obras",         icone:"capacete",    grupo:"principal"},
     {id:"calculadoras", label:"Calculadoras e materiais de apoio", linhas:["Calculadoras","e materiais de apoio"], icone:"regua", grupo:"principal"},
     {id:"ifc",        label:"Visualizador IFC", icone:"cubo",     grupo:"principal"},
@@ -1047,7 +1047,8 @@ export default function App(){
 
 
 
-  // Colaborador: só as abas liberadas pelos gestores (dashboard, configurações e ajuda sempre)
+  // Colaborador: só as abas liberadas pelos gestores em Configurações (dashboard, configurações e ajuda sempre).
+  // Financeiro, Orçamentos e Contratos vêm desligados no padrão e só aparecem se um gestor liberar.
   const abasPermitidas = abasMenu.filter(a => ["dashboard","config","ajuda"].includes(a.id) || permissoes.abas[a.id] !== false);
   abasMenu.length = 0; abasMenu.push(...abasPermitidas);
   if (!abasMenu.some(a => a.id === aba) && !["ajuda","config","dashboard"].includes(aba)) queueMicrotask(() => setAba("dashboard"));
