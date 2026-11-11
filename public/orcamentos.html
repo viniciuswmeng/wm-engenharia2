@@ -493,7 +493,7 @@
 
       <label class="opt-toggle" id="row-nf"><input type="checkbox" id="nfCheck" onchange="toggleNF(this);render()">
         <span class="ot-txt"><span class="ot-name">Acrescentar impostos (emissão de NF)</span>
-        <span class="ot-sub">Divide cada valor por 0,92 (+8% para cobrir impostos).</span></span></label>
+        <span class="ot-sub">Divide cada valor por 0,92 (+8% para cobrir impostos) e arredonda para cima, em múltiplos de R$ 5.</span></span></label>
 
       <label class="opt-toggle" id="row-manual"><input type="checkbox" id="manualCheck" onchange="toggleManual(this);render()">
         <span class="ot-txt"><span class="ot-name">Editar valores manualmente</span>
@@ -872,8 +872,8 @@ function toggleManual(cb){
 }
 function nfAtiva(){ const el=document.getElementById('nfCheck'); return el&&el.checked; }
 function manualAtivo(){ const el=document.getElementById('manualCheck'); return el&&el.checked; }
-// aplica acréscimo de NF (÷0,92) quando ativo
-function comNF(v){ return nfAtiva() ? v/0.92 : v; }
+// aplica acréscimo de NF (÷0,92) quando ativo e arredonda para cima até o próximo múltiplo de R$ 5
+function comNF(v){ if(!nfAtiva()||!(v>0)) return v; return Math.ceil((v/0.92)/5-1e-9)*5; }
 
 // lista de itens que entram na proposta (para linhas de ajuste manual)
 function itensAtivos(){
