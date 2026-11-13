@@ -71,6 +71,15 @@ export default function EntregasPortal({ projeto, usuarioAtual }) {
       else avisar(e.message || String(e), false);
     } finally { setEstado(""); }
   }
+  // Muda só nome, recado e tipo (sem reler a pasta do Drive)
+  const [edit, setEdit] = useState(null);
+  async function salvarEdicao() {
+    const titulo = edit.titulo.trim().slice(0, 150);
+    if (!titulo) { avisar("Dê um nome para a entrega.", false); return; }
+    const nova = lista.map(x => (x.id === edit.id ? { ...x, titulo, nota: edit.nota.trim().slice(0, 1000), tipo: edit.tipo === "final" ? "final" : "parcial" } : x));
+    try { await gravarEntregas(projeto.id, nova); setLista(nova); setEdit(null); avisar("Entrega atualizada no portal."); }
+    catch (e) { avisar("Não foi possível salvar: " + (e.message || e), false); }
+  }
   async function remover(p) {
     if (!window.confirm(`Tirar "${p.titulo}" do portal? Os arquivos continuam no Drive.`)) return;
     const nova = lista.filter(x => x.id !== p.id);
@@ -107,13 +116,29 @@ export default function EntregasPortal({ projeto, usuarioAtual }) {
 
       {!lista.length && !form && <div style={{ fontSize: 13, color: K.sub, background: K.fundo, borderRadius: 10, padding: "12px 14px" }}>Nenhuma entrega publicada ainda.</div>}
       <div style={{ display: "grid", gap: 8 }}>
-        {lista.map(p => (
+        {lista.map(p => edit?.id === p.id ? (
+          <div key={p.id} style={{ border: `1px solid #bcd3f5`, background: "#f7faff", borderRadius: 12, padding: 12, display: "grid", gap: 8 }}>
+            <div style={{ display: "flex", gap: 8 }}>
+              {[["parcial", "Entrega parcial"], ["final", "Entrega final"]].map(([v, l]) => (
+                <button key={v} type="button" onClick={() => setEdit(f => ({ ...f, tipo: v }))} aria-pressed={edit.tipo === v}
+                  style={btn(edit.tipo === v ? "pri" : "sec", { padding: "6px 11px", fontSize: 12.5, ...(edit.tipo === v && v === "final" ? { background: K.verde, borderColor: K.verde } : {}) })}>{l}</button>
+              ))}
+            </div>
+            <input autoFocus value={edit.titulo} maxLength={150} onChange={e => setEdit(f => ({ ...f, titulo: e.target.value }))} onKeyDown={e => { if (e.key === "Enter") salvarEdicao(); if (e.key === "Escape") setEdit(null); }} style={inp} aria-label="Nome da entrega" />
+            <textarea value={edit.nota} maxLength={1000} onChange={e => setEdit(f => ({ ...f, nota: e.target.value }))} rows={2} placeholder="Recado para o cliente (opcional)" style={{ ...inp, resize: "vertical" }} aria-label="Recado" />
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button onClick={() => setEdit(null)} style={btn("sec")}>Cancelar</button>
+              <button onClick={salvarEdicao} style={btn("pri")}>Salvar</button>
+            </div>
+          </div>
+        ) : (
           <div key={p.id} style={{ border: `1px solid ${K.borda}`, borderRadius: 12, padding: "10px 12px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: .4, borderRadius: 6, padding: "3px 8px", color: p.tipo === "final" ? "#166534" : K.azul, background: p.tipo === "final" ? "#dcfce7" : "#e9f1fd" }}>{p.tipo === "final" ? "FINAL" : "PARCIAL"}</span>
             <div style={{ flex: 1, minWidth: 180 }}>
               <div style={{ fontSize: 13.5, fontWeight: 700, color: K.tx }}>{p.titulo}</div>
               <div style={{ fontSize: 12, color: K.sub }}>{new Date(p.data).toLocaleDateString("pt-BR")} · {p.arquivos?.length || 0} arquivo(s) · {tam((p.arquivos || []).reduce((a, x) => a + (x.tamanho || 0), 0))}{p.publico === false ? " · pasta sem acesso por link" : ""}</div>
             </div>
+            <button onClick={() => setEdit({ id: p.id, titulo: p.titulo || "", nota: p.nota || "", tipo: p.tipo })} disabled={!!estado} style={btn("sec", { padding: "6px 10px", fontSize: 12.5 })}>Editar</button>
             <a href={p.pastaLink} target="_blank" rel="noreferrer" style={{ ...btn("sec", { padding: "6px 10px", fontSize: 12.5 }), textDecoration: "none" }}><Icone nome="externo" tam={13} />Pasta</a>
             <button onClick={() => publicar({ ...p, pasta: p.pastaLink }, p)} disabled={!!estado} style={btn("sec", { padding: "6px 10px", fontSize: 12.5 })}>Atualizar</button>
             <button onClick={() => remover(p)} aria-label="Tirar do portal" style={{ border: "none", background: "none", color: "#e11d48", cursor: "pointer", padding: 4 }}><Icone nome="lixeira" tam={15} /></button>
