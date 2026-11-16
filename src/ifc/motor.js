@@ -438,7 +438,31 @@ export function criarVisualizador(el, { onSelecionar, onCaminharMudou } = {}) {
     setCaminhar, caminhando: () => fps.ativo,
     capturar() { renderer.render(scene, camera); return renderer.domElement.toDataURL("image/png"); },
     // Isométrico para AutoCAD (DXF) do que está visível, com a vista e o corte atuais
-    gerarIsometrico(opcoes) { return gerarIsometricoDXF({ modelos, camera, alvo: controls.target, alturaCorte: estado.corte != null ? plano.constant : null }, opcoes); },
+    gerarIsometrico(opcoes) {
+      const r = gerarIsometricoDXF({ modelos, camera, alvo: controls.target, alturaCorte: estado.corte != null ? plano.constant : null, renderer }, opcoes);
+      marcar(); return r;
+    },
+    // Níveis para as vistas cortadas: topo de vigas/lajes/escadas de cada pavimento (dos modelos visíveis)
+    niveisIsometrico() {
+      const porNome = new Map();
+      modelos.forEach(m => {
+        if (!m.grupo.visible) return;
+        (m.info.pavimentos || []).forEach(p => {
+          let topo = -Infinity, topoGeral = -Infinity;
+          m.meshes.forEach(x => {
+            if (x.userData.pav !== p.id || !x.visible) return;
+            if (!x.geometry.boundingBox) x.geometry.computeBoundingBox();
+            const y = x.geometry.boundingBox.max.y;
+            topoGeral = Math.max(topoGeral, y);
+            if (["Vigas", "Lajes", "Escadas", "Rampas"].includes(x.userData.categoria)) topo = Math.max(topo, y);
+          });
+          const t = isFinite(topo) ? topo : topoGeral; if (!isFinite(t)) return;
+          const k = String(p.nome || "").trim().toUpperCase();
+          porNome.set(k, { nome: p.nome, corte: Math.max(porNome.get(k)?.corte ?? -Infinity, t + 0.02) });
+        });
+      });
+      return [...porNome.values()].sort((a, b) => a.corte - b.corte);
+    },
     // Destaca elementos (Map modeloId → Set de expressIDs) em vermelho, esmaece o entorno e enquadra.
     // Usado pela Verificação de projetos para gerar as imagens dos apontamentos.
     focar(alvos, { contexto = 2.5, vista = "iso", caixas = [] } = {}) {
