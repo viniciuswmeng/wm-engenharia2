@@ -2,6 +2,7 @@
 import { useEffect, useImperativeHandle, useRef, useState } from "react";
 import Icone from "../ui/Icone.jsx";
 import { criarVisualizador } from "./motor.js";
+import IsometricoDXF from "./IsometricoDXF.jsx";
 import { DISCIPLINAS, hex } from "./categorias.js";
 
 const K = { mar: "#0a2557", azul: "#1565d8", tx: "#0f1f3d", sub: "#6b7a90", borda: "#e6ecf4", fundo: "#f3f6fb" };
@@ -46,6 +47,7 @@ export default function Visualizador3D({ ref, altura = "calc(100vh - 230px)", pa
   const [aba, setAba] = useState("modelo");
   const [filtros, setFiltros] = useState({ categorias: [], pavimentos: [], modelos: [] });
   const [ferr, setFerr] = useState({ raiox: false, wire: false, caminhar: false, corte: null, cor: "ifc" });
+  const [isoAberto, setIsoAberto] = useState(false);
   const [arrastando, setArrastando] = useState(false);
   const [painelAberto, setPainelAberto] = useState(painelInicialAberto);
   const cbModelos = useRef(onModelosMudou);
@@ -204,6 +206,7 @@ export default function Visualizador3D({ ref, altura = "calc(100vh - 230px)", pa
               style={{ writingMode: "vertical-lr", direction: "rtl", flex: 1, accentColor: K.azul, cursor: "pointer" }} />
           </div>
         )}
+        {tem && isoAberto && !publico && <IsometricoDXF ctl={ctl} nome={modelos[0]?.nome} corteAtivo={ferr.corte != null} onFechar={() => setIsoAberto(false)} />}
         {/* barra de ferramentas */}
         {tem && (
           <div style={{ position: "absolute", bottom: 14, left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 2, background: "#fff", borderRadius: 14, padding: 4, boxShadow: "0 8px 28px rgba(10,37,87,.16)", maxWidth: "calc(100% - 24px)", overflowX: "auto" }}>
@@ -220,6 +223,7 @@ export default function Visualizador3D({ ref, altura = "calc(100vh - 230px)", pa
             </select>
             <span style={{ width: 1, height: 22, background: K.borda, margin: "0 4px" }} />
             <BotaoFerramenta icone="imagem" titulo="Salvar imagem da vista" onClick={baixarImagem} />
+            {!publico && <BotaoFerramenta icone="download" titulo="Isométrico para AutoCAD (DXF)" ativo={isoAberto} onClick={() => setIsoAberto(v => !v)} />}
             <BotaoFerramenta icone="tela" titulo="Tela cheia" onClick={telaCheia} />
           </div>
         )}

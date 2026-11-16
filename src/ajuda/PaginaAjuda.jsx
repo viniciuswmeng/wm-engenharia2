@@ -168,6 +168,7 @@ const TOPICOS = [
     resumo:"Abra modelos BIM, confira elementos e envie um link para o cliente ver o modelo 3D sem login.",
     secoes:[
       { t:"Visualizar", itens:[
+        "Isométrico para AutoCAD: deixe visível só o que quer no desenho (painel Modelo), ajuste a vista e, se quiser, o corte horizontal. Clique no botão de download da barra inferior, escolha Tubulações em linha única (com diâmetro e comprimento) ou Linhas do modelo, a vista (isométrico 30° ou igual à tela) e a unidade, e baixe o DXF. Ele abre direto no AutoCAD, com um layer por categoria.",
         "Clique em Abrir arquivo .ifc ou arraste o arquivo para a área 3D (IFC 2x3 e IFC 4: estrutural, arquitetônico, hidrossanitário, elétrico).",
         "Arrastar gira, botão direito move, a roda aproxima. Clique num elemento para ver nome, pavimento, materiais e propriedades.",
         "No painel Modelo, oculte disciplinas, categorias ou pavimentos. A barra inferior tem corte horizontal, raio-X, arestas, modo caminhar (W A S D) e imagem da vista.",

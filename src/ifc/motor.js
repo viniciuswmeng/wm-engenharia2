@@ -5,6 +5,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { IfcAPI, FILE_NAME } from "web-ifc";
 import wasmUrl from "web-ifc/web-ifc.wasm?url";
 import { classificar } from "./categorias.js";
+import { gerarIsometricoDXF } from "./isometrico.js";
 
 let _api = null, _apiPromise = null;
 export function obterApi() {
@@ -436,6 +437,8 @@ export function criarVisualizador(el, { onSelecionar, onCaminharMudou } = {}) {
     },
     setCaminhar, caminhando: () => fps.ativo,
     capturar() { renderer.render(scene, camera); return renderer.domElement.toDataURL("image/png"); },
+    // Isométrico para AutoCAD (DXF) do que está visível, com a vista e o corte atuais
+    gerarIsometrico(opcoes) { return gerarIsometricoDXF({ modelos, camera, alvo: controls.target, alturaCorte: estado.corte != null ? plano.constant : null }, opcoes); },
     // Destaca elementos (Map modeloId → Set de expressIDs) em vermelho, esmaece o entorno e enquadra.
     // Usado pela Verificação de projetos para gerar as imagens dos apontamentos.
     focar(alvos, { contexto = 2.5, vista = "iso", caixas = [] } = {}) {
