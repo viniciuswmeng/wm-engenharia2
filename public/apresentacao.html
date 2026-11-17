@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<script>if(location.hostname==="wm-engenharia2.vercel.app")location.replace("https://sistema.wmengenhariaintegrada.com.br"+location.pathname+location.search+location.hash)</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Apresentação de Interiores — WM Engenharia</title>
+<link rel="icon" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&display=swap">
+<style>
+:root{--mar:#0a2557;--azul:#1565d8;--tinta:#16233b;--sub:#66758c;--borda:#e4e9f1;--fundo:#f4f2ee;--ok:#15803d;--ok-bg:#e7f6ec;--aj:#b45309;--aj-bg:#fdf1e2;
+  --serif:"Cormorant Garamond",Georgia,"Times New Roman",serif;--sans:Inter,"Segoe UI",system-ui,-apple-system,sans-serif}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--fundo);color:var(--tinta);font:15px/1.55 var(--sans);-webkit-font-smoothing:antialiased}
+button{font-family:inherit}
+a{color:var(--azul)}
+.topo{position:sticky;top:0;z-index:5;background:linear-gradient(100deg,#0a2557,#123d87);color:#fff;display:flex;align-items:center;gap:14px;padding:calc(10px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px))}
+.topo img{height:30px}
+.topo .t{min-width:0;flex:1}
+.topo .t small{display:block;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#9cc2ff;font-weight:700}
+.topo .t b{display:block;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topo .pdf{border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;border-radius:9px;padding:6px 11px;font-weight:600;font-size:12.5px;cursor:pointer}
+.pontos{display:flex;gap:6px;align-items:center}
+.pontos button{width:9px;height:9px;border-radius:9px;border:0;background:rgba(255,255,255,.35);padding:0;cursor:pointer}
+.pontos button.on{width:22px;background:#fff}.pontos button.ok{background:#4ade80}.pontos button.aj{background:#fbbf24}
+.aviso{background:#fff8e6;color:#8a5a00;font-size:12.5px;text-align:center;padding:6px 16px}
+.palco{max-width:1280px;margin:0 auto;padding:22px max(16px,env(safe-area-inset-right,0px)) 110px max(16px,env(safe-area-inset-left,0px))}
+.slide{display:none}.slide.on{display:block;animation:entra .35s ease}
+@keyframes entra{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.slide.on{animation:none}}
+.carreg{text-align:center;color:var(--sub);padding:80px 16px}
+.kick{font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--azul);font-weight:800}
+.btn{display:inline-flex;align-items:center;gap:8px;border-radius:12px;padding:11px 18px;font-weight:700;font-size:14px;cursor:pointer;border:1.5px solid var(--mar);background:var(--mar);color:#fff;text-decoration:none}
+.btn.sec{background:#fff;color:var(--mar);border-color:var(--borda)}.btn.ok{background:var(--ok);border-color:var(--ok)}.btn.aj{background:#fff;color:var(--aj);border-color:#f3c98b}
+.btn:disabled{opacity:.55;cursor:default}
+.btn:focus-visible,.pontos button:focus-visible,.aba:focus-visible{outline:3px solid #9cc2ff;outline-offset:2px}
+img.foto{display:block;width:100%;height:auto;background:#e9e4dc}
+/* capa */
+.capa{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:28px;align-items:center;min-height:68vh}
+.capa .img{border-radius:22px;overflow:hidden;box-shadow:0 24px 60px rgba(22,35,59,.18)}
+.capa h1{font-family:var(--serif);font-weight:600;font-size:clamp(36px,5.2vw,62px);line-height:1.02;margin:10px 0 14px;color:var(--mar)}
+.capa p{color:var(--sub);max-width:48ch;margin:0 0 18px}
+.ficha{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-size:13.5px;margin:0 0 22px}.ficha dt{color:var(--sub)}.ficha dd{margin:0;font-weight:600}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.chips span{background:#fff;border:1px solid var(--borda);border-radius:99px;padding:5px 12px;font-size:12.5px;font-weight:600}
+/* ambiente */
+.amb{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:22px;align-items:start}
+.quadro{position:relative;border-radius:20px;overflow:hidden;background:#e9e4dc;box-shadow:0 18px 50px rgba(22,35,59,.16);touch-action:pan-y}
+.quadro.comentando{cursor:crosshair;outline:3px solid #fbbf24}
+.quadro .dica{position:absolute;left:12px;bottom:12px;right:12px;background:rgba(10,37,87,.88);color:#fff;font-size:12.5px;padding:7px 10px;border-radius:9px;text-align:center}
+.pino{position:absolute;width:28px;height:28px;margin:-14px 0 0 -14px;border-radius:50%;background:var(--aj);color:#fff;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;border:2.5px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,.3)}
+.comp{position:relative}.comp .depois{position:absolute;inset:0;overflow:hidden}.comp .depois img{height:100%;width:auto;max-width:none}
+.comp .barra{position:absolute;top:0;bottom:0;width:3px;background:#fff;box-shadow:0 0 8px rgba(0,0,0,.4);pointer-events:none}
+.comp .barra::after{content:"⇆";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;color:var(--mar);border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-weight:800}
+.comp .r{position:absolute;top:10px;font-size:11px;font-weight:800;background:rgba(10,37,87,.8);color:#fff;border-radius:6px;padding:2px 8px}
+.comp input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:ew-resize;margin:0}
+.miniaturas{display:flex;gap:8px;margin-top:10px;overflow-x:auto;padding-bottom:2px}
+.miniaturas button{flex:none;width:110px;border:2px solid transparent;border-radius:10px;padding:0;overflow:hidden;cursor:pointer;background:none;opacity:.75;position:relative}
+.miniaturas button.on{border-color:var(--azul);opacity:1}
+.miniaturas button span{position:absolute;left:4px;bottom:4px;font-size:10px;font-weight:800;background:rgba(10,37,87,.85);color:#fff;border-radius:5px;padding:1px 6px}
+.miniaturas img{display:block;width:100%;height:72px;object-fit:cover;background:#e9e4dc}
+.lado{background:#fff;border:1px solid var(--borda);border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:16px}
+.lado h2{font-family:var(--serif);font-weight:600;font-size:34px;line-height:1.05;margin:2px 0 0;color:var(--mar)}
+.lado .conceito{color:#3b4a61;margin:0;white-space:pre-line}
+.antes-pedido{background:#f6f3ee;border-radius:11px;padding:9px 12px;font-size:12.5px;color:#5b5446}
+.rot{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--sub);font-weight:800;margin-bottom:8px}
+.paleta{display:flex;gap:8px}.cor{flex:1;min-width:0}.cor i{display:block;height:44px;border-radius:10px;border:1px solid rgba(0,0,0,.08)}
+.cor span{display:block;font-size:11px;color:var(--sub);margin-top:4px;line-height:1.25;overflow-wrap:anywhere}
+.abas{display:flex;gap:4px;background:#f1f4f9;border-radius:11px;padding:3px}
+.aba{flex:1;border:0;background:none;border-radius:9px;padding:7px 8px;font-weight:700;font-size:13px;color:var(--sub);cursor:pointer}.aba.on{background:#fff;color:var(--mar);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.itens{display:flex;flex-direction:column;gap:6px;max-height:260px;overflow:auto}
+.item{display:grid;grid-template-columns:38px minmax(0,1fr);gap:10px;align-items:center;padding:5px;border-radius:11px}
+.item .amostra{width:38px;height:38px;border-radius:9px;border:1px solid rgba(0,0,0,.08)}
+.item b{display:block;font-size:13.5px}.item small{color:var(--sub);font-size:12px}
+.vazio{color:var(--sub);font-size:13px}
+.decisao{border-top:1px solid var(--borda);padding-top:14px;display:flex;flex-direction:column;gap:10px}
+.decisao .bts{display:flex;gap:8px;flex-wrap:wrap}
+.estado{border-radius:11px;padding:9px 12px;font-size:13px;font-weight:600}.estado.ok{background:var(--ok-bg);color:var(--ok)}.estado.aj{background:var(--aj-bg);color:var(--aj)}
+.com{display:flex;gap:8px;align-items:flex-start;font-size:13px}
+.com i{flex:none;width:22px;height:22px;border-radius:50%;background:var(--aj);color:#fff;font-style:normal;font-weight:800;font-size:11.5px;display:flex;align-items:center;justify-content:center}
+.com button{margin-left:auto;border:0;background:none;color:#be123c;cursor:pointer;font-size:16px;line-height:1}
+textarea{width:100%;border:1.5px solid var(--borda);border-radius:11px;padding:9px 11px;font:inherit;font-size:14px;resize:vertical;min-height:66px}
+.link-mini{border:0;background:none;color:var(--sub);text-decoration:underline;cursor:pointer;font-size:12.5px;padding:0;align-self:flex-start}
+/* resumo */
+.resumo{max-width:820px;margin:0 auto}
+.resumo h1{font-family:var(--serif);font-weight:600;font-size:44px;color:var(--mar);margin:6px 0 6px}
+.linha-r{display:grid;grid-template-columns:120px minmax(0,1fr) auto;gap:14px;align-items:center;background:#fff;border:1px solid var(--borda);border-radius:16px;padding:10px;margin-top:10px}
+.linha-r img{width:120px;height:80px;object-fit:cover;border-radius:10px;background:#e9e4dc}
+.tag{font-size:12px;font-weight:800;border-radius:99px;padding:4px 11px;white-space:nowrap}.tag.ok{background:var(--ok-bg);color:var(--ok)}.tag.aj{background:var(--aj-bg);color:var(--aj)}.tag.pend{background:#eef2f7;color:var(--sub)}
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:5;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);border-top:1px solid var(--borda);display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px max(16px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.nav .onde{font-size:13px;color:var(--sub);font-weight:600;text-align:center;flex:1;min-width:0}
+.erro{max-width:520px;margin:60px auto;background:#fff;border-radius:18px;padding:30px;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.06)}
+#impressao{display:none}
+@media (max-width:860px){.capa,.amb{grid-template-columns:1fr}.capa{min-height:0}.lado h2{font-size:28px}.linha-r{grid-template-columns:84px minmax(0,1fr)}.linha-r img{width:84px;height:58px}.linha-r .tag{grid-column:2;justify-self:start}.topo .pontos{display:none}}
+/* PDF: todas as páginas, sem botões */
+@media print{
+  @page{size:A4 landscape;margin:12mm}
+  body{background:#fff}
+  .topo,.aviso,.palco,.nav{display:none!important}
+  #impressao{display:block}
+  .pg{page-break-after:always;break-after:page;display:grid;grid-template-columns:1.4fr 1fr;gap:18px;align-items:start}
+  .pg:last-child{page-break-after:auto}
+  .pg img{width:100%;border-radius:10px}
+  .pg h2{font-family:var(--serif);font-size:28px;color:var(--mar);margin:0 0 6px}
+  .pg .mini{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}
+  .pg .lista{font-size:11.5px}.pg .lista div{margin:2px 0}
+  .pg .cab{grid-column:1/-1;display:flex;justify-content:space-between;font-size:11px;color:var(--sub);border-bottom:1px solid var(--borda);padding-bottom:4px}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+<header class="topo">
+  <img src="/Logo_Branco.png" alt="WM Engenharia">
+  <div class="t"><small id="tKick">Apresentação de interiores</small><b id="tTopo">Carregando…</b></div>
+  <nav class="pontos" id="pontos" aria-label="Ir para"></nav>
+  <button class="pdf" type="button" id="pdf" hidden>Baixar PDF</button>
+</header>
+<div class="aviso" id="aviso" hidden></div>
+<main class="palco" id="palco"><div class="carreg">Carregando a apresentação…</div></main>
+<div id="impressao"></div>
+<footer class="nav" id="nav" hidden>
+  <button class="btn sec" id="ant" type="button">‹ Anterior</button>
+  <span class="onde" id="onde"></span>
+  <button class="btn" id="prox" type="button">Próximo ›</button>
+</footer>
+<script>
+"use strict";
+const ID_OK = /^[A-Za-z0-9_-]{10,120}$/;
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const corOk = c => (/^#[0-9a-f]{3,8}$/i.test(c || "") ? c : "#cccccc");
+const img = (id, w = 1600) => ID_OK.test(id || "") ? `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w${w}` : "";
+const alt = id => `https://lh3.googleusercontent.com/d/${encodeURIComponent(id)}=w1600`;
+const tag = (id, w, cls = "foto", extra = "") => id ? `<img class="${cls}" src="${img(id, w)}" data-id="${esc(id)}" alt="" loading="lazy" ${extra}>` : "";
+const rotV = n => "R" + String(n).padStart(2, "0");
+document.addEventListener("error", e => { const t = e.target; if (t.tagName === "IMG" && t.dataset.id && !t.dataset.alt) { t.dataset.alt = 1; t.src = alt(t.dataset.id); } }, true);
+
+const partes = location.pathname.split("/"), token = partes[partes.indexOf("apresentacao") + 1] || "";
+const previa = new URLSearchParams(location.search).get("previa") || "";
+let D = null;
+const st = { slide: 0, img: {}, aba: {}, comentando: null, pino: null, salvando: false };
+
+function sessao() { try { const v = localStorage.getItem("wm-auth") || sessionStorage.getItem("wm-auth"); return v ? JSON.parse(v).access_token : ""; } catch { return ""; } }
+async function api(metodo, corpo) {
+  const q = new URLSearchParams({ token }); if (previa) q.set("previa", previa);
+  const h = { "Content-Type": "application/json" }; if (previa) { const t = sessao(); if (t) h.Authorization = "Bearer " + t; }
+  const r = await fetch("/api/apresentacao" + (metodo === "GET" ? "?" + q : ""), { method: metodo, headers: h, body: corpo ? JSON.stringify({ token, ...corpo }) : undefined, cache: "no-store" });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.erro || "Não foi possível carregar agora.");
+  return j;
+}
+function erro(t) { document.getElementById("palco").innerHTML = `<div class="erro"><div style="font-size:42px">🛋️</div><h2 style="color:var(--mar);margin:8px 0">Apresentação indisponível</h2><p style="color:var(--sub)">${esc(t)}</p><p style="color:var(--sub);font-size:13px">Fale com a WM Engenharia: projeto@wmengenhariaintegrada.com.br · (33) 99931-7042</p></div>`; document.getElementById("tTopo").textContent = "WM Engenharia"; }
+
+const resp = id => (D.respostas || {})[id];
+const total = () => D.ambientes.length + 2;
+
+function htmlCapa() {
+  const c = D.capa || {}, im = c.imagem || D.ambientes[0]?.imagens[0];
+  return `<section class="slide" data-i="0"><div class="capa">
+    <div class="img">${tag(im, 1800)}</div>
+    <div><div class="kick">Projeto de interiores</div><h1>${esc(c.titulo || D.projeto.cliente)}</h1>
+      <p>${esc(c.texto || "Esta é a proposta de cada ambiente. Veja as imagens, a paleta, os materiais e o mobiliário, e nos diga se aprova ou se quer algum ajuste. Para pedir um ajuste, toque no ponto da imagem e escreva o comentário.")}</p>
+      <dl class="ficha"><dt>Versão</dt><dd>${rotV(D.versao)}${D.publicadaEm ? " · " + new Date(D.publicadaEm).toLocaleDateString("pt-BR") : ""}</dd><dt>Ambientes</dt><dd>${D.ambientes.length}</dd><dt>Projeto</dt><dd>${esc(D.projeto.codigo)}</dd></dl>
+      <button class="btn" type="button" data-ir="1">Começar a apresentação ›</button>
+      <div class="chips">${D.ambientes.map(a => `<span>${esc(a.nome)}</span>`).join("")}</div>
+    </div></div></section>`;
+}
+function vistas(a) {
+  const v = a.imagens.map((id, k) => ({ id, rot: a.imagens.length > 1 ? `${k + 1}` : "" }));
+  if (a.antes.length && a.imagens.length) v.push({ id: a.antes[0], rot: "Antes × depois", comp: true });
+  if (a.planta) v.push({ id: a.planta, rot: "Planta" });
+  return v;
+}
+function htmlQuadro(a) {
+  const vs = vistas(a), v = vs[st.img[a.id] || 0] || vs[0];
+  if (!v) return `<div class="quadro"></div>`;
+  if (v.comp) return `<div class="quadro comp" data-comp>${tag(a.antes[0], 1800)}<div class="depois" style="width:50%">${tag(a.imagens[0], 1800)}</div><div class="barra" style="left:50%"></div><span class="r" style="left:10px">Antes</span><span class="r" style="right:10px">Depois</span><input type="range" min="0" max="100" value="50" aria-label="Comparar antes e depois"></div>`;
+  const coms = (resp(a.id)?.comentarios || []);
+  const pinos = coms.map((c, k) => c.img === v.id ? `<span class="pino" style="left:${c.x}%;top:${c.y}%">${k + 1}</span>` : "").join("");
+  const novo = st.pino && st.pino.amb === a.id && st.pino.img === v.id ? `<span class="pino" style="left:${st.pino.x}%;top:${st.pino.y}%">${coms.length + 1}</span>` : "";
+  return `<div class="quadro ${st.comentando === a.id ? "comentando" : ""}" data-quadro="${esc(a.id)}" data-img="${esc(v.id)}">${tag(v.id, 1800)}${pinos}${novo}${st.comentando === a.id ? `<span class="dica">Toque no ponto da imagem que você quer comentar</span>` : ""}</div>`;
+}
+function htmlAmb(a, i) {
+  const r = resp(a.id), coms = r?.comentarios || [], aba = st.aba[a.id] || "materiais", vs = vistas(a);
+  const lista = (aba === "materiais" ? a.materiais : a.moveis) || [];
+  const ant = (D.anterior || {})[String(a.nome).toLowerCase()];
+  return `<section class="slide" data-i="${i}"><div class="amb">
+    <div>${htmlQuadro(a)}
+      ${vs.length > 1 ? `<div class="miniaturas">${vs.map((v, k) => `<button type="button" class="${(st.img[a.id] || 0) === k ? "on" : ""}" data-vista="${esc(a.id)}:${k}" aria-label="${esc(v.rot || "Imagem " + (k + 1))}">${tag(v.id, 300, "")}${v.rot && isNaN(v.rot) ? `<span>${esc(v.rot)}</span>` : ""}</button>`).join("")}</div>` : ""}
+    </div>
+    <aside class="lado">
+      <div><div class="kick">Ambiente ${i} de ${D.ambientes.length}</div><h2>${esc(a.nome)}</h2></div>
+      ${a.conceito ? `<p class="conceito">${esc(a.conceito)}</p>` : ""}
+      ${ant && ant.comentarios.length ? `<div class="antes-pedido"><b>Na versão anterior você pediu:</b> ${ant.comentarios.map(esc).join(" · ")}</div>` : ""}
+      ${a.paleta.length ? `<div><div class="rot">Paleta</div><div class="paleta">${a.paleta.map(c => `<div class="cor"><i style="background:${corOk(c.cor)}"></i><span>${esc(c.nome)}</span></div>`).join("")}</div></div>` : ""}
+      ${(a.materiais.length || a.moveis.length) ? `<div class="abas" role="tablist"><button type="button" class="aba ${aba === "materiais" ? "on" : ""}" data-aba="${esc(a.id)}:materiais">Materiais</button><button type="button" class="aba ${aba === "moveis" ? "on" : ""}" data-aba="${esc(a.id)}:moveis">Mobiliário</button></div>
+      <div class="itens">${lista.length ? lista.map(m => `<div class="item"><span class="amostra" style="background:${corOk(m.cor)}"></span><span><b>${esc(m.nome)}</b><small>${esc(m.desc)}</small></span></div>`).join("") : `<span class="vazio">Nada listado aqui.</span>`}</div>` : ""}
+      ${a.link360 ? `<a class="btn sec" href="${esc(a.link360)}" target="_blank" rel="noopener noreferrer">Ver em 360° ↗</a>` : ""}
+      <div class="decisao">${D.previa ? `<div class="estado aj">Pré-visualização da equipe: as respostas ficam desativadas.</div>` : htmlDecisao(a, r, coms)}</div>
+    </aside></div></section>`;
+}
+function htmlDecisao(a, r, coms) {
+  let h = r?.decisao === "ok" ? `<div class="estado ok">✓ Você aprovou este ambiente.</div>` : r?.decisao === "aj" ? `<div class="estado aj">Você pediu ajuste neste ambiente.</div>` : "";
+  if (coms.length) h += coms.map((c, k) => `<div class="com"><i>${k + 1}</i><span>${esc(c.txt)}</span><button type="button" data-apagar="${esc(a.id)}:${k}" aria-label="Apagar comentário">×</button></div>`).join("");
+  if (st.comentando === a.id + ":txt") return h + `<textarea id="txtCom" maxlength="600" placeholder="Escreva o ajuste que você quer neste ponto…"></textarea><div class="bts"><button class="btn aj" type="button" data-salvar="${esc(a.id)}" ${st.salvando ? "disabled" : ""}>Salvar comentário</button><button class="btn sec" type="button" data-cancelar="1">Cancelar</button></div>`;
+  if (st.comentando === a.id) return h + `<div class="bts"><button class="btn sec" type="button" data-cancelar="1">Cancelar</button><button class="link-mini" type="button" data-semponto="${esc(a.id)}">Comentar sem marcar ponto</button></div>`;
+  return h + `<div class="bts"><button class="btn ok" type="button" data-aprovar="${esc(a.id)}" ${st.salvando ? "disabled" : ""}>✓ Aprovar ambiente</button><button class="btn aj" type="button" data-ajuste="${esc(a.id)}">${coms.length ? "Outro ajuste" : "Pedir ajuste"}</button></div>${r ? `<button class="link-mini" type="button" data-limpar="${esc(a.id)}">Desfazer minha resposta</button>` : ""}`;
+}
+function htmlResumo() {
+  const ds = D.ambientes.map(a => resp(a.id)?.decisao);
+  const n = k => ds.filter(x => x === k).length, enviada = (D.respostas || {})._enviadaEm;
+  return `<section class="slide" data-i="${total() - 1}"><div class="resumo"><div class="kick">Resumo</div><h1>${D.previa ? "Resumo" : "Sua resposta"}</h1>
+    <p style="color:var(--sub);margin:0">${n("ok")} aprovado(s) · ${n("aj")} com ajuste · ${D.ambientes.length - n("ok") - n("aj")} sem resposta</p>
+    ${D.ambientes.map(a => { const r = resp(a.id); return `<div class="linha-r">${tag(a.imagens[0] || a.planta, 300, "")}<div><b>${esc(a.nome)}</b><div style="font-size:12.5px;color:var(--sub)">${r?.comentarios?.length ? r.comentarios.map(c => esc(c.txt)).join(" · ") : "Sem comentários"}</div></div><span class="tag ${r?.decisao === "ok" ? "ok" : r?.decisao === "aj" ? "aj" : "pend"}">${r?.decisao === "ok" ? "Aprovado" : r?.decisao === "aj" ? "Ajuste pedido" : "Sem resposta"}</span></div>`; }).join("")}
+    <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">${D.previa ? "" :
+      `<button class="btn" type="button" data-enviar="1" ${st.salvando ? "disabled" : ""}>${enviada ? "Enviar de novo para a equipe" : "Enviar minha resposta para a equipe"}</button>
+       <span style="font-size:12.5px;color:var(--sub)">${enviada ? `Enviada em ${new Date(enviada).toLocaleString("pt-BR")}. Você ainda pode mudar e reenviar.` : "Suas respostas ficam salvas; ao enviar, a equipe é avisada."}</span>`}
+    </div></div></section>`;
+}
+function desenhar() {
+  const palco = document.getElementById("palco");
+  palco.innerHTML = htmlCapa() + D.ambientes.map((a, i) => htmlAmb(a, i + 1)).join("") + htmlResumo();
+  palco.querySelectorAll(".slide").forEach(s => s.classList.toggle("on", +s.dataset.i === st.slide));
+  document.getElementById("pontos").innerHTML = Array.from({ length: total() }, (_, i) => { const a = D.ambientes[i - 1], d = a && resp(a.id)?.decisao; return `<button type="button" class="${i === st.slide ? "on" : ""} ${d || ""}" data-ir="${i}" aria-label="${i === 0 ? "Capa" : a ? esc(a.nome) : "Resumo"}"></button>`; }).join("");
+  document.getElementById("onde").textContent = st.slide === 0 ? "Capa" : st.slide === total() - 1 ? "Resumo" : `${D.ambientes[st.slide - 1].nome} · ${st.slide} de ${D.ambientes.length}`;
+  const ant = document.getElementById("ant"); ant.disabled = st.slide === 0;
+  document.getElementById("prox").textContent = st.slide === total() - 1 ? "Voltar ao início" : st.slide === total() - 2 ? "Ver resumo ›" : "Próximo ›";
+  const t = document.getElementById("txtCom"); if (t) t.focus();
+  const comp = palco.querySelector(".slide.on [data-comp]");
+  if (comp) { const r = comp.querySelector("input"), dep = comp.querySelector(".depois"), bar = comp.querySelector(".barra"), di = dep.querySelector("img");
+    const aj = () => { dep.style.width = r.value + "%"; bar.style.left = r.value + "%"; di.style.width = comp.clientWidth + "px"; };
+    r.addEventListener("input", aj); aj(); }
+}
+function ir(i) { st.slide = Math.max(0, Math.min(total() - 1, i)); st.comentando = null; st.pino = null; desenhar(); window.scrollTo({ top: 0, behavior: "smooth" }); }
+async function decidir(id, decisao, comentarios) {
+  st.salvando = true; desenhar();
+  try { const r = await api("POST", { versao: D.versao, acao: "decidir", ambiente: id, decisao, comentarios }); D.respostas = r.respostas; }
+  catch (e) { alert(e.message); }
+  finally { st.salvando = false; desenhar(); }
+}
+
+document.addEventListener("click", async e => {
+  const b = e.target.closest("button, [data-quadro]"); if (!b || !D) return;
+  const d = b.dataset;
+  if (d.ir) return ir(+d.ir);
+  if (d.vista) { const [id, k] = d.vista.split(":"); st.img[id] = +k; st.pino = null; return desenhar(); }
+  if (d.aba) { const [id, k] = d.aba.split(":"); st.aba[id] = k; return desenhar(); }
+  if (d.aprovar) return decidir(d.aprovar, "ok", resp(d.aprovar)?.comentarios || []);
+  if (d.limpar) return decidir(d.limpar, "", []);
+  if (d.ajuste) { st.comentando = d.ajuste; const vs = vistas(D.ambientes.find(a => a.id === d.ajuste)); if (vs[st.img[d.ajuste] || 0]?.comp) st.img[d.ajuste] = 0; return desenhar(); }
+  if (d.semponto) { st.pino = { amb: d.semponto, img: "", x: 50, y: 50 }; st.comentando = d.semponto + ":txt"; return desenhar(); }
+  if (d.cancelar) { st.comentando = null; st.pino = null; return desenhar(); }
+  if (d.apagar) { const [id, k] = d.apagar.split(":"); const l = (resp(id)?.comentarios || []).filter((_, j) => j !== +k); return decidir(id, l.length ? "aj" : (resp(id)?.decisao === "ok" ? "ok" : ""), l); }
+  if (d.salvar) {
+    const txt = (document.getElementById("txtCom")?.value || "").trim(); if (!txt) return;
+    const a = D.ambientes.find(x => x.id === d.salvar), p = st.pino || { x: 50, y: 50, img: "" };
+    const l = [...(resp(a.id)?.comentarios || []), { txt, x: p.x, y: p.y, img: p.img || vistas(a)[st.img[a.id] || 0]?.id || a.imagens[0], em: new Date().toISOString() }];
+    st.comentando = null; st.pino = null; return decidir(a.id, "aj", l);
+  }
+  if (d.enviar) {
+    st.salvando = true; desenhar();
+    try { const r = await api("POST", { versao: D.versao, acao: "enviar" }); D.respostas = r.respostas; }
+    catch (er) { alert(er.message); } finally { st.salvando = false; desenhar(); }
+    return;
+  }
+  if (d.quadro && st.comentando === d.quadro) {
+    const r = b.getBoundingClientRect();
+    st.pino = { amb: d.quadro, img: d.img, x: Math.round(((e.clientX - r.left) / r.width) * 1000) / 10, y: Math.round(((e.clientY - r.top) / r.height) * 1000) / 10 };
+    st.comentando = d.quadro + ":txt"; desenhar();
+  }
+});
+document.getElementById("ant").onclick = () => ir(st.slide - 1);
+document.getElementById("prox").onclick = () => ir(st.slide === total() - 1 ? 0 : st.slide + 1);
+document.addEventListener("keydown", e => { if (!D || /TEXTAREA|INPUT/.test(e.target.tagName)) return; if (e.key === "ArrowRight") ir(st.slide + 1); if (e.key === "ArrowLeft") ir(st.slide - 1); });
+let x0 = null;
+document.getElementById("palco").addEventListener("touchstart", e => { x0 = e.target.closest("[data-comp]") ? null : e.touches[0].clientX; }, { passive: true });
+document.getElementById("palco").addEventListener("touchend", e => { if (x0 == null || st.comentando || !D) return; const dx = e.changedTouches[0].clientX - x0; if (Math.abs(dx) > 70) ir(st.slide + (dx < 0 ? 1 : -1)); x0 = null; });
+
+function montarImpressao() {
+  const pg = (a, i) => `<div class="pg"><div class="cab"><span>${esc(D.projeto.codigo)} · ${esc(D.projeto.cliente)}</span><span>Apresentação de interiores ${rotV(D.versao)} · ${i} de ${D.ambientes.length}</span></div>
+    <div>${tag(a.imagens[0] || a.planta, 1600, "")}<div class="mini">${[...a.imagens.slice(1, 4), ...(a.planta ? [a.planta] : [])].slice(0, 3).map(id => tag(id, 600, "")).join("")}</div></div>
+    <div><h2>${esc(a.nome)}</h2><p style="font-size:12.5px;white-space:pre-line">${esc(a.conceito)}</p>
+      <div style="display:flex;gap:6px;margin:8px 0">${a.paleta.map(c => `<div style="flex:1;font-size:10px;color:#666"><div style="height:30px;border-radius:6px;background:${corOk(c.cor)};border:1px solid #ddd"></div>${esc(c.nome)}</div>`).join("")}</div>
+      ${a.materiais.length ? `<b style="font-size:12px">Materiais</b><div class="lista">${a.materiais.map(m => `<div>■ ${esc(m.nome)} — ${esc(m.desc)}</div>`).join("")}</div>` : ""}
+      ${a.moveis.length ? `<b style="font-size:12px;display:block;margin-top:6px">Mobiliário</b><div class="lista">${a.moveis.map(m => `<div>■ ${esc(m.nome)} — ${esc(m.desc)}</div>`).join("")}</div>` : ""}</div></div>`;
+  document.getElementById("impressao").innerHTML =
+    `<div class="pg"><div class="cab"><span>WM Engenharia Integrada</span><span>${rotV(D.versao)}</span></div><div>${tag((D.capa || {}).imagem || D.ambientes[0]?.imagens[0], 1800, "")}</div><div><div class="kick">Projeto de interiores</div><h2 style="font-size:40px">${esc((D.capa || {}).titulo || D.projeto.cliente)}</h2><p>${esc((D.capa || {}).texto || "")}</p><p style="font-size:12px;color:#666">${D.ambientes.map(a => esc(a.nome)).join(" · ")}</p></div></div>` +
+    D.ambientes.map((a, i) => pg(a, i + 1)).join("");
+}
+document.getElementById("pdf").onclick = () => { montarImpressao(); setTimeout(() => window.print(), 600); };
+
+(async () => {
+  if (!/^[A-Za-z0-9_-]{16,64}$/.test(token)) return erro("O endereço está incompleto. Confira se o link foi copiado por inteiro.");
+  try { D = await api("GET"); }
+  catch (e) { return erro(e.message); }
+  D.ambientes = (D.ambientes || []).map(a => ({ ...a, imagens: (a.imagens || []).filter(x => ID_OK.test(x)), antes: (a.antes || []).filter(x => ID_OK.test(x)), planta: ID_OK.test(a.planta || "") ? a.planta : "", paleta: a.paleta || [], materiais: a.materiais || [], moveis: a.moveis || [] }));
+  if (!D.ambientes.length) return erro("Esta apresentação ainda não tem ambientes.");
+  document.title = `${D.capa?.titulo || D.projeto.cliente} — Interiores ${rotV(D.versao)} · WM Engenharia`;
+  document.getElementById("tTopo").textContent = D.capa?.titulo || D.projeto.cliente;
+  document.getElementById("tKick").textContent = `Apresentação de interiores · ${rotV(D.versao)}`;
+  if (D.previa) { const a = document.getElementById("aviso"); a.hidden = false; a.textContent = "Pré-visualização da equipe (rascunho). O cliente só vê depois de publicada."; }
+  document.getElementById("nav").hidden = false; document.getElementById("pdf").hidden = false;
+  const h = location.hash.match(/^#amb-(\d+)$/); if (h) st.slide = Math.min(+h[1], total() - 1);
+  desenhar();
+})();
+</script>
+</body>
+</html>

@@ -6,6 +6,8 @@ import ModelosDoProjeto from "../ifc/ModelosDoProjeto.jsx";
 import EntregasPortal from "../portal/EntregasPortal.jsx";
 import ProgressoDisciplinas from "../portal/ProgressoDisciplinas.jsx";
 import EnviarPortalWhatsApp from "../portal/EnviarPortalWhatsApp.jsx";
+import ApresentacaoInteriores from "../portal/ApresentacaoInteriores.jsx";
+import { temInteriores } from "../portal/apresentacaoDados.js";
 import { Badge, Btn, C, Card, DISCIPLINAS_CB, InpC, STATUS_CONFIG, SelC, TIPOS, TipoBadge, calcStatusAuto, diasAte, estaAtrasado, fmt, fmtData, resumoEntregas, obrasProgressoListeners, statusN } from "../nucleo.jsx";
 
 export function PainelDrive({drive,projetosExistentes,onImportar}){
@@ -855,6 +857,7 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[],
 
             {modo!=="novo" && form.id && <EntregasPortal projeto={form} usuarioAtual={usuarioAtual}/>}
             {modo!=="novo" && form.id && <ModelosDoProjeto projetoId={form.id} projeto={form}/>}
+            {modo!=="novo" && form.id && temInteriores(form) && <ApresentacaoInteriores projeto={form} usuarioAtual={usuarioAtual}/>}
 
             {/* Progresso e obs do cliente */}
             <div style={{marginTop:20,display:"flex",flexDirection:"column",gap:12}}>

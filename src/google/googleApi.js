@@ -126,6 +126,11 @@ export const drive = {
     }
     return saida;
   },
+  // Conteúdo de um arquivo (Blob)
+  async baixar(token, id) {
+    const r = await chamar(token, `${DRIVE}/files/${encodeURIComponent(id)}?alt=media&supportsAllDrives=true`, { bruto: true });
+    return r.blob();
+  },
   // Qualquer pessoa com o link pode ver/baixar (os arquivos dentro herdam)
   async compartilharComLink(token, id) {
     try { await chamar(token, `${DRIVE}/files/${id}/permissions?supportsAllDrives=true`, { method: "POST", body: { role: "reader", type: "anyone" } }); return true; }

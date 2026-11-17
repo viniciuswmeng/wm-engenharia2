@@ -21,6 +21,10 @@
     {
       "source": "/modelo/:token",
       "destination": "/modelo.html"
+    },
+    {
+      "source": "/apresentacao/:token",
+      "destination": "/apresentacao.html"
     }
   ],
   "headers": [
@@ -46,7 +50,7 @@
       ]
     },
     {
-      "source": "/(cliente|briefing|modelo)/(.*)",
+      "source": "/(cliente|briefing|modelo|apresentacao)/(.*)",
       "headers": [
         {
           "key": "Referrer-Policy",

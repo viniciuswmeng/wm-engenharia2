@@ -74,6 +74,18 @@ export default async function handler(req) {
       `projeto_id=eq.${encodeURIComponent(projeto.id)}&link_ativo=eq.true&order=created_at.desc&select=*`
     ).catch(() => []);
 
+    // Apresentação de interiores publicada (tabela opcional)
+    const apres = await supabaseGet('apresentacoes_interiores',
+      `projeto_id=eq.${encodeURIComponent(projeto.id)}&status=eq.publicada&order=versao.desc&limit=1&select=versao,publicada_em,respondida_em,dados,respostas`
+    ).catch(() => []);
+    const apresentacao = apres[0] ? (() => {
+      const v = apres[0], amb = (v.dados && v.dados.ambientes) || [], r = v.respostas || {};
+      return { versao: v.versao, publicadaEm: v.publicada_em, respondidaEm: v.respondida_em, ambientes: amb.length,
+        capa: (v.dados.capa && v.dados.capa.imagem) || (amb[0] && amb[0].imagens && amb[0].imagens[0]) || '',
+        aprovados: amb.filter(a => r[a.id] && r[a.id].decisao === 'ok').length, ajustes: amb.filter(a => r[a.id] && r[a.id].decisao === 'aj').length,
+        link: `/apresentacao/${token}` };
+    })() : null;
+
     // Formulário de cadastro (briefing) da obra ligada a este projeto — tabelas opcionais
     let formularios = [], atas = [];
     try {
@@ -154,6 +166,7 @@ export default async function handler(req) {
         return { fase: f, link: l.length > 1 ? `/modelo/${l.slice(0, 10).map(m => m.token).join('-')}` : '', total: l.length };
       }),
       formularios,
+      apresentacao,
       atas,
       entregas,
       // Portal
