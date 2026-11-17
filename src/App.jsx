@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from "react";
 import { db, supabase, authClient, iniciarRealtime, enviarEmail, chat, portal, cabecalhoAuth } from "./supabase.js";
 import { usePermissoes } from "./seguranca/permissoes.js";
+import { useModoPrivado } from "./ui/modoPrivado.js";
 import { SinoNotificacoes, PaginaTarefas } from "./lembretes/Central.jsx";
 import { useCentral, usePush, useAvisosAbertos } from "./lembretes/hooks.js";
 import * as syncHoras from "./sessoesSync.js";
@@ -906,6 +907,7 @@ export default function App(){
 
   // ── Central de lembretes e tarefas ──
   const central = useCentral({ supabase, user, usuarios, projetos, registros });
+  const [privado, alternarPrivado] = useModoPrivado(projetos);
   const push = usePush({ supabase, user });
   useAvisosAbertos(central.meus);
   const [tarefaFoco, setTarefaFoco] = useState(null);
@@ -1126,6 +1128,9 @@ export default function App(){
                   <Icone nome="play" tam={15}/><span className="wm-esconde-celular">Iniciar sessão</span></button>}
             <SinoNotificacoes central={central} push={push} user={user} usuarios={usuarios} projetos={projetos}
               onAbrir={abrirLembrete} onVerTarefas={()=>setAba("tarefas")} gestor={["admin","gestor"].includes(user.perfil)}/>
+            <button className="wm-icone-btn" data-wm-privado-livre onClick={alternarPrivado} title={privado?"Mostrar valores e nomes":"Ocultar valores e nomes (modo privado)"} aria-label={privado?"Mostrar valores e nomes":"Ocultar valores e nomes"} aria-pressed={privado} style={privado?{background:"#e9f1fd",color:C.azulMedio}:undefined}>
+              <Icone nome={privado?"olhoFechado":"olho"} tam={20}/>
+            </button>
             <button className="wm-icone-btn" onClick={alternarTema} title={tema==="escuro"?"Usar tema claro":"Usar tema escuro"} aria-label={tema==="escuro"?"Usar tema claro":"Usar tema escuro"} aria-pressed={tema==="escuro"}>
               <Icone nome={tema==="escuro"?"sol":"lua"} tam={20}/>
             </button>
