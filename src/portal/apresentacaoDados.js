@@ -25,15 +25,15 @@ export async function salvarVersao(v) {
 export const faltaTabela = e => /apresentacoes_interiores|relation .* does not exist|schema cache/i.test(e?.message || "");
 
 // Lê a pasta: cada subpasta é um ambiente. Dentro dela: imagens = renders; "antes…" = foto do local; "planta…" = planta humanizada.
-// Imagens soltas na pasta principal: a primeira vira a capa.
+// Imagens soltas na pasta principal: "planta…" vira a planta geral (com áreas clicáveis); a primeira das outras, a capa.
 export async function lerPasta(token, pastaId, anteriores = []) {
   const info = await drive.info(token, pastaId);
   const arquivos = (await drive.listarArvore(token, pastaId, { limite: 600 })).filter(ehImagem);
   const grupos = new Map();
-  let capa = "";
+  let capa = "", plantaGeral = "";
   for (const f of arquivos) {
     const sub = String(f.pasta || "").split(" / ")[0].trim();
-    if (!sub) { if (!capa) capa = f.id; continue; }
+    if (!sub) { if (/planta/i.test(f.nome)) { if (!plantaGeral) plantaGeral = f.id; } else if (!capa) capa = f.id; continue; }
     if (!grupos.has(sub)) grupos.set(sub, []);
     grupos.get(sub).push(f);
   }
@@ -51,7 +51,7 @@ export async function lerPasta(token, pastaId, anteriores = []) {
   const ordem = new Map(anteriores.map((a, i) => [a.id, i]));
   ambientes.sort((a, b) => (ordem.get(a.id) ?? 999) - (ordem.get(b.id) ?? 999));
   if (!capa) capa = ambientes[0]?.imagens[0] || "";
-  return { pasta: { id: pastaId, nome: info.name, link: info.webViewLink || `https://drive.google.com/drive/folders/${pastaId}` }, capa, ambientes, total: arquivos.length };
+  return { pasta: { id: pastaId, nome: info.name, link: info.webViewLink || `https://drive.google.com/drive/folders/${pastaId}` }, capa, plantaGeral, ambientes, total: arquivos.length };
 }
 
 // ── paleta automática (k-médias nas cores da imagem) ──

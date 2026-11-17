@@ -12,6 +12,7 @@ import { enviarParaUsuario } from "./_push.js";
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 const TOKEN_OK = /^[A-Za-z0-9_-]{16,64}$/;
 const ID_OK = /^[A-Za-z0-9_-]{6,80}$/;
+const ID_ARQ = /^[A-Za-z0-9_-]{10,120}$/;
 const FROM = "WM Engenharia <noreply@engenhariaWM.com.br>";
 const esc = v => String(v == null ? "" : v).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
@@ -37,6 +38,8 @@ function publico(v) {
       paleta: a.paleta || [], materiais: a.materiais || [], moveis: a.moveis || [], link360: /^https:\/\//.test(a.link360 || "") ? a.link360 : "",
     })),
     respostas: v.respostas || {},
+    planta: d.planta && ID_ARQ.test(d.planta.img || "") ? { img: d.planta.img, areas: (d.planta.areas || []).filter(z => (d.ambientes || []).some(x => x.id === z.amb)).map(z => ({ amb: z.amb, x: +z.x || 0, y: +z.y || 0, w: +z.w || 0, h: +z.h || 0 })) } : null,
+    pdf: d.pdf && ID_ARQ.test(d.pdf.id || "") ? { id: d.pdf.id, em: d.pdf.em || "" } : null,
   };
 }
 

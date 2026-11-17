@@ -92,6 +92,16 @@ textarea{width:100%;border:1.5px solid var(--borda);border-radius:11px;padding:9
 .nav .onde{font-size:13px;color:var(--sub);font-weight:600;text-align:center;flex:1;min-width:0}
 .erro{max-width:520px;margin:60px auto;background:#fff;border-radius:18px;padding:30px;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.06)}
 #impressao{display:none}
+.planta-pg{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.tit-planta{font-family:var(--serif);font-weight:600;font-size:34px;color:var(--mar);margin:4px 0 0}
+.planta-box{position:relative;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 18px 50px rgba(22,35,59,.14)}
+.planta-box img{display:block;width:100%;height:auto}
+.area{position:absolute;border:2px solid rgba(21,101,216,.55);background:rgba(21,101,216,.08);border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:background .15s,border-color .15s}
+.area span{background:var(--mar);color:#fff;font-size:12.5px;font-weight:700;border-radius:8px;padding:3px 9px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.area:hover,.area:focus-visible{background:rgba(21,101,216,.22);border-color:var(--azul);outline:none}
+.area.ok{border-color:rgba(21,128,61,.7)}.area.ok span{background:var(--ok)}.area.aj{border-color:rgba(180,83,9,.7)}.area.aj span{background:var(--aj)}
+.chip{background:#fff;border:1px solid var(--borda);border-radius:99px;padding:6px 13px;font-size:13px;font-weight:600;cursor:pointer;color:var(--tinta)}
+.chip:hover{border-color:var(--azul);color:var(--azul)}
 @media (max-width:860px){.capa,.amb{grid-template-columns:1fr}.capa{min-height:0}.lado h2{font-size:28px}.linha-r{grid-template-columns:84px minmax(0,1fr)}.linha-r img{width:84px;height:58px}.linha-r .tag{grid-column:2;justify-self:start}.topo .pontos{display:none}}
 /* PDF: todas as páginas, sem botões */
 @media print{
@@ -153,7 +163,9 @@ async function api(metodo, corpo) {
 function erro(t) { document.getElementById("palco").innerHTML = `<div class="erro"><div style="font-size:42px">🛋️</div><h2 style="color:var(--mar);margin:8px 0">Apresentação indisponível</h2><p style="color:var(--sub)">${esc(t)}</p><p style="color:var(--sub);font-size:13px">Fale com a WM Engenharia: projeto@wmengenhariaintegrada.com.br · (33) 99931-7042</p></div>`; document.getElementById("tTopo").textContent = "WM Engenharia"; }
 
 const resp = id => (D.respostas || {})[id];
-const total = () => D.ambientes.length + 2;
+const base = () => (D.planta ? 2 : 1);            // índice do 1º ambiente
+const total = () => D.ambientes.length + base() + 1;
+const ambDoSlide = i => (i >= base() && i < base() + D.ambientes.length ? D.ambientes[i - base()] : null);
 
 function htmlCapa() {
   const c = D.capa || {}, im = c.imagem || D.ambientes[0]?.imagens[0];
@@ -165,6 +177,17 @@ function htmlCapa() {
       <button class="btn" type="button" data-ir="1">Começar a apresentação ›</button>
       <div class="chips">${D.ambientes.map(a => `<span>${esc(a.nome)}</span>`).join("")}</div>
     </div></div></section>`;
+}
+function htmlPlanta() {
+  const p = D.planta;
+  return `<section class="slide" data-i="1"><div class="planta-pg">
+    <div><div class="kick">Planta do projeto</div><h2 class="tit-planta">Toque num ambiente para ver as imagens</h2></div>
+    <div class="planta-box">${tag(p.img, 2000)}
+      ${p.areas.map(z => { const i = D.ambientes.findIndex(a => a.id === z.amb); if (i < 0) return ""; const r = resp(z.amb)?.decisao;
+        return `<button type="button" class="area ${r || ""}" data-ir="${base() + i}" style="left:${z.x}%;top:${z.y}%;width:${z.w}%;height:${z.h}%" aria-label="Abrir ${esc(D.ambientes[i].nome)}"><span>${esc(D.ambientes[i].nome)}${r === "ok" ? " ✓" : ""}</span></button>`; }).join("")}
+    </div>
+    <div class="chips">${D.ambientes.map((a, i) => `<button type="button" class="chip" data-ir="${base() + i}">${esc(a.nome)}</button>`).join("")}</div>
+  </div></section>`;
 }
 function vistas(a) {
   const v = a.imagens.map((id, k) => ({ id, rot: a.imagens.length > 1 ? `${k + 1}` : "" }));
@@ -185,12 +208,12 @@ function htmlAmb(a, i) {
   const r = resp(a.id), coms = r?.comentarios || [], aba = st.aba[a.id] || "materiais", vs = vistas(a);
   const lista = (aba === "materiais" ? a.materiais : a.moveis) || [];
   const ant = (D.anterior || {})[String(a.nome).toLowerCase()];
-  return `<section class="slide" data-i="${i}"><div class="amb">
+  return `<section class="slide" data-i="${base() + i - 1}"><div class="amb">
     <div>${htmlQuadro(a)}
       ${vs.length > 1 ? `<div class="miniaturas">${vs.map((v, k) => `<button type="button" class="${(st.img[a.id] || 0) === k ? "on" : ""}" data-vista="${esc(a.id)}:${k}" aria-label="${esc(v.rot || "Imagem " + (k + 1))}">${tag(v.id, 300, "")}${v.rot && isNaN(v.rot) ? `<span>${esc(v.rot)}</span>` : ""}</button>`).join("")}</div>` : ""}
     </div>
     <aside class="lado">
-      <div><div class="kick">Ambiente ${i} de ${D.ambientes.length}</div><h2>${esc(a.nome)}</h2></div>
+      <div><div class="kick">Ambiente ${i} de ${D.ambientes.length}${D.planta ? ` · <button type="button" class="link-mini" data-ir="1" style="text-transform:none;letter-spacing:0">ver na planta</button>` : ""}</div><h2>${esc(a.nome)}</h2></div>
       ${a.conceito ? `<p class="conceito">${esc(a.conceito)}</p>` : ""}
       ${ant && ant.comentarios.length ? `<div class="antes-pedido"><b>Na versão anterior você pediu:</b> ${ant.comentarios.map(esc).join(" · ")}</div>` : ""}
       ${a.paleta.length ? `<div><div class="rot">Paleta</div><div class="paleta">${a.paleta.map(c => `<div class="cor"><i style="background:${corOk(c.cor)}"></i><span>${esc(c.nome)}</span></div>`).join("")}</div></div>` : ""}
@@ -220,10 +243,12 @@ function htmlResumo() {
 }
 function desenhar() {
   const palco = document.getElementById("palco");
-  palco.innerHTML = htmlCapa() + D.ambientes.map((a, i) => htmlAmb(a, i + 1)).join("") + htmlResumo();
+  palco.innerHTML = htmlCapa() + (D.planta ? htmlPlanta() : "") + D.ambientes.map((a, i) => htmlAmb(a, i + 1)).join("") + htmlResumo();
   palco.querySelectorAll(".slide").forEach(s => s.classList.toggle("on", +s.dataset.i === st.slide));
-  document.getElementById("pontos").innerHTML = Array.from({ length: total() }, (_, i) => { const a = D.ambientes[i - 1], d = a && resp(a.id)?.decisao; return `<button type="button" class="${i === st.slide ? "on" : ""} ${d || ""}" data-ir="${i}" aria-label="${i === 0 ? "Capa" : a ? esc(a.nome) : "Resumo"}"></button>`; }).join("");
-  document.getElementById("onde").textContent = st.slide === 0 ? "Capa" : st.slide === total() - 1 ? "Resumo" : `${D.ambientes[st.slide - 1].nome} · ${st.slide} de ${D.ambientes.length}`;
+  const nomeSlide = i => (i === 0 ? "Capa" : i === total() - 1 ? "Resumo" : ambDoSlide(i) ? ambDoSlide(i).nome : "Planta");
+  document.getElementById("pontos").innerHTML = Array.from({ length: total() }, (_, i) => { const a = ambDoSlide(i), d = a && resp(a.id)?.decisao; return `<button type="button" class="${i === st.slide ? "on" : ""} ${d || ""}" data-ir="${i}" aria-label="${esc(nomeSlide(i))}"></button>`; }).join("");
+  const am = ambDoSlide(st.slide);
+  document.getElementById("onde").textContent = am ? `${am.nome} · ${st.slide - base() + 1} de ${D.ambientes.length}` : nomeSlide(st.slide);
   const ant = document.getElementById("ant"); ant.disabled = st.slide === 0;
   document.getElementById("prox").textContent = st.slide === total() - 1 ? "Voltar ao início" : st.slide === total() - 2 ? "Ver resumo ›" : "Próximo ›";
   const t = document.getElementById("txtCom"); if (t) t.focus();
@@ -286,9 +311,13 @@ function montarImpressao() {
       ${a.moveis.length ? `<b style="font-size:12px;display:block;margin-top:6px">Mobiliário</b><div class="lista">${a.moveis.map(m => `<div>■ ${esc(m.nome)} — ${esc(m.desc)}</div>`).join("")}</div>` : ""}</div></div>`;
   document.getElementById("impressao").innerHTML =
     `<div class="pg"><div class="cab"><span>WM Engenharia Integrada</span><span>${rotV(D.versao)}</span></div><div>${tag((D.capa || {}).imagem || D.ambientes[0]?.imagens[0], 1800, "")}</div><div><div class="kick">Projeto de interiores</div><h2 style="font-size:40px">${esc((D.capa || {}).titulo || D.projeto.cliente)}</h2><p>${esc((D.capa || {}).texto || "")}</p><p style="font-size:12px;color:#666">${D.ambientes.map(a => esc(a.nome)).join(" · ")}</p></div></div>` +
+    (D.planta ? `<div class="pg" style="display:block"><div class="cab"><span>${esc(D.projeto.codigo)} · ${esc(D.projeto.cliente)}</span><span>Planta</span></div><div style="position:relative">${tag(D.planta.img, 2000, "")}${D.planta.areas.map(z => { const i = D.ambientes.findIndex(a => a.id === z.amb); return i < 0 ? "" : `<span style="position:absolute;left:${z.x}%;top:${z.y}%;width:${z.w}%;height:${z.h}%;border:2px solid #1565d8;display:flex;align-items:center;justify-content:center"><b style="background:#1565d8;color:#fff;font-size:10px;padding:1px 6px;border-radius:5px">${esc(D.ambientes[i].nome)}</b></span>`; }).join("")}</div></div>` : "") +
     D.ambientes.map((a, i) => pg(a, i + 1)).join("");
 }
-document.getElementById("pdf").onclick = () => { montarImpressao(); setTimeout(() => window.print(), 600); };
+document.getElementById("pdf").onclick = () => {
+  if (D.pdf) { const a = document.createElement("a"); a.href = `https://drive.google.com/uc?export=download&id=${encodeURIComponent(D.pdf.id)}`; a.target = "_blank"; a.rel = "noopener"; document.body.appendChild(a); a.click(); a.remove(); return; }
+  montarImpressao(); setTimeout(() => window.print(), 600);
+};
 
 (async () => {
   if (!/^[A-Za-z0-9_-]{16,64}$/.test(token)) return erro("O endereço está incompleto. Confira se o link foi copiado por inteiro.");
@@ -296,12 +325,14 @@ document.getElementById("pdf").onclick = () => { montarImpressao(); setTimeout((
   catch (e) { return erro(e.message); }
   D.ambientes = (D.ambientes || []).map(a => ({ ...a, imagens: (a.imagens || []).filter(x => ID_OK.test(x)), antes: (a.antes || []).filter(x => ID_OK.test(x)), planta: ID_OK.test(a.planta || "") ? a.planta : "", paleta: a.paleta || [], materiais: a.materiais || [], moveis: a.moveis || [] }));
   if (!D.ambientes.length) return erro("Esta apresentação ainda não tem ambientes.");
+  D.planta = D.planta && ID_OK.test(D.planta.img || "") ? { img: D.planta.img, areas: (D.planta.areas || []).filter(z => [z.x, z.y, z.w, z.h].every(v => typeof v === "number" && v >= 0 && v <= 100)) } : null;
+  D.pdf = D.pdf && ID_OK.test(D.pdf.id || "") ? D.pdf : null;
   document.title = `${D.capa?.titulo || D.projeto.cliente} — Interiores ${rotV(D.versao)} · WM Engenharia`;
   document.getElementById("tTopo").textContent = D.capa?.titulo || D.projeto.cliente;
   document.getElementById("tKick").textContent = `Apresentação de interiores · ${rotV(D.versao)}`;
   if (D.previa) { const a = document.getElementById("aviso"); a.hidden = false; a.textContent = "Pré-visualização da equipe (rascunho). O cliente só vê depois de publicada."; }
   document.getElementById("nav").hidden = false; document.getElementById("pdf").hidden = false;
-  const h = location.hash.match(/^#amb-(\d+)$/); if (h) st.slide = Math.min(+h[1], total() - 1);
+  const h = location.hash.match(/^#amb-(\d+)$/); if (h) st.slide = Math.min(base() + Math.max(1, +h[1]) - 1, total() - 1);
   desenhar();
 })();
 </script>
