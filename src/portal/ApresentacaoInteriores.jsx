@@ -40,7 +40,7 @@ function EditorAmbiente({ a, i, total, onChange, onMover, onRemover, gerarPaleta
   const [indo, setIndo] = useState(false);
   const set = (k, v) => onChange({ ...a, [k]: v });
   return (
-    <div style={{ border: `1px solid ${K.borda}`, borderRadius: 12, background: "#fff" }}>
+    <div style={{ border: `1px solid ${K.borda}`, borderRadius: 12, background: "#fff", minWidth: 0 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", cursor: "pointer" }} onClick={() => setAberto(v => !v)}>
         {a.imagens[0] ? <img src={urlImagem(a.imagens[0], 200)} alt="" style={{ width: 54, height: 36, objectFit: "cover", borderRadius: 6, background: K.fundo }} /> : <span style={{ width: 54, height: 36, borderRadius: 6, background: K.fundo }} />}
         <b style={{ flex: 1, color: K.tx, fontSize: 13.5 }}>{i + 1}. {a.nome || "Ambiente"}</b>
@@ -57,7 +57,7 @@ function EditorAmbiente({ a, i, total, onChange, onMover, onRemover, gerarPaleta
             <textarea value={a.conceito} maxLength={700} rows={3} onChange={e => set("conceito", e.target.value)} placeholder="A ideia do ambiente em 2 ou 3 frases: clima, materiais, cores, iluminação." style={{ ...inp, resize: "vertical" }} />
           </div>
           <div style={rot}>Imagens da pasta ({a.imagens.length} render(s){a.antes.length ? ` · ${a.antes.length} foto(s) do antes` : ""}{a.planta ? " · planta" : ""})</div>
-          <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, paddingBottom: 4, maxWidth: "100%", minWidth: 0 }}>
             {[...(a.planta ? [[a.planta, "Planta"]] : []), ...a.imagens.map(id => [id, ""]), ...a.antes.map(id => [id, "Antes"])].map(([id, t]) => (
               <span key={id} style={{ flex: "none", display: "grid", gap: 3, width: 104 }}>
                 <span style={{ position: "relative" }}>
@@ -107,14 +107,14 @@ function ImagensPrincipais({ d, mudar }) {
     mudar({ ...d, planta: { img: id, areas: [] }, plantaGeralFixa: id });
   };
   return (
-    <div style={{ border: `1px solid ${K.borda}`, borderRadius: 12, background: "#fff", padding: "8px 12px 12px" }}>
+    <div style={{ border: `1px solid ${K.borda}`, borderRadius: 12, background: "#fff", padding: "8px 12px 12px", minWidth: 0 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
         <b style={{ fontSize: 13.5, color: K.tx, flex: 1 }}>Planta geral e capa</b>
         {d.planta?.img && <button type="button" onClick={() => { if (window.confirm("Tirar a planta geral da apresentação?")) mudar({ ...d, planta: null, plantaGeralFixa: "-" }); }} style={btn("sec", { color: "#be123c", padding: "3px 9px" })}>Sem planta geral</button>}
         <button type="button" onClick={() => setAberto(v => !v)} style={btn("sec", { padding: "3px 9px" })}>{aberto ? "Só a pasta principal" : "Ver também as imagens dos ambientes"}</button>
       </div>
       {!(d.raiz || []).length && <div style={{ fontSize: 11.5, color: K.sub, marginTop: 4 }}>Clique em Reler pasta para listar todas as imagens soltas na pasta principal.</div>}
-      <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingTop: 8 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, paddingTop: 8, paddingBottom: 4, maxWidth: "100%", minWidth: 0 }}>
         {lista.map(id => {
           const ePlanta = d.planta?.img === id, eCapa = d.capa?.imagem === id;
           return (
@@ -393,7 +393,7 @@ export default function ApresentacaoInteriores({ projeto, usuarioAtual }) {
 
   if (versoes === null) return null;
   return (
-    <div style={{ marginTop: 22 }}>
+    <div style={{ marginTop: 22, minWidth: 0, maxWidth: "100%" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
         <h3 style={{ color: K.mar, fontSize: 15, fontWeight: 700, margin: 0, flex: 1 }}>Apresentação de interiores</h3>
         {ultimaPub && linkCliente && <a href={linkCliente} target="_blank" rel="noreferrer" style={{ ...btn("sec"), textDecoration: "none" }}><Icone nome="externo" tam={13} />Ver como o cliente</a>}
@@ -410,7 +410,7 @@ export default function ApresentacaoInteriores({ projeto, usuarioAtual }) {
       )}
 
       {rasc && d && (
-        <div style={{ border: `1px solid #bcd3f5`, background: "#f7faff", borderRadius: 14, padding: 12, display: "grid", gap: 10 }}>
+        <div style={{ border: `1px solid #bcd3f5`, background: "#f7faff", borderRadius: 14, padding: 12, display: "grid", gridTemplateColumns: "minmax(0,1fr)", gap: 10, minWidth: 0 }}>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             <b style={{ color: K.mar }}>{rotVersao(rasc.versao)} · {editPub ? "editando a versão publicada" : "rascunho"}</b>
             <span style={{ fontSize: 12, color: K.sub, flex: 1 }}>Pasta: <a href={d.pasta?.link} target="_blank" rel="noreferrer">{d.pasta?.nome}</a>{sujo ? " · alterações não salvas" : ""}</span>
@@ -451,7 +451,7 @@ export default function ApresentacaoInteriores({ projeto, usuarioAtual }) {
       )}
 
       {!rasc && ultimaPub && (
-        <div style={{ border: `1px solid ${K.borda}`, borderRadius: 14, padding: 12, display: "grid", gap: 10 }}>
+        <div style={{ border: `1px solid ${K.borda}`, borderRadius: 14, padding: 12, display: "grid", gridTemplateColumns: "minmax(0,1fr)", gap: 10, minWidth: 0 }}>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             <b style={{ color: K.mar }}>{rotVersao(ultimaPub.versao)} publicada em {fmtData(ultimaPub.publicada_em)}</b>
             <button type="button" disabled={!!pdfEstado} onClick={() => gerarPDF(ultimaPub)} style={btn("sec")}>{pdfEstado || (ultimaPub.dados?.pdf ? "Gerar PDF de novo" : "Gerar PDF")}</button>
