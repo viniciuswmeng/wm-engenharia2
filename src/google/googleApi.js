@@ -105,7 +105,13 @@ export const drive = {
     return r.json();
   },
   async info(token, id, campos = "id,name,mimeType,webViewLink") {
-    return chamar(token, `${DRIVE}/files/${id}?fields=${campos}&supportsAllDrives=true`);
+    try { return await chamar(token, `${DRIVE}/files/${id}?fields=${campos}&supportsAllDrives=true`); }
+    catch (e) {
+      if (e.status === 404 || /file not found/i.test(e.message)) {
+        const err = new Error("Não encontrei essa pasta no Google Drive da conta conectada. Confira se o link está completo e se a pasta está compartilhada com a sua conta Google (ou entre com a conta dona da pasta)."); err.status = 404; throw err;
+      }
+      throw e;
+    }
   },
   // Lista os arquivos de uma pasta e das subpastas (caminho relativo em "pasta")
   async listarArvore(token, pastaId, { prefixo = "", limite = 600 } = {}) {
