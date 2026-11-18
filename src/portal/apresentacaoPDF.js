@@ -59,6 +59,7 @@ export async function gerarPDFApresentacao({ token, projeto, versao, dados, aoPr
   const JsPDF = await carregarJsPDF();
   const doc = new JsPDF({ orientation: "landscape", unit: "mm", format: "a4", compress: true });
   const cache = new Map(), amb = dados.ambientes || [];
+  const temGeral = !!((dados.geral?.materiais || []).length + (dados.geral?.moveis || []).length);
   const titulo = dados.capa?.titulo || projeto.cliente || "Projeto de interiores";
   const rodape = (n) => {
     doc.setDrawColor(228, 233, 241); doc.line(M, H - 10, W - M, H - 10);
@@ -100,7 +101,7 @@ export async function gerarPDFApresentacao({ token, projeto, versao, dados, aoPr
       doc.setFillColor(...AZUL); doc.circle(legX + 3, ly - 1.2, 3, "F");
       doc.setTextColor(255, 255, 255); doc.setFontSize(7.5); doc.text(String(i + 1), legX + 3, ly, { align: "center" });
       doc.setTextColor(...TX); doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.text(a.nome, legX + 9, ly); doc.setFont("helvetica", "bold");
-      doc.setFontSize(8); doc.setTextColor(...SUB); doc.text(`p. ${i + 3}`, W - M, ly, { align: "right" });
+      doc.setFontSize(8); doc.setTextColor(...SUB); doc.text(`p. ${i + 3 + (temGeral ? 1 : 0)}`, W - M, ly, { align: "right" });
       ly += 8;
     });
     if (area) (dados.planta.areas || []).forEach(z => {
@@ -109,6 +110,23 @@ export async function gerarPDFApresentacao({ token, projeto, versao, dados, aoPr
       doc.setDrawColor(...AZUL); doc.setLineWidth(0.5); doc.rect(x, yy, w, h, "S");
       doc.setFillColor(...AZUL); doc.circle(x + w / 2, yy + h / 2, 3.4, "F");
       doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.text(String(i + 1), x + w / 2, yy + h / 2 + 1.1, { align: "center" });
+    });
+    rodape(pag);
+  }
+
+  // ── padrões gerais da casa ──
+  const gl = [...(dados.geral?.materiais || []), ...(dados.geral?.moveis || [])];
+  if (gl.length) {
+    doc.addPage(); pag++;
+    doc.setFont("times", "bold"); doc.setFontSize(22); doc.setTextColor(...MAR); doc.text("Padrão de acabamentos da casa", M, 22);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(9.5); doc.setTextColor(...SUB); doc.text("Vale para todos os ambientes, salvo indicação na página de cada um.", M, 29);
+    const colW = (W - 2 * M - 10) / 2;
+    gl.slice(0, 40).forEach((m, k) => {
+      const col = k < Math.ceil(Math.min(40, gl.length) / 2) ? 0 : 1, lin = col ? k - Math.ceil(Math.min(40, gl.length) / 2) : k;
+      const x = M + col * (colW + 10), yy = 40 + lin * 11;
+      doc.setFillColor(...hexRgb(m.cor)); doc.setDrawColor(220, 220, 220); doc.roundedRect(x, yy - 3.5, 7, 7, 1, 1, "FD");
+      doc.setFont("helvetica", "bold"); doc.setFontSize(9.5); doc.setTextColor(...TX); doc.text(doc.splitTextToSize(m.nome || "", colW - 10)[0] || "", x + 10, yy);
+      if (m.desc) { doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(...SUB); doc.text(doc.splitTextToSize(m.desc, colW - 10)[0], x + 10, yy + 4); }
     });
     rodape(pag);
   }

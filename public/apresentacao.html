@@ -92,6 +92,8 @@ textarea{width:100%;border:1.5px solid var(--borda);border-radius:11px;padding:9
 .nav .onde{font-size:13px;color:var(--sub);font-weight:600;text-align:center;flex:1;min-width:0}
 .erro{max-width:520px;margin:60px auto;background:#fff;border-radius:18px;padding:30px;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,.06)}
 #impressao{display:none}
+.geral{background:#fff;border:1px solid var(--borda);border-radius:20px;padding:18px 20px;margin-top:26px}
+.geral-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:4px 16px}
 .planta-pg{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
 .tit-planta{font-family:var(--serif);font-weight:600;font-size:34px;color:var(--mar);margin:4px 0 0}
 .planta-box{position:relative;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 18px 50px rgba(22,35,59,.14)}
@@ -176,7 +178,12 @@ function htmlCapa() {
       <dl class="ficha"><dt>Versão</dt><dd>${rotV(D.versao)}${D.publicadaEm ? " · " + new Date(D.publicadaEm).toLocaleDateString("pt-BR") : ""}</dd><dt>Ambientes</dt><dd>${D.ambientes.length}</dd><dt>Projeto</dt><dd>${esc(D.projeto.codigo)}</dd></dl>
       <button class="btn" type="button" data-ir="1">Começar a apresentação ›</button>
       <div class="chips">${D.ambientes.map(a => `<span>${esc(a.nome)}</span>`).join("")}</div>
-    </div></div></section>`;
+    </div></div>${htmlGeral()}</section>`;
+}
+function htmlGeral() {
+  const g = D.geral; if (!g || !(g.materiais.length || g.moveis.length)) return "";
+  const l = it => it.map(m => `<div class="item"><span class="amostra" style="background:${corOk(m.cor)}"></span><span><b>${esc(m.nome)}</b><small>${esc(m.desc)}</small></span></div>`).join("");
+  return `<div class="geral"><div class="rot">Padrão de acabamentos da casa</div><div class="geral-grid">${l([...g.materiais, ...g.moveis])}</div></div>`;
 }
 function htmlPlanta() {
   const p = D.planta;
@@ -310,7 +317,7 @@ function montarImpressao() {
       ${a.materiais.length ? `<b style="font-size:12px">Materiais</b><div class="lista">${a.materiais.map(m => `<div>■ ${esc(m.nome)} — ${esc(m.desc)}</div>`).join("")}</div>` : ""}
       ${a.moveis.length ? `<b style="font-size:12px;display:block;margin-top:6px">Mobiliário</b><div class="lista">${a.moveis.map(m => `<div>■ ${esc(m.nome)} — ${esc(m.desc)}</div>`).join("")}</div>` : ""}</div></div>`;
   document.getElementById("impressao").innerHTML =
-    `<div class="pg"><div class="cab"><span>WM Engenharia Integrada</span><span>${rotV(D.versao)}</span></div><div>${tag((D.capa || {}).imagem || D.ambientes[0]?.imagens[0], 1800, "")}</div><div><div class="kick">Projeto de interiores</div><h2 style="font-size:40px">${esc((D.capa || {}).titulo || D.projeto.cliente)}</h2><p>${esc((D.capa || {}).texto || "")}</p><p style="font-size:12px;color:#666">${D.ambientes.map(a => esc(a.nome)).join(" · ")}</p></div></div>` +
+    `<div class="pg"><div class="cab"><span>WM Engenharia Integrada</span><span>${rotV(D.versao)}</span></div><div>${tag((D.capa || {}).imagem || D.ambientes[0]?.imagens[0], 1800, "")}</div><div><div class="kick">Projeto de interiores</div><h2 style="font-size:40px">${esc((D.capa || {}).titulo || D.projeto.cliente)}</h2><p>${esc((D.capa || {}).texto || "")}</p><p style="font-size:12px;color:#666">${D.ambientes.map(a => esc(a.nome)).join(" · ")}</p>${D.geral ? `<b style="font-size:12px">Padrão de acabamentos da casa</b><div class="lista">${[...D.geral.materiais, ...D.geral.moveis].map(m => `<div>■ ${esc(m.nome)} — ${esc(m.desc)}</div>`).join("")}</div>` : ""}</div></div>` +
     (D.planta ? `<div class="pg" style="display:block"><div class="cab"><span>${esc(D.projeto.codigo)} · ${esc(D.projeto.cliente)}</span><span>Planta</span></div><div style="position:relative">${tag(D.planta.img, 2000, "")}${D.planta.areas.map(z => { const i = D.ambientes.findIndex(a => a.id === z.amb); return i < 0 ? "" : `<span style="position:absolute;left:${z.x}%;top:${z.y}%;width:${z.w}%;height:${z.h}%;border:2px solid #1565d8;display:flex;align-items:center;justify-content:center"><b style="background:#1565d8;color:#fff;font-size:10px;padding:1px 6px;border-radius:5px">${esc(D.ambientes[i].nome)}</b></span>`; }).join("")}</div></div>` : "") +
     D.ambientes.map((a, i) => pg(a, i + 1)).join("");
 }
@@ -325,6 +332,7 @@ document.getElementById("pdf").onclick = () => {
   catch (e) { return erro(e.message); }
   D.ambientes = (D.ambientes || []).map(a => ({ ...a, imagens: (a.imagens || []).filter(x => ID_OK.test(x)), antes: (a.antes || []).filter(x => ID_OK.test(x)), planta: ID_OK.test(a.planta || "") ? a.planta : "", paleta: a.paleta || [], materiais: a.materiais || [], moveis: a.moveis || [] }));
   if (!D.ambientes.length) return erro("Esta apresentação ainda não tem ambientes.");
+  D.geral = D.geral ? { materiais: D.geral.materiais || [], moveis: D.geral.moveis || [] } : null;
   D.planta = D.planta && ID_OK.test(D.planta.img || "") ? { img: D.planta.img, areas: (D.planta.areas || []).filter(z => [z.x, z.y, z.w, z.h].every(v => typeof v === "number" && v >= 0 && v <= 100)) } : null;
   D.pdf = D.pdf && ID_OK.test(D.pdf.id || "") ? D.pdf : null;
   document.title = `${D.capa?.titulo || D.projeto.cliente} — Interiores ${rotV(D.versao)} · WM Engenharia`;

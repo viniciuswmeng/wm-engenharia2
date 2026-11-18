@@ -40,6 +40,7 @@ function publico(v) {
     respostas: v.respostas || {},
     planta: d.planta && ID_ARQ.test(d.planta.img || "") ? { img: d.planta.img, areas: (d.planta.areas || []).filter(z => (d.ambientes || []).some(x => x.id === z.amb)).map(z => ({ amb: z.amb, x: +z.x || 0, y: +z.y || 0, w: +z.w || 0, h: +z.h || 0 })) } : null,
     pdf: d.pdf && ID_ARQ.test(d.pdf.id || "") ? { id: d.pdf.id, em: d.pdf.em || "" } : null,
+    geral: d.geral ? { materiais: (d.geral.materiais || []).slice(0, 40), moveis: (d.geral.moveis || []).slice(0, 40) } : null,
   };
 }
 

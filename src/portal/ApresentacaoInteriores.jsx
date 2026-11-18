@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import Icone from "../ui/Icone.jsx";
 import { DRIVE_ROOT_ID } from "../nucleo.jsx";
 import { ESCOPO_DRIVE, drive, idDoLinkDrive, obterToken } from "../google/googleApi.js";
+import { interpretar, lerTexto, sugerirAmbientes } from "./importarMateriais.js";
 import { faltaTabela, lerPasta, listarVersoes, paletaDaImagem, rotVersao, salvarVersao, urlImagem } from "./apresentacaoDados.js";
 
 const K = { mar: "#0a2557", azul: "#1565d8", tx: "#0f1f3d", sub: "#6b7a90", borda: "#e6ecf4", fundo: "#f3f6fb", verde: "#16a34a", ambar: "#b45309" };
@@ -132,6 +133,39 @@ function EditorPlanta({ planta, ambientes, onChange }) {
   );
 }
 
+// Prévia da importação do TXT: confere para qual ambiente vai cada grupo antes de aplicar
+function PreviaImportacao({ imp, ambientes, onAplicar, onCancelar }) {
+  const [mapa, setMapa] = useState(imp.mapa);
+  const [somar, setSomar] = useState(false);
+  const nomes = [...imp.grupos.keys()];
+  const destinos = new Set(Object.values(mapa).filter(Boolean));
+  return (
+    <div style={{ border: `1px solid #fde68a`, background: "#fffdf5", borderRadius: 12, padding: 12, display: "grid", gap: 8 }}>
+      <b style={{ color: K.mar }}>Importar materiais e itens · {imp.arquivo}</b>
+      <div style={{ fontSize: 12.5, color: K.sub }}>{imp.linhas} linha(s) lidas{imp.ignoradas ? `, ${imp.ignoradas} ignorada(s) sem ambiente ou item` : ""}. Confira o ambiente de cada grupo:</div>
+      <div style={{ display: "grid", gap: 6 }}>
+        {nomes.map(n => { const g = imp.grupos.get(n); return (
+          <div key={n} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto minmax(0,1.2fr)", gap: 8, alignItems: "center", fontSize: 13 }}>
+            <b style={{ color: K.tx }}>{n}</b>
+            <span style={{ color: K.sub, fontSize: 12 }}>{g.materiais.length} material(is) · {g.moveis.length} item(ns)</span>
+            <select value={mapa[n] || ""} onChange={e => setMapa(m => ({ ...m, [n]: e.target.value }))} style={{ ...inp, borderColor: mapa[n] ? K.borda : "#f59e0b" }} aria-label={`Destino de ${n}`}>
+              <option value="">Não importar</option>
+              <option value="geral">Padrões gerais da casa</option>
+              {ambientes.map(a => <option key={a.id} value={a.id}>{a.nome}</option>)}
+            </select>
+          </div>); })}
+      </div>
+      {nomes.some(n => !mapa[n]) && <div style={{ fontSize: 12, color: K.ambar }}>Grupos sem ambiente não são importados. Se faltar o ambiente, crie a subpasta dele no Drive com as imagens e clique em Reler pasta.</div>}
+      {imp.confirmar > 0 && <div style={{ fontSize: 12, color: K.ambar }}>{imp.confirmar} linha(s) com “(confirmar)”: revise o texto antes de publicar (o cliente veria a palavra).</div>}
+      <label style={{ fontSize: 12.5, color: K.tx, display: "flex", gap: 6, alignItems: "center" }}><input type="checkbox" checked={somar} onChange={e => setSomar(e.target.checked)} style={{ accentColor: K.azul }} />Somar aos itens que já existem (desmarcado: substitui as listas dos ambientes escolhidos)</label>
+      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+        <button type="button" onClick={onCancelar} style={btn("sec")}>Cancelar</button>
+        <button type="button" disabled={!destinos.size} onClick={() => onAplicar(mapa, somar)} style={btn("pri", { opacity: destinos.size ? 1 : .5 })}>Importar</button>
+      </div>
+    </div>
+  );
+}
+
 // Respostas do cliente numa versão publicada
 function Respostas({ v }) {
   const amb = v.dados?.ambientes || [], r = v.respostas || {};
@@ -214,6 +248,8 @@ export default function ApresentacaoInteriores({ projeto, usuarioAtual }) {
   }
 
   async function publicar() {
+    const conf = [...d.ambientes.flatMap(a => [...a.materiais, ...a.moveis]), ...(d.geral?.materiais || []), ...(d.geral?.moveis || [])].filter(x => /confirmar/i.test(`${x.nome} ${x.desc}`)).length;
+    if (conf && !window.confirm(`${conf} item(ns) ainda têm “confirmar” no texto e o cliente vai ver. Publicar assim mesmo?`)) return;
     const faltando = d.ambientes.filter(a => !a.conceito.trim()).map(a => a.nome);
     if (faltando.length && !window.confirm(`Sem conceito: ${faltando.join(", ")}. Publicar assim mesmo?`)) return;
     if (!token) { avisar("Gere o link do cliente (acima) antes de publicar.", false); return; }
@@ -230,6 +266,32 @@ export default function ApresentacaoInteriores({ projeto, usuarioAtual }) {
     finally { setEstado(""); }
   }
 
+  // Importação do TXT de materiais/itens
+  const [imp, setImp] = useState(null);
+  async function abrirTxt(f) {
+    if (!f) return;
+    if (f.size > 500000) { avisar("Arquivo grande demais (máx. 500 KB).", false); return; }
+    try {
+      const r = interpretar(lerTexto(await f.arrayBuffer()));
+      if (!r.grupos.size) { avisar("Não encontrei itens no arquivo.", false); return; }
+      setImp({ ...r, arquivo: f.name, mapa: sugerirAmbientes([...r.grupos.keys()], d.ambientes) });
+    } catch (e) { avisar(e.message, false); }
+  }
+  function aplicarImportacao(mapa, somar) {
+    const novos = {}; const geral = { materiais: [], moveis: [] };
+    imp.grupos.forEach((g, nome) => {
+      const dst = mapa[nome]; if (!dst) return;
+      const alvo = dst === "geral" ? geral : (novos[dst] ||= { materiais: [], moveis: [] });
+      alvo.materiais.push(...g.materiais); alvo.moveis.push(...g.moveis);
+    });
+    const ambientes = d.ambientes.map(a => !novos[a.id] ? a : { ...a,
+      materiais: [...(somar ? a.materiais : []), ...novos[a.id].materiais].slice(0, 40), moveis: [...(somar ? a.moveis : []), ...novos[a.id].moveis].slice(0, 40) });
+    const temGeral = geral.materiais.length || geral.moveis.length;
+    const g0 = d.geral || { materiais: [], moveis: [] };
+    mudar({ ...d, ambientes, geral: temGeral ? { materiais: [...(somar ? g0.materiais : []), ...geral.materiais].slice(0, 40), moveis: [...(somar ? g0.moveis : []), ...geral.moveis].slice(0, 40) } : d.geral || null });
+    const n = Object.values(novos).reduce((s, x) => s + x.materiais.length + x.moveis.length, 0) + geral.materiais.length + geral.moveis.length;
+    setImp(null); avisar(`${n} item(ns) importado(s). Revise e clique em Salvar.`);
+  }
   // PDF: gera no navegador, baixa e guarda na pasta do Drive (o cliente baixa o mesmo arquivo no portal)
   const [pdfEstado, setPdfEstado] = useState("");
   async function gerarPDF(v) {
@@ -277,6 +339,9 @@ export default function ApresentacaoInteriores({ projeto, usuarioAtual }) {
             <b style={{ color: K.mar }}>{rotVersao(rasc.versao)} · rascunho</b>
             <span style={{ fontSize: 12, color: K.sub, flex: 1 }}>Pasta: <a href={d.pasta?.link} target="_blank" rel="noreferrer">{d.pasta?.nome}</a>{sujo ? " · alterações não salvas" : ""}</span>
             <button type="button" disabled={!!estado} onClick={() => lerECriar(rasc)} style={btn("sec")}>Reler pasta</button>
+            <label style={{ ...btn("sec"), opacity: estado ? .5 : 1 }} title="TXT/CSV com AMBIENTE;CATEGORIA;ITEM;MATERIAL;COR_ACABAMENTO;QTD;OBSERVACAO">
+              Importar materiais (TXT)<input type="file" accept=".txt,.csv,text/plain,text/csv" hidden onChange={e => { abrirTxt(e.target.files?.[0]); e.target.value = ""; }} />
+            </label>
             <button type="button" disabled={!!estado || !!pdfEstado} onClick={() => gerarPDF(rasc)} style={btn("sec")}>{pdfEstado || "Gerar PDF"}</button>
             {token && <a href={`/apresentacao/${token}?previa=${rasc.id}`} target="_blank" rel="noreferrer" style={{ ...btn("sec"), textDecoration: "none", opacity: sujo ? .5 : 1, pointerEvents: sujo ? "none" : "auto" }} title={sujo ? "Salve antes de pré-visualizar" : ""}>Pré-visualizar</a>}
             <button type="button" disabled={!!estado || !sujo} onClick={salvar} style={btn("sec", { opacity: sujo ? 1 : .5 })}>Salvar</button>
@@ -286,6 +351,14 @@ export default function ApresentacaoInteriores({ projeto, usuarioAtual }) {
             <input value={d.capa.titulo} maxLength={80} onChange={e => mudar({ ...d, capa: { ...d.capa, titulo: e.target.value } })} placeholder="Título da capa" style={inp} aria-label="Título da capa" />
             <input value={d.capa.texto} maxLength={300} onChange={e => mudar({ ...d, capa: { ...d.capa, texto: e.target.value } })} placeholder="Mensagem de abertura para o cliente (opcional)" style={inp} aria-label="Mensagem de abertura" />
           </div>
+          {imp && <PreviaImportacao imp={imp} ambientes={d.ambientes} onAplicar={aplicarImportacao} onCancelar={() => setImp(null)} />}
+          {d.geral && (d.geral.materiais?.length || d.geral.moveis?.length) ? (
+            <div style={{ border: `1px solid ${K.borda}`, borderRadius: 12, background: "#fff", padding: "4px 12px 12px" }}>
+              <div style={{ display: "flex", alignItems: "center" }}><b style={{ fontSize: 13.5, color: K.tx, flex: 1, marginTop: 8 }}>Padrões gerais da casa</b>
+                <button type="button" onClick={() => mudar({ ...d, geral: null })} style={btn("sec", { color: "#be123c", marginTop: 8 })}>Tirar</button></div>
+              <Linhas rotulo="Acabamentos e materiais (toda a casa)" itens={d.geral.materiais || []} onChange={v => mudar({ ...d, geral: { ...d.geral, materiais: v } })} placeholderNome="Ex.: Piso" placeholderDesc="Material, cor" />
+              <Linhas rotulo="Itens (toda a casa)" itens={d.geral.moveis || []} onChange={v => mudar({ ...d, geral: { ...d.geral, moveis: v } })} placeholderNome="Ex.: Cortinas" placeholderDesc="Material, cor" />
+            </div>) : null}
           {d.planta?.img ? <EditorPlanta planta={d.planta} ambientes={d.ambientes} onChange={planta => mudar({ ...d, planta })} />
             : <div style={{ fontSize: 12, color: K.sub }}>Para ter a planta clicável, coloque na pasta principal uma imagem com <b>planta</b> no nome e clique em Reler pasta.</div>}
           {d.ambientes.map((a, i) => <EditorAmbiente key={a.id} a={a} i={i} total={d.ambientes.length} onChange={x => setAmb(i, x)} onMover={dir => mover(i, dir)} gerarPaleta={gerarPaleta}
