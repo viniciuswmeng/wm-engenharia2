@@ -147,7 +147,7 @@ export default async function handler(req) {
       // Disciplinas e o que já foi entregue (entrega parcial por disciplina)
       disciplinas: (() => {
         const NOMES = { PE:'Projeto Estrutural', PR:'Projeto de Reforço', LT:'Laudo Técnico', EL:'Projeto Elétrico', PH:'Projeto Hidrossanitário',
-          PA:'Projeto Arquitetônico', PF:'Projeto de Fundação', CT:'Consultoria', CB:'Compatibilização' };
+          PA:'Projeto Arquitetônico', PF:'Projeto de Fundação', CT:'Consultoria', CB:'Compatibilização', PI:'Projeto de Interiores' };
         const disc = Array.isArray(projeto.disciplinas) ? projeto.disciplinas : [];
         const linhas = disc.length && disc[0]?.usuarioNome !== undefined
           ? disc.flatMap(m => (m.disciplinas || []).map(id => ({ id, entregue: (m.discEntregues || {})[id] || null, pausada: !!(m.discPausadas || {})[id] })))

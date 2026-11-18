@@ -151,6 +151,7 @@ export const DISCIPLINAS_CB = [
   { id:"PF", label:"Proj. Fundação",        icone:"⚓",  cor:"#8b5cf6" },
   { id:"CT", label:"Consultoria",           icone:"💼",  cor:"#6366f1" },
   { id:"CB", label:"Compatibilização",      icone:"🔗",  cor:"#9333ea" },
+  { id:"PI", label:"Proj. Interiores",      icone:"🛋",  cor:"#db2777" },
 ];
 
 export const USUARIOS_PADRAO = [
