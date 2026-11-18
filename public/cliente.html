@@ -11,7 +11,8 @@
   --sombra:0 1px 2px rgba(15,31,61,.04),0 6px 20px rgba(15,31,61,.05)}
 *{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth;scroll-padding-top:70px}
-body{font-family:Inter,"Segoe UI",system-ui,-apple-system,sans-serif;background:var(--fundo);color:var(--tx);min-height:100vh;font-size:15px;line-height:1.5}
+body{font-family:Inter,"Segoe UI",system-ui,-apple-system,sans-serif;background:var(--fundo);color:var(--tx);min-height:100vh;font-size:15px;line-height:1.5;overflow-wrap:anywhere;-webkit-text-size-adjust:100%}
+img{max-width:100%}
 a{color:var(--azul)}
 .topo{background:radial-gradient(900px 400px at 90% 120%,#1565d8 0%,transparent 60%),linear-gradient(160deg,#0c2b62 0%,#0a2252 55%,#081c45 100%);color:#fff;padding:0 16px}
 .topo-in{max-width:980px;margin:0 auto;padding:18px 0 26px}
@@ -25,17 +26,19 @@ a{color:var(--azul)}
 .selo{margin-left:auto;display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);border-radius:999px;padding:7px 14px;font-size:13px;font-weight:700}
 .selo i{width:9px;height:9px;border-radius:50%;display:inline-block}
 nav.sec{position:sticky;top:0;z-index:50;background:rgba(243,246,251,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--borda)}
-nav.sec .in{max-width:980px;margin:0 auto;padding:0 16px;display:flex;gap:4px;overflow-x:auto}
+nav.sec .in{max-width:980px;margin:0 auto;padding:0 16px;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+nav.sec .in::-webkit-scrollbar{display:none}
 nav.sec a{white-space:nowrap;text-decoration:none;color:var(--sub);font-weight:600;font-size:13.5px;padding:13px 12px;border-bottom:2px solid transparent}
 nav.sec a.on{color:var(--azul);border-bottom-color:var(--azul)}
 .main{max-width:980px;margin:0 auto;padding:22px 16px 40px}
 .card{background:#fff;border:1px solid var(--borda);border-radius:16px;padding:20px;box-shadow:var(--sombra);margin-bottom:18px}
-.titulo{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.titulo{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.titulo h2{flex:1;min-width:0}
 .titulo .ic{width:34px;height:34px;border-radius:10px;background:#e9f1fd;color:var(--azul);display:flex;align-items:center;justify-content:center;font-size:17px;flex:none}
 .titulo h2{font-size:16px;font-weight:700;color:var(--mar)}
 .titulo .lado{margin-left:auto}
 .sub{color:var(--sub);font-size:13px}
-.nums{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:18px}
+.nums{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(150px,100%),1fr));gap:12px;margin-bottom:18px}
 .num{background:linear-gradient(160deg,#1565d80d 0%,#fff 70%);border:1px solid #1565d82e;border-radius:16px;padding:14px 16px;box-shadow:var(--sombra)}
 .num .r{font-size:12.5px;font-weight:600;color:var(--tx)}
 .num .v{font-size:22px;font-weight:800;color:var(--azul);margin-top:6px;line-height:1.1}
@@ -69,7 +72,7 @@ nav.sec a.on{color:var(--azul);border-bottom-color:var(--azul)}
 .arq:first-child{border-top:none}
 .arq .ext{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;flex:none;letter-spacing:.3px}
 .arq .n{flex:1;min-width:0}
-.arq .n b{display:block;font-size:14px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.arq .n b{display:block;font-size:14px;color:var(--tx);word-break:break-word}
 .arq .n span{font-size:12px;color:var(--sub)}
 .mod{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--borda);border-radius:12px;text-decoration:none;color:inherit}
 .mod:hover,.arq:hover{background:#f8fbff}
@@ -104,6 +107,27 @@ nav.sec a.on{color:var(--azul);border-bottom-color:var(--azul)}
 .rod{text-align:center;color:var(--sub);font-size:12px;padding:10px 16px 30px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 @media(max-width:720px){.grid2{grid-template-columns:1fr}.selo{margin-left:0}}
+/* celular: tudo em uma coluna, nada cortado */
+@media(max-width:560px){
+  body{font-size:14.5px}
+  .topo-in{padding:14px 0 20px}.topo-bar img{height:32px}.topo-bar .rot{font-size:10.5px;letter-spacing:1px}
+  .hero{margin-top:16px;gap:10px}.hero>div{width:100%}
+  .main{padding:16px 12px 30px}
+  .card{padding:16px 14px;border-radius:14px}
+  .num{padding:12px 13px}.num .v{font-size:19px}
+  .titulo .lado{flex-basis:100%;margin-left:44px}
+  .form{gap:10px;padding:12px}.form .t{min-width:100%}.form .btn{flex:1;justify-content:center}
+  .tag{white-space:normal}
+  .pacote-cab{padding:12px}.pacote-cab .t{min-width:100%}.pacote-cab .btn{width:100%;justify-content:center}
+  .arq{display:grid;grid-template-columns:40px 1fr 1fr;gap:8px 10px;padding:10px 12px}
+  .arq .n{grid-column:2/4}.arq .btn{justify-content:center}.arq .btn:first-of-type{grid-column:2}
+  .grupo-disc{margin:10px 8px 2px}
+  .mod{flex-wrap:wrap;padding:12px}.mod>span[style*="flex:1"]{min-width:calc(100% - 60px)}.mod>.btn{width:100%;justify-content:center}
+  .disc2-t{flex-wrap:wrap}.disc2-t b{min-width:60%}
+  .geral-t span{font-size:22px}
+  .recado{font-size:13.5px}
+}
+@media(min-width:1280px){.topo-in,.main,nav.sec .in{max-width:1080px}}
 </style>
 </head>
 <body>
@@ -115,7 +139,7 @@ nav.sec a.on{color:var(--azul);border-bottom-color:var(--azul)}
 </header>
 <nav class="sec" id="nav" hidden><div class="in" id="navIn"></div></nav>
 <main class="main" id="app"><div class="carreg"><div class="spin"></div>Carregando o seu projeto…</div></main>
-<div class="rod">WM Engenharia Integrada · <a href="mailto:projeto@wmengenhariaintegrada.com.br">projeto@wmengenhariaintegrada.com.br</a> · (33) 99931-7042</div>
+<div class="rod"><span style="white-space:nowrap">WM Engenharia Integrada</span> · <a href="mailto:projeto@wmengenhariaintegrada.com.br" style="white-space:nowrap">projeto@wmengenhariaintegrada.com.br</a> · <span style="white-space:nowrap">(33) 99931-7042</span></div>
 
 <script>
 var TIPOS={PE:"Projeto Estrutural",PR:"Projeto de Reforço",LT:"Laudo Técnico",CB:"Compatibilização de projetos",EL:"Projeto Elétrico",PH:"Projeto Hidrossanitário",PA:"Projeto Arquitetônico",PF:"Projeto de Fundação",CT:"Consultoria",RE:"Revisão",PP:"Projeto de Piscina",PI:"Projeto de Interiores"};
@@ -269,7 +293,7 @@ function render(d){
   // destaca a seção visível
   var links=[].slice.call(ni.querySelectorAll("a"));
   if("IntersectionObserver" in window){
-    var obs=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){links.forEach(function(l){l.classList.toggle("on",l.getAttribute("href")==="#"+e.target.id)})}})},{rootMargin:"-40% 0px -55% 0px"});
+    var obs=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){links.forEach(function(l){var on=l.getAttribute("href")==="#"+e.target.id;l.classList.toggle("on",on);if(on)ni.scrollTo({left:l.offsetLeft-ni.clientWidth/2+l.offsetWidth/2,behavior:"smooth"})})}})},{rootMargin:"-40% 0px -55% 0px"});
     secoes.forEach(function(s){var el=document.getElementById(s[0]);if(el)obs.observe(el)});
   }
 }
