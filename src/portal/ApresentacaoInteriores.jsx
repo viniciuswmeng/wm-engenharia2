@@ -6,7 +6,7 @@ import Icone from "../ui/Icone.jsx";
 import { DRIVE_ROOT_ID } from "../nucleo.jsx";
 import { ESCOPO_DRIVE, drive, idDoLinkDrive, obterToken } from "../google/googleApi.js";
 import { interpretar, lerTexto, sugerirAmbientes } from "./importarMateriais.js";
-import { faltaTabela, lerPasta, listarVersoes, paletaDaImagem, rotVersao, salvarVersao, urlImagem } from "./apresentacaoDados.js";
+import { atualizarPublicada, faltaTabela, lerPasta, listarVersoes, paletaDaImagem, rotVersao, salvarVersao, temAprovacao, urlImagem } from "./apresentacaoDados.js";
 
 const K = { mar: "#0a2557", azul: "#1565d8", tx: "#0f1f3d", sub: "#6b7a90", borda: "#e6ecf4", fundo: "#f3f6fb", verde: "#16a34a", ambar: "#b45309" };
 const btn = (tipo = "pri", extra = {}) => ({ display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 9, padding: "7px 12px", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
@@ -196,7 +196,8 @@ function Respostas({ v }) {
 export default function ApresentacaoInteriores({ projeto, usuarioAtual }) {
   const [versoes, setVersoes] = useState(null);
   const [semTabela, setSemTabela] = useState(false);
-  const [rasc, setRasc] = useState(null);      // versão em edição (rascunho)
+  const [rasc, setRasc] = useState(null);      // versão em edição (rascunho ou publicada sem aprovação)
+  const [editPub, setEditPub] = useState(null); // { pdfId } quando está editando a versão já publicada
   const [sujo, setSujo] = useState(false);
   const [pasta, setPasta] = useState(projeto.driveEntregaveis || projeto.driveUrl || "");
   const [estado, setEstado] = useState("");
@@ -206,7 +207,7 @@ export default function ApresentacaoInteriores({ projeto, usuarioAtual }) {
   const token = projeto.tokenCliente || projeto.token_cliente;
 
   async function carregar() {
-    try { const l = await listarVersoes(projeto.id); setVersoes(l); setRasc(l[0]?.status === "rascunho" ? l[0] : null); setSujo(false); }
+    try { const l = await listarVersoes(projeto.id); setVersoes(l); setRasc(l[0]?.status === "rascunho" ? l[0] : null); setEditPub(null); setSujo(false); }
     catch (e) { if (faltaTabela(e)) setSemTabela(true); else avisar(e.message, false); setVersoes([]); }
   }
   // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps -- carrega do banco ao abrir o projeto
@@ -229,7 +230,7 @@ export default function ApresentacaoInteriores({ projeto, usuarioAtual }) {
       const plantaAnt = base?.dados?.planta;
       const planta = r.plantaGeral ? { img: r.plantaGeral, areas: (plantaAnt?.img === r.plantaGeral ? plantaAnt.areas || [] : []).filter(z => ids.has(z.amb)) } : null;
       const dados = { capa: { titulo: base?.dados?.capa?.titulo || projeto.cliente || "", texto: base?.dados?.capa?.texto || "", imagem: r.capa }, pasta: r.pasta, ambientes: r.ambientes, planta, pdf: null };
-      if (base?.status === "rascunho") { mudar(dados); avisar(`Pasta relida: ${r.ambientes.length} ambiente(s), ${r.total} imagem(ns). Os textos foram mantidos.`); }
+      if (base && base.id === rasc?.id) { mudar(dados); avisar(`Pasta relida: ${r.ambientes.length} ambiente(s), ${r.total} imagem(ns). Os textos foram mantidos.`); }
       else {
         const versao = versoes?.length ? Math.max(...versoes.map(v => v.versao)) + 1 : 0;
         const nova = await salvarVersao({ id: undefined, projeto_id: projeto.id, versao, status: "rascunho", dados: base ? { ...dados, ambientes: dados.ambientes } : dados, criado_por: usuarioAtual?.nome || "" });
@@ -245,6 +246,30 @@ export default function ApresentacaoInteriores({ projeto, usuarioAtual }) {
     try { const s = await salvarVersao(rasc); setRasc(s); setSujo(false); avisar("Rascunho salvo."); await carregar(); }
     catch (e) { avisar("Não foi possível salvar: " + e.message, false); }
     finally { setEstado(""); }
+  }
+
+  // Edição da versão publicada (só enquanto o cliente não aprovou nenhum ambiente)
+  function editarPublicada(v) {
+    const r = Object.entries(v.respostas || {}).filter(([k, x]) => k !== "_enviadaEm" && x && (x.decisao === "aj" || x.comentarios?.length));
+    if (r.length && !window.confirm(`O cliente já pediu ajuste em ${r.length} ambiente(s). Os comentários dele continuam guardados. Editar ${rotVersao(v.versao)} mesmo assim? (Para revisões grandes, prefira criar a próxima versão.)`)) return;
+    setRasc({ ...v }); setEditPub({ pdfId: v.dados?.pdf?.id || null }); setSujo(false);
+  }
+  async function salvarPublicada() {
+    if (!window.confirm(`Salvar as alterações na ${rotVersao(rasc.versao)}? O cliente passa a ver a versão atualizada no portal.`)) return;
+    setEstado("Salvando…");
+    try {
+      // PDF antigo ficaria desatualizado: só mantém se foi gerado de novo durante a edição
+      const pdfVelho = d.pdf?.id && d.pdf.id === editPub?.pdfId;
+      const ambientes = d.ambientes.map(a => ({ ...a, link360: /^https:\/\//.test(a.link360 || "") ? a.link360 : "" }));
+      await atualizarPublicada({ ...rasc, dados: { ...d, ambientes, pdf: pdfVelho ? null : d.pdf || null } });
+      await carregar();
+      avisar(`${rotVersao(rasc.versao)} atualizada. O cliente já vê as alterações.${pdfVelho ? " O PDF anterior foi retirado do portal: gere o PDF de novo." : ""}`);
+    } catch (e) { avisar(e.message || String(e), false); }
+    finally { setEstado(""); }
+  }
+  function cancelarEdicao() {
+    if (sujo && !window.confirm("Descartar as alterações não salvas?")) return;
+    setRasc(null); setEditPub(null); setSujo(false);
   }
 
   async function publicar() {
@@ -304,7 +329,7 @@ export default function ApresentacaoInteriores({ projeto, usuarioAtual }) {
       setPdfEstado("Salvando na pasta do Drive…");
       const arq = await drive.enviarArquivo(t, { nome: r.nome, conteudo: r.blob, tipo: "application/pdf", paiId: v.dados.pasta?.id });
       const pdf = { id: arq.id, nome: r.nome, em: new Date().toISOString() };
-      if (v.status === "rascunho" && rasc?.id === v.id) { mudar({ ...rasc.dados, pdf }); avisar(`PDF gerado (${r.paginas} páginas) e salvo no Drive. Salve o rascunho para guardar o link.`); }
+      if (rasc?.id === v.id) { mudar({ ...rasc.dados, pdf }); avisar(`PDF gerado (${r.paginas} páginas) e salvo no Drive. Clique em Salvar para guardar o link.`); }
       else { await salvarVersao({ ...v, dados: { ...v.dados, pdf } }); await carregar(); avisar(`PDF gerado (${r.paginas} páginas), salvo no Drive e disponível para o cliente baixar no portal.`); }
     } catch (e) { avisar("Não foi possível gerar o PDF: " + (e.message || e), false); }
     finally { setPdfEstado(""); }
@@ -336,7 +361,7 @@ export default function ApresentacaoInteriores({ projeto, usuarioAtual }) {
       {rasc && d && (
         <div style={{ border: `1px solid #bcd3f5`, background: "#f7faff", borderRadius: 14, padding: 12, display: "grid", gap: 10 }}>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-            <b style={{ color: K.mar }}>{rotVersao(rasc.versao)} · rascunho</b>
+            <b style={{ color: K.mar }}>{rotVersao(rasc.versao)} · {editPub ? "editando a versão publicada" : "rascunho"}</b>
             <span style={{ fontSize: 12, color: K.sub, flex: 1 }}>Pasta: <a href={d.pasta?.link} target="_blank" rel="noreferrer">{d.pasta?.nome}</a>{sujo ? " · alterações não salvas" : ""}</span>
             <button type="button" disabled={!!estado} onClick={() => lerECriar(rasc)} style={btn("sec")}>Reler pasta</button>
             <label style={{ ...btn("sec"), opacity: estado ? .5 : 1 }} title="TXT/CSV com AMBIENTE;CATEGORIA;ITEM;MATERIAL;COR_ACABAMENTO;QTD;OBSERVACAO">
@@ -344,13 +369,20 @@ export default function ApresentacaoInteriores({ projeto, usuarioAtual }) {
             </label>
             <button type="button" disabled={!!estado || !!pdfEstado} onClick={() => gerarPDF(rasc)} style={btn("sec")}>{pdfEstado || "Gerar PDF"}</button>
             {token && <a href={`/apresentacao/${token}?previa=${rasc.id}`} target="_blank" rel="noreferrer" style={{ ...btn("sec"), textDecoration: "none", opacity: sujo ? .5 : 1, pointerEvents: sujo ? "none" : "auto" }} title={sujo ? "Salve antes de pré-visualizar" : ""}>Pré-visualizar</a>}
-            <button type="button" disabled={!!estado || !sujo} onClick={salvar} style={btn("sec", { opacity: sujo ? 1 : .5 })}>Salvar</button>
-            <button type="button" disabled={!!estado || sujo} onClick={publicar} title={sujo ? "Salve antes de publicar" : ""} style={btn("ok", { opacity: sujo ? .5 : 1 })}>{estado || `Publicar ${rotVersao(rasc.versao)}`}</button>
+            {editPub ? <>
+              <button type="button" disabled={!!estado} onClick={cancelarEdicao} style={btn("sec")}>Cancelar</button>
+              <button type="button" disabled={!!estado || !sujo} onClick={salvarPublicada} style={btn("ok", { opacity: sujo ? 1 : .5 })}>{estado || "Salvar e atualizar para o cliente"}</button>
+            </> : <>
+              <button type="button" disabled={!!estado || !sujo} onClick={salvar} style={btn("sec", { opacity: sujo ? 1 : .5 })}>Salvar</button>
+              <button type="button" disabled={!!estado || sujo} onClick={publicar} title={sujo ? "Salve antes de publicar" : ""} style={btn("ok", { opacity: sujo ? .5 : 1 })}>{estado || `Publicar ${rotVersao(rasc.versao)}`}</button>
+            </>}
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,2fr)", gap: 8 }}>
             <input value={d.capa.titulo} maxLength={80} onChange={e => mudar({ ...d, capa: { ...d.capa, titulo: e.target.value } })} placeholder="Título da capa" style={inp} aria-label="Título da capa" />
             <input value={d.capa.texto} maxLength={300} onChange={e => mudar({ ...d, capa: { ...d.capa, texto: e.target.value } })} placeholder="Mensagem de abertura para o cliente (opcional)" style={inp} aria-label="Mensagem de abertura" />
           </div>
+          {editPub && <div style={{ fontSize: 12.5, color: "#92400e", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10, padding: "8px 12px" }}>Você está corrigindo a versão que o cliente já recebeu. Ao salvar, ele vê as mudanças na hora (o link continua o mesmo). Se o cliente aprovar algum ambiente antes de você salvar, o sistema bloqueia e pede para criar a próxima versão.</div>}
+          {editPub && Object.keys(rasc.respostas || {}).some(k => k !== "_enviadaEm") && <Respostas v={rasc} />}
           {imp && <PreviaImportacao imp={imp} ambientes={d.ambientes} onAplicar={aplicarImportacao} onCancelar={() => setImp(null)} />}
           {d.geral && (d.geral.materiais?.length || d.geral.moveis?.length) ? (
             <div style={{ border: `1px solid ${K.borda}`, borderRadius: 12, background: "#fff", padding: "4px 12px 12px" }}>
@@ -377,16 +409,19 @@ export default function ApresentacaoInteriores({ projeto, usuarioAtual }) {
               setEstado("Criando…");
               try { const nova = await salvarVersao({ projeto_id: projeto.id, versao: ultimaPub.versao + 1, status: "rascunho", dados: { ...ultimaPub.dados, pdf: null }, criado_por: usuarioAtual?.nome || "" }); await carregar(); setRasc(nova); avisar(`${rotVersao(nova.versao)} criada a partir da ${rotVersao(ultimaPub.versao)}. Ajuste e publique.`); }
               catch (e) { avisar(e.message, false); } finally { setEstado(""); }
-            }} style={btn("pri")}>Criar {rotVersao(ultimaPub.versao + 1)} com os ajustes</button>
+            }} style={btn(temAprovacao(ultimaPub) ? "pri" : "sec")}>Criar {rotVersao(ultimaPub.versao + 1)} com os ajustes</button>
+            {temAprovacao(ultimaPub)
+              ? <span style={{ fontSize: 11.5, color: K.sub, width: "100%", textAlign: "right" }}>O cliente já aprovou ambiente(s): para mudar, crie a próxima versão.</span>
+              : <button type="button" disabled={!!estado} onClick={() => editarPublicada(ultimaPub)} style={btn("pri")} title="O cliente ainda não aprovou nenhum ambiente: dá para corrigir esta versão sem criar outra">Editar {rotVersao(ultimaPub.versao)}</button>}
           </div>
           <Respostas v={ultimaPub} />
         </div>
       )}
 
-      {versoes.filter(v => v.status === "publicada").length > (rasc ? 0 : 1) && (
+      {versoes.filter(v => v.status === "publicada").length > (rasc && !editPub ? 0 : 1) && (
         <div style={{ marginTop: 10 }}>
           <div style={rot}>Histórico de versões</div>
-          {versoes.filter(v => v.status === "publicada" && (rasc || v.id !== ultimaPub?.id)).map(v => (
+          {versoes.filter(v => v.status === "publicada" && ((rasc && !editPub) || v.id !== ultimaPub?.id)).map(v => (
             <div key={v.id} style={{ marginBottom: 6 }}>
               <button type="button" onClick={() => setVerHist(h => (h === v.id ? null : v.id))} style={btn("sec", { width: "100%", justifyContent: "space-between" })}>
                 <span>{rotVersao(v.versao)} · publicada em {fmtData(v.publicada_em)}</span><span style={{ color: K.sub }}>{v.respondida_em ? `respondida em ${fmtData(v.respondida_em)}` : "sem resposta"}</span>

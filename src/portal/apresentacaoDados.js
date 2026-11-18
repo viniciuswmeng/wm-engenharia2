@@ -22,6 +22,19 @@ export async function salvarVersao(v) {
   if (error) throw error;
   return data;
 }
+// O cliente já aprovou algum ambiente nesta versão? (aí ela não pode mais ser editada; cria-se a próxima)
+export const temAprovacao = v => Object.entries(v?.respostas || {}).some(([k, r]) => k !== "_enviadaEm" && r && r.decisao === "ok");
+// Atualiza o conteúdo de uma versão já publicada — só se o cliente ainda não aprovou nada.
+// Confere de novo no banco na hora de salvar e grava apenas "dados" (as respostas do cliente nunca são tocadas).
+export async function atualizarPublicada(v) {
+  const { data: atual, error: e1 } = await supabase.from(TABELA).select("id,status,respostas").eq("id", v.id).single();
+  if (e1) throw e1;
+  if (atual.status !== "publicada") throw new Error("Esta versão não está mais publicada. Recarregue a página.");
+  if (temAprovacao(atual)) throw new Error("O cliente aprovou um ambiente enquanto você editava. Para mudar agora, crie a próxima versão.");
+  const { data, error } = await supabase.from(TABELA).update({ dados: v.dados, updated_at: new Date().toISOString() }).eq("id", v.id).eq("status", "publicada").select().single();
+  if (error) throw error;
+  return data;
+}
 export const faltaTabela = e => /apresentacoes_interiores|relation .* does not exist|schema cache/i.test(e?.message || "");
 
 // Lê a pasta: cada subpasta é um ambiente. Dentro dela: imagens = renders; "antes…" = foto do local; "planta…" = planta humanizada.
