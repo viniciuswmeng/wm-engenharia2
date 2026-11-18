@@ -57,11 +57,15 @@ function EditorAmbiente({ a, i, total, onChange, onMover, onRemover, gerarPaleta
             <textarea value={a.conceito} maxLength={700} rows={3} onChange={e => set("conceito", e.target.value)} placeholder="A ideia do ambiente em 2 ou 3 frases: clima, materiais, cores, iluminação." style={{ ...inp, resize: "vertical" }} />
           </div>
           <div style={rot}>Imagens da pasta ({a.imagens.length} render(s){a.antes.length ? ` · ${a.antes.length} foto(s) do antes` : ""}{a.planta ? " · planta" : ""})</div>
-          <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2 }}>
-            {[...a.imagens.map(id => [id, ""]), ...a.antes.map(id => [id, "Antes"]), ...(a.planta ? [[a.planta, "Planta"]] : [])].map(([id, t]) => (
-              <span key={id} style={{ position: "relative", flex: "none" }}>
-                <img src={urlImagem(id, 240)} alt="" style={{ width: 96, height: 64, objectFit: "cover", borderRadius: 7, background: K.fundo, display: "block" }} />
-                {t && <span style={{ position: "absolute", left: 4, bottom: 4, fontSize: 10, fontWeight: 700, background: "rgba(10,37,87,.8)", color: "#fff", borderRadius: 5, padding: "1px 5px" }}>{t}</span>}
+          <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2 }}>
+            {[...(a.planta ? [[a.planta, "Planta"]] : []), ...a.imagens.map(id => [id, ""]), ...a.antes.map(id => [id, "Antes"])].map(([id, t]) => (
+              <span key={id} style={{ flex: "none", display: "grid", gap: 3, width: 104 }}>
+                <span style={{ position: "relative" }}>
+                  <img src={urlImagem(id, 240)} alt="" style={{ width: 104, height: 70, objectFit: "cover", borderRadius: 7, background: K.fundo, display: "block", outline: t === "Planta" ? `2px solid ${K.azul}` : "none" }} />
+                  {t && <span style={{ position: "absolute", left: 4, bottom: 4, fontSize: 10, fontWeight: 700, background: t === "Planta" ? K.azul : "rgba(10,37,87,.8)", color: "#fff", borderRadius: 5, padding: "1px 5px" }}>{t}</span>}
+                </span>
+                {t === "Planta" && <button type="button" onClick={() => onChange({ ...a, planta: "", plantaFixa: "-", imagens: [...a.imagens, a.planta] })} style={btn("sec", { padding: "2px 6px", fontSize: 11 })} title="Esta imagem volta a ser um render comum">Não é planta</button>}
+                {!t && <button type="button" onClick={() => onChange({ ...a, planta: id, plantaFixa: id, imagens: [...a.imagens.filter(x => x !== id), ...(a.planta ? [a.planta] : [])] })} style={btn("sec", { padding: "2px 6px", fontSize: 11 })} title="Mostrar esta imagem como a planta baixa do ambiente">Usar como planta</button>}
               </span>
             ))}
           </div>
@@ -88,6 +92,48 @@ function EditorAmbiente({ a, i, total, onChange, onMover, onRemover, gerarPaleta
           <div style={{ marginTop: 10, textAlign: "right" }}><button type="button" onClick={onRemover} style={btn("sec", { color: "#be123c" })}>Tirar este ambiente</button></div>
         </div>
       )}
+    </div>
+  );
+}
+
+// Imagens da pasta principal: escolher qual é a planta geral (clicável) e qual é a capa
+function ImagensPrincipais({ d, mudar }) {
+  const [aberto, setAberto] = useState(false);
+  const extras = d.ambientes.flatMap(a => [a.planta, ...a.imagens]).filter(Boolean);
+  const lista = [...new Set([...(d.raiz || []), d.planta?.img, d.capa?.imagem, ...(aberto ? extras : [])].filter(Boolean))];
+  const usarPlanta = id => {
+    if (d.planta?.img === id) return;
+    if (d.planta?.areas?.length && !window.confirm("As áreas marcadas na planta atual serão apagadas (a nova imagem tem outra posição). Continuar?")) return;
+    mudar({ ...d, planta: { img: id, areas: [] }, plantaGeralFixa: id });
+  };
+  return (
+    <div style={{ border: `1px solid ${K.borda}`, borderRadius: 12, background: "#fff", padding: "8px 12px 12px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <b style={{ fontSize: 13.5, color: K.tx, flex: 1 }}>Planta geral e capa</b>
+        {d.planta?.img && <button type="button" onClick={() => { if (window.confirm("Tirar a planta geral da apresentação?")) mudar({ ...d, planta: null, plantaGeralFixa: "-" }); }} style={btn("sec", { color: "#be123c", padding: "3px 9px" })}>Sem planta geral</button>}
+        <button type="button" onClick={() => setAberto(v => !v)} style={btn("sec", { padding: "3px 9px" })}>{aberto ? "Só a pasta principal" : "Ver também as imagens dos ambientes"}</button>
+      </div>
+      {!(d.raiz || []).length && <div style={{ fontSize: 11.5, color: K.sub, marginTop: 4 }}>Clique em Reler pasta para listar todas as imagens soltas na pasta principal.</div>}
+      <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingTop: 8 }}>
+        {lista.map(id => {
+          const ePlanta = d.planta?.img === id, eCapa = d.capa?.imagem === id;
+          return (
+            <span key={id} style={{ flex: "none", display: "grid", gap: 3, width: 120 }}>
+              <span style={{ position: "relative" }}>
+                <img src={urlImagem(id, 260)} alt="" style={{ width: 120, height: 80, objectFit: "cover", borderRadius: 7, background: K.fundo, display: "block", outline: ePlanta || eCapa ? `2px solid ${ePlanta ? K.azul : K.verde}` : "none" }} />
+                <span style={{ position: "absolute", left: 4, bottom: 4, display: "flex", gap: 3 }}>
+                  {ePlanta && <span style={{ fontSize: 10, fontWeight: 700, background: K.azul, color: "#fff", borderRadius: 5, padding: "1px 5px" }}>Planta</span>}
+                  {eCapa && <span style={{ fontSize: 10, fontWeight: 700, background: K.verde, color: "#fff", borderRadius: 5, padding: "1px 5px" }}>Capa</span>}
+                </span>
+              </span>
+              <div style={{ display: "flex", gap: 3 }}>
+                <button type="button" disabled={ePlanta} onClick={() => usarPlanta(id)} style={btn("sec", { padding: "2px 5px", fontSize: 11, flex: 1, opacity: ePlanta ? .5 : 1 })}>Planta</button>
+                <button type="button" disabled={eCapa} onClick={() => mudar({ ...d, capa: { ...d.capa, imagem: id }, capaFixa: id })} style={btn("sec", { padding: "2px 5px", fontSize: 11, flex: 1, opacity: eCapa ? .5 : 1 })}>Capa</button>
+              </div>
+            </span>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -227,9 +273,14 @@ export default function ApresentacaoInteriores({ projeto, usuarioAtual }) {
       const r = await lerPasta(t, id, base?.dados?.ambientes || []);
       if (!r.ambientes.length) { avisar("Não achei ambientes: crie uma subpasta para cada ambiente (ex.: 01 Sala, 02 Cozinha) com as imagens dentro.", false); return; }
       const ids = new Set(r.ambientes.map(a => a.id));
-      const plantaAnt = base?.dados?.planta;
-      const planta = r.plantaGeral ? { img: r.plantaGeral, areas: (plantaAnt?.img === r.plantaGeral ? plantaAnt.areas || [] : []).filter(z => ids.has(z.amb)) } : null;
-      const dados = { capa: { titulo: base?.dados?.capa?.titulo || projeto.cliente || "", texto: base?.dados?.capa?.texto || "", imagem: r.capa }, pasta: r.pasta, ambientes: r.ambientes, planta, pdf: null };
+      const plantaAnt = base?.dados?.planta, bd = base?.dados || {};
+      // escolhas feitas à mão (planta geral e capa) continuam valendo se a imagem ainda estiver na pasta
+      const todas = new Set([...r.raiz, ...r.ambientes.flatMap(a => [...a.imagens, ...a.antes, a.planta])]);
+      const fixaG = bd.plantaGeralFixa, imgG = fixaG === "-" ? "" : fixaG && todas.has(fixaG) ? fixaG : r.plantaGeral;
+      const planta = imgG ? { img: imgG, areas: (plantaAnt?.img === imgG ? plantaAnt.areas || [] : []).filter(z => ids.has(z.amb)) } : null;
+      const capaImg = bd.capaFixa && todas.has(bd.capaFixa) ? bd.capaFixa : r.capa;
+      const dados = { ...(base ? { geral: bd.geral || null } : {}), capa: { titulo: bd.capa?.titulo || projeto.cliente || "", texto: bd.capa?.texto || "", imagem: capaImg }, pasta: r.pasta, raiz: r.raiz, ambientes: r.ambientes, planta, pdf: null,
+        ...(fixaG && (fixaG === "-" || imgG === fixaG) ? { plantaGeralFixa: fixaG } : {}), ...(capaImg === bd.capaFixa ? { capaFixa: bd.capaFixa } : {}) };
       if (base && base.id === rasc?.id) { mudar(dados); avisar(`Pasta relida: ${r.ambientes.length} ambiente(s), ${r.total} imagem(ns). Os textos foram mantidos.`); }
       else {
         const versao = versoes?.length ? Math.max(...versoes.map(v => v.versao)) + 1 : 0;
@@ -328,7 +379,7 @@ export default function ApresentacaoInteriores({ projeto, usuarioAtual }) {
       const url = URL.createObjectURL(r.blob); const a = document.createElement("a"); a.href = url; a.download = r.nome; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 5000);
       setPdfEstado("Salvando na pasta do Drive…");
       const arq = await drive.enviarArquivo(t, { nome: r.nome, conteudo: r.blob, tipo: "application/pdf", paiId: v.dados.pasta?.id });
-      const pdf = { id: arq.id, nome: r.nome, em: new Date().toISOString() };
+      const pdf = { id: arq.id, nome: r.nome, em: new Date().toISOString(), modelo: r.modelo };
       if (rasc?.id === v.id) { mudar({ ...rasc.dados, pdf }); avisar(`PDF gerado (${r.paginas} páginas) e salvo no Drive. Clique em Salvar para guardar o link.`); }
       else { await salvarVersao({ ...v, dados: { ...v.dados, pdf } }); await carregar(); avisar(`PDF gerado (${r.paginas} páginas), salvo no Drive e disponível para o cliente baixar no portal.`); }
     } catch (e) { avisar("Não foi possível gerar o PDF: " + (e.message || e), false); }
@@ -391,8 +442,9 @@ export default function ApresentacaoInteriores({ projeto, usuarioAtual }) {
               <Linhas rotulo="Acabamentos e materiais (toda a casa)" itens={d.geral.materiais || []} onChange={v => mudar({ ...d, geral: { ...d.geral, materiais: v } })} placeholderNome="Ex.: Piso" placeholderDesc="Material, cor" />
               <Linhas rotulo="Itens (toda a casa)" itens={d.geral.moveis || []} onChange={v => mudar({ ...d, geral: { ...d.geral, moveis: v } })} placeholderNome="Ex.: Cortinas" placeholderDesc="Material, cor" />
             </div>) : null}
+          <ImagensPrincipais d={d} mudar={mudar} />
           {d.planta?.img ? <EditorPlanta planta={d.planta} ambientes={d.ambientes} onChange={planta => mudar({ ...d, planta })} />
-            : <div style={{ fontSize: 12, color: K.sub }}>Para ter a planta clicável, coloque na pasta principal uma imagem com <b>planta</b> no nome e clique em Reler pasta.</div>}
+            : <div style={{ fontSize: 12, color: K.sub }}>Sem planta geral: escolha acima qual imagem é a planta (ou coloque na pasta principal uma imagem com <b>planta</b> no nome e clique em Reler pasta).</div>}
           {d.ambientes.map((a, i) => <EditorAmbiente key={a.id} a={a} i={i} total={d.ambientes.length} onChange={x => setAmb(i, x)} onMover={dir => mover(i, dir)} gerarPaleta={gerarPaleta}
             onRemover={() => { if (window.confirm(`Tirar “${a.nome}” da apresentação? (As imagens continuam no Drive.)`)) mudar({ ...d, ambientes: d.ambientes.filter((_, j) => j !== i) }); }} />)}
         </div>

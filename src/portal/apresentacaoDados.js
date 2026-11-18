@@ -44,9 +44,10 @@ export async function lerPasta(token, pastaId, anteriores = []) {
   const arquivos = (await drive.listarArvore(token, pastaId, { limite: 600 })).filter(ehImagem);
   const grupos = new Map();
   let capa = "", plantaGeral = "";
+  const raiz = [];
   for (const f of arquivos) {
     const sub = String(f.pasta || "").split(" / ")[0].trim();
-    if (!sub) { if (/planta/i.test(f.nome)) { if (!plantaGeral) plantaGeral = f.id; } else if (!capa) capa = f.id; continue; }
+    if (!sub) { if (raiz.length < 40) raiz.push(f.id); if (/planta/i.test(f.nome)) { if (!plantaGeral) plantaGeral = f.id; } else if (!capa) capa = f.id; continue; }
     if (!grupos.has(sub)) grupos.set(sub, []);
     grupos.get(sub).push(f);
   }
@@ -54,17 +55,19 @@ export async function lerPasta(token, pastaId, anteriores = []) {
   const ambientes = [...grupos.entries()].map(([nome, fs]) => {
     fs.sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR", { numeric: true }));
     const antes = fs.filter(f => /^antes/i.test(f.nome)).map(f => f.id);
-    const planta = fs.find(f => /planta/i.test(f.nome))?.id || "";
-    const imagens = fs.filter(f => !/^antes/i.test(f.nome) && f.id !== planta).map(f => f.id).slice(0, 12);
     const velho = porNome.get(nome.toLowerCase()) || porNome.get(nome.replace(/^\d+\s*[-_.]\s*/, "").toLowerCase());
-    return { id: velho?.id || uidAmb(), nome: velho?.nome || nome.replace(/^\d+\s*[-_.]\s*/, ""), conceito: velho?.conceito || "", imagens, antes: antes.slice(0, 3), planta,
+    // planta do ambiente: a escolhida à mão pela equipe (plantaFixa) vale mais que o nome do arquivo; "-" = sem planta
+    const fixa = velho?.plantaFixa;
+    const planta = fixa === "-" ? "" : fixa && fs.some(f => f.id === fixa) ? fixa : fs.find(f => /planta/i.test(f.nome) && !/^antes/i.test(f.nome))?.id || "";
+    const imagens = fs.filter(f => !/^antes/i.test(f.nome) && f.id !== planta).map(f => f.id).slice(0, 12);
+    return { id: velho?.id || uidAmb(), nome: velho?.nome || nome.replace(/^\d+\s*[-_.]\s*/, ""), conceito: velho?.conceito || "", imagens, antes: antes.slice(0, 3), planta, ...(fixa && (fixa === "-" || planta === fixa) ? { plantaFixa: fixa } : {}),
       paleta: velho?.paleta || [], materiais: velho?.materiais || [], moveis: velho?.moveis || [], link360: velho?.link360 || "" };
   }).filter(a => a.imagens.length || a.planta);
   // mantém a ordem que a equipe já tinha definido
   const ordem = new Map(anteriores.map((a, i) => [a.id, i]));
   ambientes.sort((a, b) => (ordem.get(a.id) ?? 999) - (ordem.get(b.id) ?? 999));
   if (!capa) capa = ambientes[0]?.imagens[0] || "";
-  return { pasta: { id: pastaId, nome: info.name, link: info.webViewLink || `https://drive.google.com/drive/folders/${pastaId}` }, capa, plantaGeral, ambientes, total: arquivos.length };
+  return { pasta: { id: pastaId, nome: info.name, link: info.webViewLink || `https://drive.google.com/drive/folders/${pastaId}` }, capa, plantaGeral, raiz, ambientes, total: arquivos.length };
 }
 
 // ── paleta automática (k-médias nas cores da imagem) ──

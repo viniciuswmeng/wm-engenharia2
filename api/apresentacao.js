@@ -1,6 +1,7 @@
 // api/apresentacao.js — Apresentação de interiores no portal do cliente
 // GET  ?token=…                 → versão publicada mais recente (e comentários da versão anterior)
 // GET  ?token=…&previa=ID        → (só equipe, com sessão) qualquer versão, inclusive rascunho
+// GET  ?token=…&img=ID          → a imagem (só as desta versão), para o PDF gerado no navegador do cliente
 // POST { token, versao, acao:"decidir", ambiente, decisao, comentarios }  → grava a resposta do ambiente
 // POST { token, versao, acao:"enviar" }                                  → marca como enviada e avisa a equipe
 // O cliente nunca grava direto no banco: tudo passa por aqui, validado, com a chave do servidor.
@@ -39,7 +40,7 @@ function publico(v) {
     })),
     respostas: v.respostas || {},
     planta: d.planta && ID_ARQ.test(d.planta.img || "") ? { img: d.planta.img, areas: (d.planta.areas || []).filter(z => (d.ambientes || []).some(x => x.id === z.amb)).map(z => ({ amb: z.amb, x: +z.x || 0, y: +z.y || 0, w: +z.w || 0, h: +z.h || 0 })) } : null,
-    pdf: d.pdf && ID_ARQ.test(d.pdf.id || "") ? { id: d.pdf.id, em: d.pdf.em || "" } : null,
+    pdf: d.pdf && ID_ARQ.test(d.pdf.id || "") ? { id: d.pdf.id, em: d.pdf.em || "", modelo: Number(d.pdf.modelo) || 1 } : null,
     geral: d.geral ? { materiais: (d.geral.materiais || []).slice(0, 40), moveis: (d.geral.moveis || []).slice(0, 40) } : null,
   };
 }
@@ -73,6 +74,29 @@ async function avisarEquipe(projeto, versao, respostas) {
   }
 }
 
+// Imagens que a versão usa (capa, planta geral, renders, fotos do antes e plantas dos ambientes)
+function idsDaVersao(v) {
+  const d = v.dados || {}, ids = new Set([d.capa?.imagem, d.planta?.img]);
+  (d.ambientes || []).forEach(a => [...(a.imagens || []), ...(a.antes || []), a.planta].forEach(x => ids.add(x)));
+  ids.delete(undefined); ids.delete(""); return ids;
+}
+async function imagemDaVersao(req, res, v) {
+  const id = String(req.query.img || ""), w = Math.max(400, Math.min(2000, Number(req.query.w) || 1800));
+  if (!ID_ARQ.test(id) || !idsDaVersao(v).has(id)) { await registrar(req, "dados_invalidos", { rota: "apresentacao-img" }); return res.status(404).json({ erro: "Imagem não encontrada." }); }
+  for (const tam of [w, 1200]) {
+    const r = await fetch(`https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w${tam}`, { redirect: "follow" }).catch(() => null);
+    const tipo = r?.headers.get("content-type") || "";
+    if (!r?.ok || !/^image\/(jpeg|png|webp|gif)/i.test(tipo)) return res.status(502).json({ erro: "Não foi possível obter a imagem (a pasta está compartilhada por link?)." });
+    const buf = Buffer.from(await r.arrayBuffer());
+    if (buf.length > 4_000_000 && tam !== 1200) continue; // limite de resposta da Vercel
+    res.setHeader("Content-Type", tipo.split(";")[0]);
+    res.setHeader("Cache-Control", "private, max-age=3600");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    return res.status(200).send(buf);
+  }
+  return res.status(413).json({ erro: "Imagem grande demais." });
+}
+
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
   try {
@@ -91,6 +115,8 @@ export default async function handler(req, res) {
         lista = await sb(`apresentacoes_interiores?projeto_id=eq.${encodeURIComponent(p.id)}&status=eq.publicada&order=versao.desc&limit=2&select=*`);
       }
       if (!lista?.length) return res.status(404).json({ erro: "A apresentação ainda não foi publicada." });
+      // ?img=ID → entrega a imagem (pelo servidor, para o PDF do cliente poder usá-la). Só imagens desta versão.
+      if (req.query?.img != null) return imagemDaVersao(req, res, lista[0]);
       const atual = publico(lista[0]);
       // comentários da versão anterior, por nome do ambiente (para o cliente ver o que pediu antes)
       const anterior = !previa && lista[1] ? Object.values(lista[1].respostas || {}).filter(r => r && r.nome).reduce((m, r) => { m[String(r.nome).toLowerCase()] = { decisao: r.decisao, comentarios: (r.comentarios || []).map(c => c.txt) }; return m; }, {}) : {};

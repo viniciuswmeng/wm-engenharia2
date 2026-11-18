@@ -21,6 +21,7 @@ a{color:var(--azul)}
 .topo .t{min-width:0;flex:1}
 .topo .t small{display:block;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#9cc2ff;font-weight:700}
 .topo .t b{display:block;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topo .pdf:disabled{opacity:.8;cursor:wait}
 .topo .pdf{border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;border-radius:9px;padding:6px 11px;font-weight:600;font-size:12.5px;cursor:pointer}
 .pontos{display:flex;gap:6px;align-items:center}
 .pontos button{width:9px;height:9px;border-radius:9px;border:0;background:rgba(255,255,255,.35);padding:0;cursor:pointer}
@@ -387,9 +388,24 @@ function montarImpressao() {
     (D.planta ? `<div class="pg" style="display:block"><div class="cab"><span>${esc(D.projeto.codigo)} · ${esc(D.projeto.cliente)}</span><span>Planta</span></div><div style="position:relative">${tag(D.planta.img, 2000, "")}${D.planta.areas.map(z => { const i = D.ambientes.findIndex(a => a.id === z.amb); return i < 0 ? "" : `<span style="position:absolute;left:${z.x}%;top:${z.y}%;width:${z.w}%;height:${z.h}%;border:2px solid #1565d8;display:flex;align-items:center;justify-content:center"><b style="background:#1565d8;color:#fff;font-size:10px;padding:1px 6px;border-radius:5px">${esc(D.ambientes[i].nome)}</b></span>`; }).join("")}</div></div>` : "") +
     D.ambientes.map((a, i) => pg(a, i + 1)).join("");
 }
-document.getElementById("pdf").onclick = () => {
-  if (D.pdf) { const a = document.createElement("a"); a.href = `https://drive.google.com/uc?export=download&id=${encodeURIComponent(D.pdf.id)}`; a.target = "_blank"; a.rel = "noopener"; document.body.appendChild(a); a.click(); a.remove(); return; }
-  montarImpressao(); setTimeout(() => window.print(), 600);
+// PDF: o mesmo gerador da equipe (public/vendor/apresentacao-pdf.js), com as imagens entregues pela API.
+// Se a equipe já salvou no Drive um PDF no modelo atual, baixa esse; se a geração falhar, cai na impressão.
+document.getElementById("pdf").onclick = async () => {
+  const bt = document.getElementById("pdf"); if (bt.disabled) return;
+  const rot = bt.textContent; bt.disabled = true; bt.textContent = "Preparando…";
+  try {
+    const m = await import("/vendor/apresentacao-pdf.js");
+    if (D.pdf && D.pdf.modelo >= m.MODELO_PDF) {
+      const a = document.createElement("a"); a.href = `https://drive.google.com/uc?export=download&id=${encodeURIComponent(D.pdf.id)}`; a.target = "_blank"; a.rel = "noopener"; document.body.appendChild(a); a.click(); a.remove(); return;
+    }
+    const h = {}; if (previa) { const t = sessao(); if (t) h.Authorization = "Bearer " + t; }
+    const baixar = async id => { const q = new URLSearchParams({ token, img: id }); if (previa) q.set("previa", previa);
+      const r = await fetch("/api/apresentacao?" + q, { headers: h }); if (!r.ok) throw new Error("imagem"); return r.blob(); };
+    const r = await m.gerarPDFApresentacao({ baixar, projeto: D.projeto, versao: D.versao, dados: D, aoProgresso: t => { bt.textContent = t.length > 28 ? t.slice(0, 27) + "…" : t; } });
+    const url = URL.createObjectURL(r.blob), a = document.createElement("a"); a.href = url; a.download = r.nome; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 8000);
+  } catch (e) {
+    montarImpressao(); setTimeout(() => window.print(), 600);
+  } finally { bt.disabled = false; bt.textContent = rot; }
 };
 
 (async () => {
