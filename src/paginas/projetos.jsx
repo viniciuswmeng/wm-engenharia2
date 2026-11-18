@@ -284,11 +284,16 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[],
   const rec=(form.parcelas||[]).reduce((a,p)=>a+(p.pago?p.valor:0),0);
   const pend=(form.parcelas||[]).reduce((a,p)=>a+(!p.pago?p.valor:0),0);
   return(
-    <div style={{position:"fixed",inset:0,background:"rgba(10,25,55,.5)",backdropFilter:"blur(2px)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-      <div style={{background:C.branco,borderRadius:18,width:"100%",maxWidth:abaModal==="checklist"?1180:760,maxHeight:"90vh",overflow:"auto",boxShadow:"0 24px 70px rgba(10,25,55,.28)"}} onClick={e=>e.stopPropagation()}>
+    <div className="wm-projeto-pagina" role="dialog" aria-label={form.cliente||"Projeto"}>
+      <div className="wm-projeto-folha" style={{background:"#fff"}} onClick={e=>e.stopPropagation()}>
+        <div style={{position:"sticky",top:0,zIndex:3,background:"#fff"}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 22px 0"}}>
+          <button type="button" onClick={onClose} style={{border:"none",background:"none",color:C.azulMedio,fontWeight:700,fontSize:13,cursor:"pointer",padding:0,fontFamily:"inherit"}}>← Voltar aos projetos</button>
+        </div>
         <CabecalhoModal rotulo={form.codigo||"WM Engenharia"} titulo={modo==="novo"?"Novo projeto":(form.cliente||"Editar projeto")} icone="pasta" onFechar={onClose}/>
-        <Abas variante="linha" style={{padding:"0 16px",position:"sticky",top:0,background:"#fff",zIndex:2}} valor={abaModal} onChange={setAbaModal}
+        <Abas variante="linha" style={{padding:"0 16px",background:"#fff"}} valor={abaModal} onChange={setAbaModal}
           itens={[{id:"info",label:"Projeto"},{id:"checklist",label:"Checklist"},{id:"execucao",label:"Revisões"},{id:"financeiro",label:"Financeiro"},{id:"portal",label:"Portal do cliente"}]}/>
+        </div>
 
         <div style={{padding:24,display:"flex",flexDirection:"column",gap:20}}>
         {/* ─── ABA INFO ─── */}
@@ -709,7 +714,7 @@ export function ModalProjeto({projeto,onClose,onSave,onExcluir,modo,usuarios=[],
               Salve o projeto primeiro para abrir o checklist.
             </div>
           ) : (
-            <div style={{margin:"-24px -24px 0",height:"68vh",borderBottom:`1px solid ${C.cinzaCard}`}}>
+            <div style={{margin:"-24px -24px 0",height:"calc(100dvh - 250px)",minHeight:480,borderBottom:`1px solid ${C.cinzaCard}`}}>
               <iframe src={`/obras.html?projeto=${encodeURIComponent(form.id)}`} title="Checklist da obra"
                 style={{width:"100%",height:"100%",border:"none",display:"block"}}/>
             </div>

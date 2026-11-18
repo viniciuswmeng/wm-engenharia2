@@ -6,6 +6,7 @@ import Icone from "../ui/Icone.jsx";
 import { supabase, portal } from "../supabase.js";
 import { ESCOPO_DRIVE, drive, idDoLinkDrive, obterToken } from "../google/googleApi.js";
 import { DRIVE_ROOT_ID } from "../nucleo.jsx";
+import { DISC_ARQ, disciplinaDoArquivo } from "./disciplinaArquivo.js";
 
 const K = { mar: "#0a2557", azul: "#1565d8", tx: "#0f1f3d", sub: "#6b7a90", borda: "#e6ecf4", fundo: "#f3f6fb", verde: "#16a34a" };
 const inp = { width: "100%", boxSizing: "border-box", border: `1px solid #d9e2ee`, borderRadius: 9, padding: "8px 11px", fontSize: 13.5, fontFamily: "inherit", color: K.tx, background: "#fff" };
@@ -137,6 +138,10 @@ export default function EntregasPortal({ projeto, usuarioAtual }) {
             <div style={{ flex: 1, minWidth: 180 }}>
               <div style={{ fontSize: 13.5, fontWeight: 700, color: K.tx }}>{p.titulo}</div>
               <div style={{ fontSize: 12, color: K.sub }}>{new Date(p.data).toLocaleDateString("pt-BR")} · {p.arquivos?.length || 0} arquivo(s) · {tam((p.arquivos || []).reduce((a, x) => a + (x.tamanho || 0), 0))}{p.publico === false ? " · pasta sem acesso por link" : ""}</div>
+              <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>
+                {(() => { const n = {}; (p.arquivos || []).forEach(x => { const k = disciplinaDoArquivo(x.nome, x.pasta); n[k] = (n[k] || 0) + 1; });
+                  return DISC_ARQ.filter(d => n[d.k]).map(d => <span key={d.k} title={`${n[d.k]} arquivo(s)`} style={{ fontSize: 11, fontWeight: 700, borderRadius: 6, padding: "1px 7px", background: d.tint, color: d.ink, borderLeft: `3px solid ${d.cor}` }}>{d.nome} · {n[d.k]}</span>); })()}
+              </div>
             </div>
             <button onClick={() => setEdit({ id: p.id, titulo: p.titulo || "", nota: p.nota || "", tipo: p.tipo })} disabled={!!estado} style={btn("sec", { padding: "6px 10px", fontSize: 12.5 })}>Editar</button>
             <a href={p.pastaLink} target="_blank" rel="noreferrer" style={{ ...btn("sec", { padding: "6px 10px", fontSize: 12.5 }), textDecoration: "none" }}><Icone nome="externo" tam={13} />Pasta</a>
