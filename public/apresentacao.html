@@ -7,10 +7,10 @@
 <title>Apresentação de Interiores — WM Engenharia</title>
 <link rel="icon" href="/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap">
 <style>
 :root{--mar:#0a2557;--azul:#1565d8;--tinta:#16233b;--sub:#66758c;--borda:#e4e9f1;--fundo:#f4f2ee;--ok:#15803d;--ok-bg:#e7f6ec;--aj:#b45309;--aj-bg:#fdf1e2;
-  --serif:"Cormorant Garamond",Georgia,"Times New Roman",serif;--sans:Inter,"Segoe UI",system-ui,-apple-system,sans-serif}
+  --serif:"Playfair Display",Georgia,"Times New Roman",serif;--sans:Inter,"Segoe UI",system-ui,-apple-system,sans-serif}
 *{box-sizing:border-box}
 html,body{margin:0}
 body{background:var(--fundo);color:var(--tinta);font:15px/1.55 var(--sans);-webkit-font-smoothing:antialiased}
@@ -40,9 +40,11 @@ img.foto{display:block;width:100%;height:auto;background:#e9e4dc}
 /* capa */
 .capa{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:28px;align-items:center;min-height:68vh}
 .capa .img{border-radius:22px;overflow:hidden;box-shadow:0 24px 60px rgba(22,35,59,.18)}
-.capa h1{font-family:var(--serif);font-weight:600;font-size:clamp(36px,5.2vw,62px);line-height:1.02;margin:10px 0 14px;color:var(--mar)}
-.capa p{color:var(--sub);max-width:48ch;margin:0 0 18px}
-.ficha{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-size:13.5px;margin:0 0 22px}.ficha dt{color:var(--sub)}.ficha dd{margin:0;font-weight:600}
+.capa h1{font-family:var(--serif);font-weight:600;font-size:clamp(34px,4.4vw,56px);line-height:1.08;letter-spacing:-.01em;margin:14px 0 16px;color:var(--mar);text-wrap:balance;font-variant-numeric:lining-nums}
+.capa .kick{font-size:12px;letter-spacing:.24em}
+.capa .kick::after{content:"";display:block;width:44px;height:2px;background:var(--azul);margin-top:12px;opacity:.7}
+.capa p{color:#4a5870;max-width:46ch;margin:0 0 22px;font-size:16px;line-height:1.65}
+.ficha{display:grid;grid-template-columns:auto 1fr;gap:8px 18px;font-size:14px;margin:0 0 26px;padding:14px 0;border-top:1px solid var(--borda);border-bottom:1px solid var(--borda)}.ficha dt{color:var(--sub);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;padding-top:2px}.ficha dd{margin:0;font-weight:600;color:var(--tinta)}
 .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.chips span{background:#fff;border:1px solid var(--borda);border-radius:99px;padding:5px 12px;font-size:12.5px;font-weight:600}
 /* ambiente */
 .amb{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:22px;align-items:start}
@@ -55,13 +57,20 @@ img.foto{display:block;width:100%;height:auto;background:#e9e4dc}
 .comp .barra::after{content:"⇆";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;color:var(--mar);border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-weight:800}
 .comp .r{position:absolute;top:10px;font-size:11px;font-weight:800;background:rgba(10,37,87,.8);color:#fff;border-radius:6px;padding:2px 8px}
 .comp input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:ew-resize;margin:0}
-.miniaturas{display:flex;gap:8px;margin-top:10px;overflow-x:auto;padding-bottom:2px}
-.miniaturas button{flex:none;width:110px;border:2px solid transparent;border-radius:10px;padding:0;overflow:hidden;cursor:pointer;background:none;opacity:.75;position:relative}
+.miniaturas{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-top:10px}
+.miniaturas button{width:100%;border:2px solid transparent;border-radius:10px;padding:0;overflow:hidden;cursor:pointer;background:none;opacity:.75;position:relative}
 .miniaturas button.on{border-color:var(--azul);opacity:1}
 .miniaturas button span{position:absolute;left:4px;bottom:4px;font-size:10px;font-weight:800;background:rgba(10,37,87,.85);color:#fff;border-radius:5px;padding:1px 6px}
-.miniaturas img{display:block;width:100%;height:72px;object-fit:cover;background:#e9e4dc}
+.miniaturas img{display:block;width:100%;aspect-ratio:3/2;height:auto;object-fit:cover;background:#e9e4dc}
+.direita{display:flex;flex-direction:column;gap:14px;min-width:0}
+.planta-amb{background:#fff;border:1px solid var(--borda);border-radius:20px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.planta-amb .cab{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.planta-amb button.ver{border:0;padding:0;background:none;cursor:zoom-in;display:block;width:100%;border-radius:12px;overflow:hidden}
+.planta-amb img{display:block;width:100%;height:auto;max-height:340px;object-fit:contain;background:#f7f5f1}
+.crop{display:block;position:relative;overflow:hidden;width:100%;aspect-ratio:4/3;background:#f7f5f1}
+.crop img{position:absolute;max-width:none;max-height:none;object-fit:fill}
 .lado{background:#fff;border:1px solid var(--borda);border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:16px}
-.lado h2{font-family:var(--serif);font-weight:600;font-size:34px;line-height:1.05;margin:2px 0 0;color:var(--mar)}
+.lado h2{font-family:var(--serif);font-weight:600;font-size:30px;line-height:1.15;margin:4px 0 0;color:var(--mar);font-variant-numeric:lining-nums;text-wrap:balance}
 .lado .conceito{color:#3b4a61;margin:0;white-space:pre-line}
 .antes-pedido{background:#f6f3ee;border-radius:11px;padding:9px 12px;font-size:12.5px;color:#5b5446}
 .rot{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--sub);font-weight:800;margin-bottom:8px}
@@ -69,7 +78,7 @@ img.foto{display:block;width:100%;height:auto;background:#e9e4dc}
 .cor span{display:block;font-size:11px;color:var(--sub);margin-top:4px;line-height:1.25;overflow-wrap:anywhere}
 .abas{display:flex;gap:4px;background:#f1f4f9;border-radius:11px;padding:3px}
 .aba{flex:1;border:0;background:none;border-radius:9px;padding:7px 8px;font-weight:700;font-size:13px;color:var(--sub);cursor:pointer}.aba.on{background:#fff;color:var(--mar);box-shadow:0 1px 3px rgba(0,0,0,.08)}
-.itens{display:flex;flex-direction:column;gap:6px;max-height:260px;overflow:auto}
+.itens{display:flex;flex-direction:column;gap:6px;max-height:340px;overflow:auto}
 .item{display:grid;grid-template-columns:38px minmax(0,1fr);gap:10px;align-items:center;padding:5px;border-radius:11px}
 .item .amostra{width:38px;height:38px;border-radius:9px;border:1px solid rgba(0,0,0,.08)}
 .item b{display:block;font-size:13.5px}.item small{color:var(--sub);font-size:12px}
@@ -217,8 +226,9 @@ function htmlAmb(a, i) {
   const ant = (D.anterior || {})[String(a.nome).toLowerCase()];
   return `<section class="slide" data-i="${base() + i - 1}"><div class="amb">
     <div>${htmlQuadro(a)}
-      ${vs.length > 1 ? `<div class="miniaturas">${vs.map((v, k) => `<button type="button" class="${(st.img[a.id] || 0) === k ? "on" : ""}" data-vista="${esc(a.id)}:${k}" aria-label="${esc(v.rot || "Imagem " + (k + 1))}">${tag(v.id, 300, "")}${v.rot && isNaN(v.rot) ? `<span>${esc(v.rot)}</span>` : ""}</button>`).join("")}</div>` : ""}
+      ${vs.filter(v => v.rot !== "Planta").length > 1 ? `<div class="miniaturas">${vs.map((v, k) => v.rot === "Planta" ? "" : `<button type="button" class="${(st.img[a.id] || 0) === k ? "on" : ""}" data-vista="${esc(a.id)}:${k}" aria-label="${esc(v.rot || "Imagem " + (k + 1))}">${tag(v.id, 300, "")}${v.rot && isNaN(v.rot) ? `<span>${esc(v.rot)}</span>` : ""}</button>`).join("")}</div>` : ""}
     </div>
+    <div class="direita">${htmlPlantaAmb(a, vs)}
     <aside class="lado">
       <div><div class="kick">Ambiente ${i} de ${D.ambientes.length}${D.planta ? ` · <button type="button" class="link-mini" data-ir="1" style="text-transform:none;letter-spacing:0">ver na planta</button>` : ""}</div><h2>${esc(a.nome)}</h2></div>
       ${a.conceito ? `<p class="conceito">${esc(a.conceito)}</p>` : ""}
@@ -228,7 +238,22 @@ function htmlAmb(a, i) {
       <div class="itens">${lista.length ? lista.map(m => `<div class="item"><span class="amostra" style="background:${corOk(m.cor)}"></span><span><b>${esc(m.nome)}</b><small>${esc(m.desc)}</small></span></div>`).join("") : `<span class="vazio">Nada listado aqui.</span>`}</div>` : ""}
       ${a.link360 ? `<a class="btn sec" href="${esc(a.link360)}" target="_blank" rel="noopener noreferrer">Ver em 360° ↗</a>` : ""}
       <div class="decisao">${D.previa ? `<div class="estado aj">Pré-visualização da equipe: as respostas ficam desativadas.</div>` : htmlDecisao(a, r, coms)}</div>
-    </aside></div></section>`;
+    </aside></div></div></section>`;
+}
+// Planta baixa do ambiente: a imagem "planta" da subpasta ou o recorte da planta geral marcado pela equipe
+function htmlPlantaAmb(a, vs) {
+  const k = vs.findIndex(v => v.rot === "Planta");
+  if (k >= 0) return `<div class="planta-amb"><div class="cab"><div class="rot" style="margin:0">Planta baixa</div><span style="font-size:12px;color:var(--sub)">toque para ampliar</span></div><button type="button" class="ver" data-vista="${esc(a.id)}:${k}" aria-label="Ampliar a planta">${tag(a.planta, 1400, "")}</button></div>`;
+  const z = D.planta && D.planta.areas.find(x => x.amb === a.id);
+  if (z && z.w > 0 && z.h > 0) return `<div class="planta-amb"><div class="cab"><div class="rot" style="margin:0">Planta baixa</div><button type="button" class="link-mini" data-ir="1">ver a planta inteira</button></div><button type="button" class="ver" data-ir="1" aria-label="Ver na planta"><span class="crop" data-crop="${z.x},${z.y},${z.w},${z.h}">${tag(D.planta.img, 2000, "")}</span></button></div>`;
+  return "";
+}
+function ajustarRecortes() {
+  document.querySelectorAll(".slide.on .crop").forEach(c => {
+    const [x, y, w, h] = c.dataset.crop.split(",").map(Number), im = c.querySelector("img"); if (!im) return;
+    const ok = () => { if (!im.naturalWidth) return; c.style.aspectRatio = `${(im.naturalWidth * w) / (im.naturalHeight * h)}`; Object.assign(im.style, { width: `${10000 / w}%`, height: `${10000 / h}%`, left: `${-x * 100 / w}%`, top: `${-y * 100 / h}%` }); };
+    if (im.complete) ok(); else im.addEventListener("load", ok, { once: true });
+  });
 }
 function htmlDecisao(a, r, coms) {
   let h = r?.decisao === "ok" ? `<div class="estado ok">✓ Você aprovou este ambiente.</div>` : r?.decisao === "aj" ? `<div class="estado aj">Você pediu ajuste neste ambiente.</div>` : "";
@@ -259,6 +284,7 @@ function desenhar() {
   const ant = document.getElementById("ant"); ant.disabled = st.slide === 0;
   document.getElementById("prox").textContent = st.slide === total() - 1 ? "Voltar ao início" : st.slide === total() - 2 ? "Ver resumo ›" : "Próximo ›";
   const t = document.getElementById("txtCom"); if (t) t.focus();
+  ajustarRecortes();
   const comp = palco.querySelector(".slide.on [data-comp]");
   if (comp) { const r = comp.querySelector("input"), dep = comp.querySelector(".depois"), bar = comp.querySelector(".barra"), di = dep.querySelector("img");
     const aj = () => { dep.style.width = r.value + "%"; bar.style.left = r.value + "%"; di.style.width = comp.clientWidth + "px"; };
