@@ -1,4 +1,5 @@
 // Aba "Comparativo de modelos": quantitativos e custos de soluções estruturais + PDF com a identidade WM
+import QuantitativoEstrutura from "./quantitativo/QuantitativoEstrutura.jsx";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Icone from "../ui/Icone.jsx";
 import { fundoModal, caixaModal, CabecalhoModal, Abas } from "../ui/ds.jsx";
@@ -422,6 +423,7 @@ export function PaginaComparativo({ projetos = [], usuarioAtual }) {
         <h1 style={{ margin: 0, fontSize: 30, fontWeight: 800, color: K.mar, letterSpacing: -0.5, lineHeight: 1.15 }}>Comparativo e estimativas</h1>
         <p style={{ margin: "6px 0 0", fontSize: 14.5, color: K.sub }}>
           {modo === "estrutural" ? "Compare quantitativos e custos entre soluções estruturais e gere o relatório para o cliente"
+            : modo === "quantitativo" ? "Suba o PDF do estrutural: o sistema lê as tabelas de aço de cada prancha e monta o quantitativo de aço, concreto e forma para o cliente"
             : modo === "cub" ? "Estudo preliminar de viabilidade: custo de construção estimado pelo CUB/m² (ABNT NBR 12721)"
             : "Estime o custo das instalações elétricas e hidrossanitárias a partir da lista de materiais do QiBuilder"}
         </p>
@@ -430,10 +432,12 @@ export function PaginaComparativo({ projetos = [], usuarioAtual }) {
         { id: "estrutural", label: "Estrutural · comparativo de modelos", icone: "balanca" },
         { id: "instalacoes", label: "Instalações · estimativa de custo", icone: "calculadora" },
         { id: "cub", label: "Custo de construção · CUB", icone: "capacete" },
+        { id: "quantitativo", label: "Quantitativo · estrutura", icone: "regua" },
       ]} />
       <div style={{ display: modo === "estrutural" ? "block" : "none" }}><ComparativoEstrutural projetos={projetos} usuarioAtual={usuarioAtual} /></div>
       <div style={{ display: modo === "instalacoes" ? "block" : "none" }}><EstimativaInstalacoes projetos={projetos} usuarioAtual={usuarioAtual} /></div>
       <div style={{ display: modo === "cub" ? "block" : "none" }}><EstudoCub projetos={projetos} usuarioAtual={usuarioAtual} /></div>
+      <div style={{ display: modo === "quantitativo" ? "block" : "none" }}><QuantitativoEstrutura projetos={projetos} usuarioAtual={usuarioAtual} /></div>
     </div>
   );
 }

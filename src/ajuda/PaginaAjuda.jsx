@@ -213,6 +213,13 @@ const TOPICOS = [
   { id:"comparativo", icone:"⚖️", titulo:"Comparativo de modelos", aba:"comparativo",
     resumo:"Compare aço, concreto, forma e custo de até 6 soluções estruturais e gere o PDF com o papel timbrado da WM.",
     secoes:[
+      { t:"Quantitativo geral da estrutura", itens:[
+        "Na aba Quantitativo · estrutura, suba o PDF das pranchas do estrutural (o PDF exportado do programa, com texto — não escaneado). Pode subir mais de um PDF.",
+        "O sistema lê em cada prancha os quadros Resumo do aço (aço, diâmetro, peso + 10%), o volume de concreto e a área de forma, e separa por elemento pelos nomes da Relação do aço (V1 → vigas, P1 → pilares, S1 → fundações, LE1 → escada, VT/Negativos → lajes) ou pelo título da prancha.",
+        "Confira a lista de quadros: troque o elemento se precisar, desmarque o que não entra e abra Detalhes para ajustar um peso, o concreto ou a forma. ✓ confere indica que a soma das bitolas bate com o peso total do próprio quadro.",
+        "As treliças das vigotas pré-moldadas ficam fora do CA60 por padrão (dá para somar marcando a opção).",
+        "Gere o PDF no papel timbrado da WM para o cliente ou exporte o Excel (com fórmulas). Salve para abrir depois.",
+      ]},
       { t:"Preencher", itens:[
         "Digite os quantitativos por elemento (Enter pula para a próxima célula) ou use Importar do Eberick com o Resumo de Materiais em .xlsx.",
         "Ajuste o preço do aço por bitola e do concreto em cada modelo. Itens extras (movimento de terra, cubetas…) entram no total.",

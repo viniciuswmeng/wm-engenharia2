@@ -388,3 +388,41 @@ export async function exportarCubExcel(est, r, nome) {
   }
   await salvar(wb, nome);
 }
+
+// Quantitativo geral da estrutura: aço por bitola × elemento, concreto e forma (com fórmulas de soma)
+export async function exportarQuantitativoExcel(q, r, nome) {
+  const { NOME_CAT } = await import("./quantitativo/analisar.js");
+  const { wb, logo } = await novoLivro();
+  const cols = r.colunas, C = 2 + cols.length + 1;
+  const ws = wb.addWorksheet("Quantitativo", { properties: { tabColor: { argb: W.mar } } });
+  ws.columns = [{ width: 16 }, { width: 11 }, ...cols.map(() => ({ width: 15 })), { width: 15 }];
+  const data = /^\d{4}-\d{2}-\d{2}$/.test(q.info.data || "") ? q.info.data.split("-").reverse().join("/") : hoje();
+  let l = cabecalho(wb, ws, logo, { titulo: "Quantitativo geral da estrutura", subtitulo: [q.info.cliente, q.info.descricao].filter(Boolean).join(" · ") || "Elementos de concreto armado", colunas: C });
+  l = blocoInfo(ws, l, [["Cliente", q.info.cliente], ["Descrição", q.info.descricao], ["Endereço", q.info.endereco], ["Data", data], ["Pranchas lidas", q.arquivos.map(a => a.nome).join(", ")]], C);
+  l = secao(ws, l, "Elementos de concreto armado — peso + 10% (kg)", C);
+  const L = c => String.fromCharCode(64 + c);
+  const t = tabela(ws, l, { cabecalhos: ["Aço", "Ø (mm)", ...cols.map(k => NOME_CAT[k]), "Total"], formatos: Object.fromEntries([...cols.map((_, i) => [i + 2, NUM]), [C - 1, NUM]]),
+    linhas: r.linhas.map(x => [x.tipo, Number(x.diam) || x.diam, ...cols.map(k => Math.round(x[k] * 100) / 100), null]),
+    estiloLinha: (row, k) => { const n = row.number; row.getCell(C).value = { formula: `SUM(C${n}:${L(C - 1)}${n})`, result: r.linhas[k].total }; row.getCell(C).font = { name: FONTE, size: 10, bold: true, color: { argb: W.mar } }; } });
+  const somaTipo = (tipo, col) => ({ formula: `SUMIF($A$${t.inicio}:$A$${t.fim},"${tipo}",${L(col)}${t.inicio}:${L(col)}${t.fim})`, result: col === C ? (tipo === "CA50" ? r.totais.ca50 : r.totais.ca60) : r.pesoTipo[tipo][cols[col - 3]] });
+  const fmt = Object.fromEntries([...cols.map((_, i) => [i + 2, NUM]), [C - 1, NUM]]);
+  l = t.proxima;
+  const lCa50 = l; l = linhaTotal(ws, l, ["Peso total CA50 (kg)", "", ...cols.map((_, i) => somaTipo("CA50", i + 3)), somaTipo("CA50", C)], C, fmt);
+  const lCa60 = l; l = linhaTotal(ws, l, ["Peso total CA60 (kg)", "", ...cols.map((_, i) => somaTipo("CA60", i + 3)), somaTipo("CA60", C)], C, fmt);
+  l = linhaTotal(ws, l, ["Aço total (kg)", "", ...cols.map((k, i) => ({ formula: `${L(i + 3)}${lCa50}+${L(i + 3)}${lCa60}`, result: r.totalAco[k] })), { formula: `${L(C)}${lCa50}+${L(C)}${lCa60}`, result: r.totais.aco }], C, fmt, true);
+  const lv = l; l = linhaTotal(ws, l, [`Concreto ${r.fck} (m³)`, "", ...cols.map(k => Math.round(r.volume[k] * 100) / 100), { formula: `SUM(C${lv}:${L(C - 1)}${lv})`, result: r.totais.volume }], C, fmt);
+  const lf = l; l = linhaTotal(ws, l, ["Área de forma (m²)", "", ...cols.map(k => Math.round(r.forma[k] * 100) / 100), { formula: `SUM(C${lf}:${L(C - 1)}${lf})`, result: r.totais.forma }], C, fmt);
+  l++;
+  if (r.totais.trelica > 0) { const c = ws.getCell(l, 1); c.value = `Treliças das vigotas pré-moldadas: ${r.totais.trelica.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} kg ${q.opcoes.trelicas ? "(incluídas no CA60)" : "(não incluídas acima)"}.`; c.font = { name: FONTE, size: 9.5, color: { argb: W.sub } }; ws.mergeCells(l, 1, l, C); l += 2; }
+  rodape(ws, l, C, "Pesos com 10% de perdas, conforme as tabelas de aço do projeto. Quantitativo de referência para compra e orçamento.");
+  // de onde saiu cada número
+  const wq = wb.addWorksheet("Quadros lidos", { properties: { tabColor: { argb: W.azul } } });
+  wq.columns = [{ width: 10 }, { width: 18 }, { width: 58 }, { width: 14 }, { width: 15 }, { width: 14 }];
+  let m = cabecalho(wb, wq, logo, { titulo: "Quadros lidos nas pranchas", subtitulo: q.arquivos.map(a => a.nome).join(", "), colunas: 6 });
+  const o = tabela(wq, m, { cabecalhos: ["Folha", "Elemento", "Quadro", "Aço (kg)", "Concreto (m³)", "Forma (m²)"], formatos: { 3: NUM, 4: NUM, 5: NUM },
+    linhas: q.tabelas.filter(x => x.incluir && x.categoria).map(x => [x.pagina, NOME_CAT[x.categoria], x.titulo, x.aco.filter(a => q.opcoes.trelicas || !a.trelica).reduce((s2, a) => s2 + (Number(a.peso) || 0), 0), x.volume ?? null, x.forma ?? null]) });
+  rodape(wq, o.proxima + 1, 6);
+  configurarPagina(wq, { paisagem: false });
+  configurarPagina(ws, { paisagem: true });
+  await salvar(wb, nome);
+}
