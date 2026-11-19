@@ -206,3 +206,16 @@ table tbody tr:hover { background: #f8fafd; }
 @media (min-width: 1081px) { .wm-shell.menu-recolhido .wm-projeto-pagina { left: 76px; } }
 @media (max-width: 1080px) { .wm-projeto-pagina { left: 0; } }
 html[data-tema="escuro"] .wm-projeto-pagina { background: #0b1426; }
+
+/* Escritório virtual */
+.wm-ev-avatar{transition:transform .6s cubic-bezier(.4,0,.2,1)}
+.wm-ev-avatar{outline:none}.wm-ev-avatar:focus-visible{filter:drop-shadow(0 0 4px #1565d8)}
+@media (prefers-reduced-motion:reduce){.wm-ev-avatar{transition:none}}
+@media (max-width:900px){.wm-ev-grade{grid-template-columns:1fr!important}}
+/* topo no celular estreito: ícones mais juntos para nada sair da tela */
+@media (max-width: 480px) {
+  .wm-topo { padding: 0 10px; gap: 6px; }
+  .wm-topo-acoes { gap: 2px; }
+  .wm-topo-acoes .wm-icone-btn { min-width: 34px; padding: 0 6px; }
+  .wm-busca { min-width: 0; }
+}

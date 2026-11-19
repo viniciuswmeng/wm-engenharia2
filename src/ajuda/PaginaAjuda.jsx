@@ -98,6 +98,18 @@ const TOPICOS = [
         "Atas: registre reuniões e anexe a ata assinada.",
       ]},
     ]},
+  { id:"escritorio", icone:"🏢", titulo:"Escritório virtual", aba:"escritorio",
+    resumo:"Mapa do escritório com a equipe em tempo real: quem está online, onde está, o status e em que projeto está trabalhando.",
+    secoes:[
+      { t:"Como usar", itens:[
+        "Abra Escritório virtual no menu. Você aparece na sua mesa; clique em qualquer ponto do mapa (ou use as setas / WASD) para andar até a copa, a sala de reunião, a sala de foco…",
+        "Escolha o seu status (Disponível, Focado, Em reunião, Almoço / pausa, Ausente) e, se quiser, deixe um recado curto (ex.: volto às 14h).",
+        "Quando você inicia uma sessão de horas, o projeto aparece sozinho acima do seu avatar e na lista da equipe, com o tempo da sessão.",
+        "Clique num colega para ver o status, o local e o projeto. O botão Acenar manda um aviso para ele (em qualquer tela do sistema); Ir até leva o seu avatar para perto.",
+        "Depois de 10 minutos sem mexer no sistema, o status vira Ausente e volta sozinho quando você retorna.",
+        "Nada fica gravado: a posição e o status somem quando a pessoa fecha o sistema. Só a equipe logada entra no escritório.",
+      ]},
+    ]},
   { id:"horas", icone:"⏱", titulo:"Horas trabalhadas", aba:"horas",
     resumo:"Registro de sessões por projeto ou atividade administrativa, banco de horas e horas extras.",
     secoes:[
