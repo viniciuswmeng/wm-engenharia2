@@ -466,6 +466,7 @@ export default function ApresentacaoInteriores({ projeto, usuarioAtual }) {
               ? <span style={{ fontSize: 11.5, color: K.sub, width: "100%", textAlign: "right" }}>O cliente já aprovou ambiente(s): para mudar, crie a próxima versão.</span>
               : <button type="button" disabled={!!estado} onClick={() => editarPublicada(ultimaPub)} style={btn("pri")} title="O cliente ainda não aprovou nenhum ambiente: dá para corrigir esta versão sem criar outra">Editar {rotVersao(ultimaPub.versao)}</button>}
           </div>
+          {linkCliente && <EnviarWhatsApp projeto={projeto} v={ultimaPub} link={linkCliente} tokenDrive={tokenDrive} />}
           <Respostas v={ultimaPub} />
         </div>
       )}
@@ -483,6 +484,125 @@ export default function ApresentacaoInteriores({ projeto, usuarioAtual }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Imagem da capa + texto pronto para enviar a apresentação ao cliente pelo WhatsApp ──
+const nomeAmb = n => String(n || "").replace(/^\s*\d+[\s._-]*/, "").trim();
+function mensagens(v, link, titulo) {
+  const amb = (v.dados?.ambientes || []).map(a => nomeAmb(a.nome)).filter(Boolean);
+  const lista = amb.length > 1 ? amb.slice(0, -1).join(", ") + " e " + amb[amb.length - 1] : amb[0] || "";
+  const r = rotVersao(v.versao);
+  const primeira = `Olá! Tudo bem? ✨
+
+A apresentação do projeto de interiores *${titulo}* está pronta! 🛋️
+
+Preparamos ${amb.length} ambiente(s)${lista ? `: ${lista}` : ""}.
+
+👉 É só abrir este link:
+${link}
+
+Em cada ambiente você vê as imagens, a planta, a paleta de cores e os materiais. Gostou? Toque em *Aprovar ambiente* ✅. Quer mudar algo? Toque em *Pedir ajuste* e marque na imagem o ponto que quer alterar ✏️.
+
+No final, toque em *Enviar minha resposta para a equipe*. Se preferir, dá para baixar o PDF completo na própria página.
+
+Qualquer dúvida, é só chamar aqui! 😊
+WM Engenharia Integrada`;
+  const nova = `Olá! Tudo bem? ✨
+
+A nova versão (${r}) da apresentação de interiores *${titulo}* já está disponível, com os ajustes que você pediu. 🛋️
+
+👉 Confira pelo mesmo link:
+${link}
+
+Em cada ambiente aparece o que você pediu na versão anterior. Aprove ✅ ou peça novos ajustes ✏️ e, no final, toque em *Enviar minha resposta para a equipe*.
+
+Qualquer dúvida, estamos à disposição!
+WM Engenharia Integrada`;
+  const curta = `Olá! 😊 A apresentação de interiores *${titulo}* (${r}) está pronta: ${link}
+
+Veja cada ambiente, aprove ✅ ou peça ajustes ✏️ e envie a sua resposta no final. Qualquer dúvida, é só chamar!`;
+  return { principal: v.versao > 0 ? nova : primeira, curta };
+}
+
+function EnviarWhatsApp({ projeto, v, link, tokenDrive }) {
+  const titulo = v.dados?.capa?.titulo || projeto.cliente || "Projeto de interiores";
+  const [aberto, setAberto] = useState(false);
+  const [img, setImg] = useState(null); // { url, blob, png, nome }
+  const [estado, setEstado] = useState("");
+  const [modelo, setModelo] = useState("principal");
+  const [texto, setTexto] = useState(() => mensagens(v, link, titulo).principal);
+  const [aviso, setAviso] = useState(null);
+  useEffect(() => () => { if (img?.url) URL.revokeObjectURL(img.url); }, [img]);
+
+  async function abrir() {
+    setAberto(true); setAviso(null);
+    if (img) return;
+    setEstado("Gerando a imagem…");
+    try {
+      const t = await tokenDrive();
+      const { gerarCapaApresentacao } = await import("./apresentacaoPDF.js");
+      const r = await gerarCapaApresentacao({ token: t, projeto, versao: v.versao, dados: v.dados });
+      setImg({ ...r, url: URL.createObjectURL(r.blob) });
+    } catch (e) { setAviso({ ok: false, t: "Não foi possível gerar a imagem: " + (e.message || e) }); }
+    finally { setEstado(""); }
+  }
+  const ok = t => setAviso({ ok: true, t }), erro = t => setAviso({ ok: false, t });
+  async function copiarImagem() {
+    try { await navigator.clipboard.write([new ClipboardItem({ "image/png": img.png })]); ok("Imagem copiada. No WhatsApp, cole com Ctrl+V na conversa."); }
+    catch { erro("O navegador não deixou copiar a imagem. Use Baixar imagem."); }
+  }
+  async function copiarTexto() {
+    try { await navigator.clipboard.writeText(texto); ok("Texto copiado. Cole no WhatsApp."); } catch { erro("Não foi possível copiar. Selecione o texto e copie."); }
+  }
+  function baixarImagem() { const a = document.createElement("a"); a.href = img.url; a.download = img.nome; document.body.appendChild(a); a.click(); a.remove(); }
+  async function compartilhar() {
+    const files = [new File([img.blob], img.nome, { type: "image/jpeg" })];
+    if (!navigator.canShare?.({ files, text: texto })) { erro("Este aparelho não compartilha arquivos. Copie a imagem e o texto."); return; }
+    try { await navigator.share({ files, text: texto }); } catch (e) { if (e.name !== "AbortError") erro("Não foi possível compartilhar."); }
+  }
+  const zap = "#1f9d55";
+
+  if (!aberto) return (
+    <button type="button" onClick={abrir} style={btn("sec", { color: zap, borderColor: "#bfe5cf", alignSelf: "flex-start" })}>📲 Imagem e texto para o WhatsApp</button>
+  );
+  return (
+    <div style={{ border: `1px solid ${K.borda}`, borderRadius: 12, padding: 12, background: "#fff", display: "grid", gap: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <b style={{ color: K.mar, fontSize: 13.5, flex: 1 }}>📲 Enviar a apresentação pelo WhatsApp</b>
+        <button type="button" onClick={() => setAberto(false)} aria-label="Fechar" style={{ border: "none", background: "none", fontSize: 18, color: K.sub, cursor: "pointer" }}>×</button>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.1fr) minmax(0,1fr)", gap: 12, alignItems: "start" }}>
+        <div style={{ display: "grid", gap: 8 }}>
+          <div style={{ aspectRatio: "297 / 210", borderRadius: 10, border: `1px solid ${K.borda}`, background: K.fundo, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", color: K.sub, fontSize: 12.5 }}>
+            {img ? <img src={img.url} alt="Capa da apresentação" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : (estado || "Sem imagem")}
+          </div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <button type="button" disabled={!img} onClick={copiarImagem} style={btn("pri", { opacity: img ? 1 : .5 })}>Copiar imagem</button>
+            <button type="button" disabled={!img} onClick={baixarImagem} style={btn("sec", { opacity: img ? 1 : .5 })}>Baixar imagem</button>
+            <button type="button" disabled={!img} onClick={compartilhar} style={btn("sec", { opacity: img ? 1 : .5 })} title="No celular: abre o compartilhar com a imagem e o texto">Compartilhar…</button>
+          </div>
+        </div>
+        <div style={{ display: "grid", gap: 8, minWidth: 0 }}>
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <span style={{ fontSize: 12, color: K.sub, fontWeight: 600 }}>Texto:</span>
+            {[["principal", v.versao > 0 ? "Nova versão" : "Completo"], ["curta", "Curto"]].map(([k, r]) => (
+              <button key={k} type="button" onClick={() => { setModelo(k); setTexto(mensagens(v, link, titulo)[k]); }}
+                style={{ border: `1px solid ${modelo === k ? K.mar : K.borda}`, background: modelo === k ? K.mar : "#fff", color: modelo === k ? "#fff" : K.mar, borderRadius: 8, padding: "3px 10px", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>{r}</button>
+            ))}
+          </div>
+          <textarea value={texto} onChange={e => setTexto(e.target.value.slice(0, 3000))} rows={11} aria-label="Texto para o WhatsApp"
+            style={{ ...inp, width: "100%", boxSizing: "border-box", lineHeight: 1.5, resize: "vertical", fontSize: 12.5 }} />
+          {!texto.includes(link) && <span style={{ fontSize: 12, color: K.ambar }}>O link da apresentação saiu do texto.</span>}
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <button type="button" onClick={copiarTexto} style={btn("pri")}>Copiar texto</button>
+            <a href={`https://wa.me/?text=${encodeURIComponent(texto)}`} target="_blank" rel="noopener noreferrer" style={btn("ok", { textDecoration: "none" })}>Abrir no WhatsApp</a>
+          </div>
+        </div>
+      </div>
+      <span style={{ fontSize: 11.5, color: K.sub }}>Dica: copie a imagem, cole na conversa do cliente e, na legenda, cole o texto. No celular, use Compartilhar… para levar os dois juntos.</span>
+      {aviso && <div role="status" style={{ fontSize: 12.5, color: aviso.ok ? K.verde : "#b91c1c" }}>{aviso.t}</div>}
     </div>
   );
 }

@@ -279,3 +279,62 @@ export async function gerarPDFApresentacao({ baixar, projeto, versao, dados, aoP
   const nome = `Interiores ${rotV} - ${String(projeto.codigo || "")} ${String(titulo)}`.replace(/[\\/:*?"<>|]+/g, "_").slice(0, 120).trim() + ".pdf";
   return { blob: doc.output("blob"), nome, paginas: pag };
 }
+
+// ── Imagem da capa (PNG) para enviar pelo WhatsApp: o mesmo desenho da capa do PDF, em canvas ──
+let fontesCanvas = null;
+async function fontesParaCanvas() {
+  if (!fontesCanvas) fontesCanvas = (async () => {
+    try {
+      const lista = [["Playfair", "PlayfairDisplay_600SemiBold.ttf", "600"], ["Inter", "Inter_400Regular.ttf", "400"], ["Inter", "Inter_600SemiBold.ttf", "600"]];
+      await Promise.all(lista.map(async ([fam, arq, peso]) => { const f = new FontFace(fam + "WM", `url(/vendor/fonts/${arq})`, { weight: peso }); await f.load(); document.fonts.add(f); }));
+      return { serif: "PlayfairWM", sans: "InterWM" };
+    } catch { return { serif: "Georgia, serif", sans: "Arial, sans-serif" }; }
+  })();
+  return fontesCanvas;
+}
+function quebrar(ctx, texto, larg) {
+  const out = []; String(texto || "").split(/\n/).forEach(par => {
+    let l = ""; par.split(/\s+/).forEach(p => { const t = l ? l + " " + p : p; if (ctx.measureText(t).width > larg && l) { out.push(l); l = p; } else l = t; }); if (l) out.push(l);
+  }); return out;
+}
+export async function gerarCapaImagem({ baixar, projeto, versao, dados, largura = 1800 }) {
+  const F = await fontesParaCanvas();
+  const s = largura / W, px = mm => mm * s, pt = v => v * 0.3528 * s;
+  const cv = document.createElement("canvas"); cv.width = Math.round(W * s); cv.height = Math.round(H * s);
+  const ctx = cv.getContext("2d"); const rgb = c => `rgb(${c.join(",")})`;
+  const amb = dados.ambientes || [], titulo = dados.capa?.titulo || projeto.cliente || "Projeto de interiores", rotV = rotVersao(versao);
+  const cx = W * 0.6;
+  ctx.fillStyle = rgb(MAR); ctx.fillRect(0, 0, px(cx), cv.height);
+  const id = dados.capa?.imagem || amb[0]?.imagens?.[0];
+  const b = id ? await baixar(id).then(x => createImageBitmap(x)).catch(() => null) : null;
+  if (b) { const aw = px(cx), ah = cv.height, e = Math.max(aw / b.width, ah / b.height), dw = b.width * e, dh = b.height * e; ctx.save(); ctx.beginPath(); ctx.rect(0, 0, aw, ah); ctx.clip(); ctx.drawImage(b, (aw - dw) / 2, (ah - dh) / 2, dw, dh); ctx.restore(); }
+  ctx.fillStyle = rgb(MAR); ctx.fillRect(px(cx), 0, cv.width - px(cx), cv.height);
+  const xd = cx + 16, larg = W - cx - 30;
+  try { const r = await fetch("/Logo_Branco.png"); if (r.ok) { const lg = await createImageBitmap(await r.blob()); ctx.drawImage(lg, px(xd), px(18), px(30), px(16)); } } catch { /* sem logo */ }
+  const texto = (t, x, y, fam, peso, tam, cor, opts = {}) => {
+    ctx.font = `${peso} ${pt(tam)}px ${fam}`; ctx.fillStyle = rgb(cor); ctx.textAlign = opts.align || "left"; ctx.textBaseline = "alphabetic";
+    if (opts.esp) { try { ctx.letterSpacing = px(opts.esp) + "px"; } catch { /* navegador antigo */ } }
+    ctx.fillText(t, px(x), px(y)); try { ctx.letterSpacing = "0px"; } catch { /* idem */ }
+  };
+  texto("PROJETO DE INTERIORES", xd, 66, F.sans, 600, 7.5, CLARO, { esp: 0.9 });
+  ctx.strokeStyle = rgb(CLARO); ctx.lineWidth = px(0.4); ctx.beginPath(); ctx.moveTo(px(xd), px(69.5)); ctx.lineTo(px(xd + 16), px(69.5)); ctx.stroke();
+  ctx.font = `600 ${pt(30)}px ${F.serif}`;
+  const tl = quebrar(ctx, titulo, px(larg)).slice(0, 4);
+  tl.forEach((l, i) => texto(l, xd, 84 + i * 12, F.serif, 600, 30, [255, 255, 255]));
+  let y = 84 + (tl.length - 1) * 12 + 10;
+  if (dados.capa?.texto) {
+    ctx.font = `400 ${pt(9.5)}px ${F.sans}`;
+    const t = quebrar(ctx, dados.capa.texto, px(larg)).slice(0, 8);
+    t.forEach((l, i) => texto(l, xd, y + i * 5, F.sans, 400, 9.5, [213, 227, 250])); y += t.length * 5 + 6;
+  }
+  y = Math.max(y, 140);
+  const ficha = [["Projeto", projeto.codigo || "—"], ["Versão", rotV], ["Data", new Date().toLocaleDateString("pt-BR")], ["Ambientes", String(amb.length)]];
+  ctx.strokeStyle = "rgb(52,80,128)"; ctx.lineWidth = px(0.25);
+  const linha = yy => { ctx.beginPath(); ctx.moveTo(px(xd), px(yy)); ctx.lineTo(px(xd + larg), px(yy)); ctx.stroke(); };
+  ficha.forEach(([k, v]) => { linha(y - 4.2); texto(k.toUpperCase(), xd, y, F.sans, 600, 6.8, CLARO, { esp: 0.7 }); texto(v, xd + larg, y, F.sans, 400, 9, [255, 255, 255], { align: "right" }); y += 8; });
+  linha(y - 4.2);
+  texto("projeto@wmengenhariaintegrada.com.br  ·  (33) 98416-1081", xd, H - 12, F.sans, 400, 7.5, CLARO);
+  const blob = await new Promise(ok => cv.toBlob(ok, "image/jpeg", 0.9));
+  const png = await new Promise(ok => cv.toBlob(ok, "image/png")); // para copiar (a área de transferência só aceita PNG)
+  return { blob, png, nome: `Apresentacao_${String(titulo).normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9]+/g, "_").slice(0, 40)}_${rotV}.jpg` };
+}

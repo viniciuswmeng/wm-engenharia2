@@ -2118,48 +2118,84 @@ async function openSigned(f){
     const u=URL.createObjectURL(new Blob([await file.arrayBuffer()],{type:"application/pdf"}));window.open(u,"_blank");setTimeout(()=>URL.revokeObjectURL(u),60000)}
   catch(e){$("signMsg").textContent=folderOK?"Arquivo não encontrado no sistema.":"Abra pelo sistema WM para ver o anexo."}
 }
-function ataPdf(p,a){
+// Recursos do papel timbrado da WM (mesmo padrão dos relatórios do sistema): fundo da folha e fontes Inter
+let timbradoCache=null;
+async function recursosTimbrado(){
+  if(timbradoCache)return timbradoCache;
+  const b64=async u=>{const r=await fetch(u);if(!r.ok)throw new Error(u);const bl=await r.blob();return await new Promise((ok,er)=>{const f=new FileReader();f.onload=()=>ok(String(f.result));f.onerror=er;f.readAsDataURL(bl)})};
+  const fundo=await b64("/Papel_Timbrado.png").catch(()=>null);
+  const fontes=await Promise.all(["Inter_400Regular.ttf","Inter_600SemiBold.ttf"].map(f=>b64("/vendor/fonts/"+f).then(d=>d.split(",")[1]))).catch(()=>null);
+  timbradoCache={fundo,fontes};return timbradoCache;
+}
+async function ataPdf(p,a){
   if(!window.jspdf){expMsg("Gerador de PDF indisponível.",true);return}
-  const {jsPDF}=window.jspdf,doc=new jsPDF({unit:"mm",format:"a4"}),W=210,M=16,T=pdfTxt,ink=[24,32,46],muted=[90,101,120];let y=0;
-  const need=h=>{if(y+h>278){doc.addPage();y=20}};
-  const h2=t=>{need(14);doc.setFont("helvetica","bold");doc.setFontSize(10.5);doc.setTextColor(...hex(COLORS.cad));doc.text(T(t.toUpperCase()),M,y);doc.setDrawColor(...hex(COLORS.cad));doc.setLineWidth(.3);doc.line(M,y+1.5,W-M,y+1.5);y+=7;doc.setTextColor(...ink)};
-  const para=t=>{doc.setFont("helvetica","normal");doc.setFontSize(10);const ls=doc.splitTextToSize(T(t||"—"),W-2*M);ls.forEach(l=>{need(5.2);doc.text(l,M,y);y+=5.2});y+=3};
-  const table=(o)=>{doc.autoTable(Object.assign({startY:y,margin:{left:M,right:M,top:20,bottom:18},styles:{font:"helvetica",fontSize:9,cellPadding:1.8,textColor:ink,lineColor:[217,222,231],lineWidth:.1},headStyles:{fillColor:hex(COLORS.cad),textColor:[255,255,255],fontStyle:"bold"}},o));y=doc.lastAutoTable.finalY+7};
-  // cabeçalho
-  doc.setFillColor(...hex(COLORS.cad));doc.rect(0,0,W,30,"F");
-  doc.setTextColor(255,255,255);doc.setFont("helvetica","bold");doc.setFontSize(16);doc.text(T("ATA DE REUNIÃO Nº "+a.num),M,14);if(p.company){doc.setFontSize(9.5);doc.setFont("helvetica","bold");doc.text(T(p.company),W-M,14,{align:"right"});doc.setFont("helvetica","bold");doc.setFontSize(16)}
-  doc.setFont("helvetica","normal");doc.setFontSize(10);doc.text(T(p.name+(p.client?"  ·  Cliente: "+p.client:"")),M,22);
-  y=40;
+  const R=await recursosTimbrado();
+  const {jsPDF}=window.jspdf,doc=new jsPDF({unit:"mm",format:"a4",compress:true}),W=210,M=16,TOPO=42,FIM=262;
+  let F="helvetica";
+  if(R.fontes){doc.addFileToVFS("Inter-R.ttf",R.fontes[0]);doc.addFont("Inter-R.ttf","Inter","normal");doc.addFileToVFS("Inter-B.ttf",R.fontes[1]);doc.addFont("Inter-B.ttf","Inter","bold");F="Inter"}
+  const T=F==="Inter"?(s=>String(s??"")):pdfTxt;
+  const MAR=[10,37,87],AZUL=[21,101,216],TX=[15,31,61],SUB=[95,111,134],BORDA=[223,230,240],FUNDO=[243,246,251];
+  const fonte=(est,tam,cor)=>{doc.setFont(F,est);doc.setFontSize(tam);doc.setTextColor(...(cor||TX))};
+  const fundo=()=>{if(R.fundo)doc.addImage(R.fundo,"PNG",0,0,W,297,"timbrado","FAST")};
+  let y=TOPO;
+  fundo();
+  const nova=()=>{doc.addPage();fundo();y=TOPO};
+  const need=h=>{if(y+h>FIM)nova()};
+  const titulo=(t,sub,extra=0)=>{need(14+extra);doc.setFillColor(...AZUL);doc.roundedRect(M,y-3.6,1.1,4.4,.5,.5,"F");fonte("bold",10.5,MAR);doc.text(T(t),M+3.4,y);
+    if(sub){const w=doc.getTextWidth(T(t));fonte("normal",8,SUB);doc.text(T(sub),M+3.4+w+2.5,y)}y+=5.5};
+  const para=t=>{fonte("normal",9.5,TX);const ls=doc.splitTextToSize(T((t||"").trim()||"—"),W-2*M);ls.forEach(l=>{need(4.9);doc.text(l,M,y);y+=4.9});y+=4};
+  const tabela=o=>{doc.autoTable(Object.assign({startY:y,margin:{left:M,right:M,top:TOPO,bottom:297-FIM},
+    willDrawPage:d=>{if(d.pageNumber>1&&doc.getCurrentPageInfo().pageNumber!==1)fundo()},
+    styles:{font:F,fontSize:8.8,cellPadding:{top:1.8,bottom:1.8,left:2.4,right:2.4},textColor:TX,lineColor:BORDA,lineWidth:.15},
+    headStyles:{fillColor:MAR,textColor:[255,255,255],fontStyle:"bold",fontSize:8.3},alternateRowStyles:{fillColor:[248,250,252]}},o));y=doc.lastAutoTable.finalY+7};
+  // ficha da reunião (cartão)
   const discs=["geral",...DISC].filter(k=>a.discs[k]).map(k=>k==="geral"?"Geral":tpl[k].name).join(", ");
-  table({theme:"plain",styles:{font:"helvetica",fontSize:9.5,cellPadding:1.4,textColor:ink},columnStyles:{0:{fontStyle:"bold",cellWidth:38,textColor:muted}},body:[
-    ["Data",fmtD(a.date)],["Horário",[a.t1,a.t2].filter(Boolean).join(" às ")||"—"],["Modalidade",a.mode],["Local / link",a.place||"—"],["Assunto",a.subject||"—"],["Disciplinas",discs||"—"],["Obra",p.addr||"—"],["Redigida por",a.writer||"—"]].map(r=>r.map(T))});
-  h2("Participantes");
-  table({head:[["Nome","Função / empresa","E-mail"]],body:a.parts.length?a.parts.map(r=>[r.name,r.role,r.mail].map(T)):[["—","",""]]});
-  h2("Pauta");para(a.pauta);
-  h2("Assuntos discutidos");para(a.disc);
-  h2("Decisões tomadas");para(a.dec);
-  h2("Encaminhamentos");
-  table({head:[["Ação","Responsável","Prazo"]],body:a.acts.length?a.acts.map(r=>[T(r.what),T(r.who),fmtD(r.due)||"—"]):[["Nenhum encaminhamento","",""]],columnStyles:{2:{cellWidth:24}}});
-  if(a.next){h2("Próxima reunião");para(a.next)}
+  const ficha=[["Obra / projeto",p.name||"—"],["Cliente",p.client||"—"],["Data",fmtD(a.date)||"—"],["Horário",[a.t1,a.t2].filter(Boolean).join(" às ")||"—"],["Modalidade",a.mode||"—"],["Local / link",a.place||"—"],["Redigida por",a.writer||"—"],["Disciplinas",discs||"—"]];
+  fonte("bold",7.2,AZUL);doc.text("ATA DE REUNIÃO",M,y,{charSpace:.6});
+  fonte("bold",17,MAR);doc.text(T("Nº "+a.num),M,y+7.5);
+  if(a.subject){fonte("normal",10.5,TX);const ls=doc.splitTextToSize(T(a.subject),W-2*M).slice(0,3);doc.text(ls,M,y+14);y+=14+ls.length*4.8}else y+=13;
+  y+=2;
+  const colW=(W-2*M-8)/2,linhas=Math.ceil(ficha.length/2);
+  fonte("normal",9.2);const endL=doc.splitTextToSize(T(p.addr||"—"),W-2*M-10).slice(0,2);
+  const hCard=6+linhas*9.5+5+endL.length*4.4;
+  doc.setFillColor(...FUNDO);doc.setDrawColor(...BORDA);doc.setLineWidth(.2);doc.roundedRect(M,y,W-2*M,hCard,2.5,2.5,"FD");
+  ficha.forEach(([k,v],i)=>{const col=i%2,lin=Math.floor(i/2),x=M+5+col*(colW+8)-(col?3:0),yy=y+7+lin*9.5;
+    fonte("bold",6.6,SUB);doc.text(T(k.toUpperCase()),x,yy,{charSpace:.4});fonte("normal",9.2,TX);doc.text(doc.splitTextToSize(T(v),colW-6)[0],x,yy+4.4)});
+  {const yy=y+7+linhas*9.5;fonte("bold",6.6,SUB);doc.text("ENDEREÇO DA OBRA",M+5,yy,{charSpace:.4});fonte("normal",9.2,TX);doc.text(endL,M+5,yy+4.4,{lineHeightFactor:1.25})}
+  y+=hCard+9;
+  titulo("Participantes",a.parts.length?a.parts.length+" pessoa(s)":"",24);
+  tabela({head:[["Nome","Função / empresa","E-mail"]],body:a.parts.length?a.parts.map(r=>[r.name,r.role,r.mail].map(T)):[["—","",""]]});
+  titulo("Pauta");para(a.pauta);
+  titulo("Assuntos discutidos");para(a.disc);
+  titulo("Decisões tomadas");para(a.dec);
+  titulo("Encaminhamentos",a.acts.length?a.acts.length+" ação(ões)":"",24);
+  tabela({head:[["Ação","Responsável","Prazo"]],body:a.acts.length?a.acts.map(r=>[T(r.what),T(r.who),fmtD(r.due)||"—"]):[["Nenhum encaminhamento","",""]],columnStyles:{1:{cellWidth:42},2:{cellWidth:24,halign:"center"}}});
+  if(a.next){titulo("Próxima reunião");para(a.next)}
   // assinaturas
   const signers=a.parts.filter(r=>r.sign&&r.name);if(a.writer&&!a.parts.some(r=>r.name.trim().toLowerCase()===a.writer.trim().toLowerCase()))signers.push({name:a.writer,role:"Redator da ata"});
-  const rows=Math.ceil(signers.length/2)||1,bh=38;
-  need(22+Math.min(rows,2)*(bh+6));
-  h2("Assinaturas");
-  doc.setFont("helvetica","normal");doc.setFontSize(9);doc.setTextColor(...muted);
-  doc.splitTextToSize(T("Os participantes abaixo declaram estar de acordo com o conteúdo desta ata. Assinatura eletrônica pelo Assinador gov.br (assinador.iti.br): posicione a assinatura no quadro correspondente."),W-2*M).forEach(l=>{doc.text(l,M,y);y+=4.4});y+=3;
+  const bh=34,rows=Math.ceil(signers.length/2)||1;
+  need(20+Math.min(rows,2)*(bh+6));
+  titulo("Assinaturas");
+  fonte("normal",8.3,SUB);
+  doc.splitTextToSize(T("Os participantes abaixo declaram estar de acordo com o conteúdo desta ata. Assinatura eletrônica pelo Assinador gov.br (assinador.iti.br): posicione a assinatura no quadro correspondente."),W-2*M).forEach(l=>{doc.text(l,M,y);y+=4});y+=3;
   const bw=(W-2*M-8)/2;
   (signers.length?signers:[{name:"",role:""}]).forEach((r,i)=>{
     const col=i%2;if(col===0)need(bh+6);const x=M+col*(bw+8);
-    doc.setDrawColor(190,198,210);doc.setLineWidth(.25);doc.setLineDashPattern([1.2,1.2],0);doc.rect(x,y,bw,bh);doc.setLineDashPattern([],0);
-    doc.setFontSize(7.5);doc.setTextColor(150,158,170);doc.text("Espaço para assinatura gov.br",x+bw/2,y+5,{align:"center"});
-    doc.setDrawColor(...ink);doc.setLineWidth(.3);doc.line(x+6,y+bh-12,x+bw-6,y+bh-12);
-    doc.setTextColor(...ink);doc.setFont("helvetica","bold");doc.setFontSize(9.5);doc.text(T(r.name||"Nome"),x+bw/2,y+bh-7,{align:"center"});
-    doc.setFont("helvetica","normal");doc.setFontSize(8.5);doc.setTextColor(...muted);doc.text(T(r.role||""),x+bw/2,y+bh-3,{align:"center"});
+    doc.setFillColor(...FUNDO);doc.setDrawColor(...BORDA);doc.setLineWidth(.2);doc.roundedRect(x,y,bw,bh,2.5,2.5,"FD");
+    fonte("normal",7,[150,160,176]);doc.text("Espaço para assinatura gov.br",x+bw/2,y+5.5,{align:"center"});
+    doc.setDrawColor(...MAR);doc.setLineWidth(.3);doc.line(x+8,y+bh-11,x+bw-8,y+bh-11);
+    fonte("bold",9,MAR);doc.text(T(r.name||"Nome"),x+bw/2,y+bh-6.3,{align:"center"});
+    fonte("normal",7.8,SUB);doc.text(T(r.role||""),x+bw/2,y+bh-2.6,{align:"center"});
     if(col===1||i===signers.length-1)y+=bh+6;
   });
-  const n=doc.getNumberOfPages();
-  for(let i=1;i<=n;i++){doc.setPage(i);doc.setFont("helvetica","normal");doc.setFontSize(7.5);doc.setTextColor(...muted);doc.text(T("Ata "+a.num+" · "+p.name),M,290);doc.text("Página "+i+" de "+n,W-M,290,{align:"right"})}
+  // cabeçalho (faixa azul do timbrado) e rodapé de cada folha
+  const n=doc.getNumberOfPages(),emi=new Date().toLocaleDateString("pt-BR");
+  for(let i=1;i<=n;i++){doc.setPage(i);
+    fonte("bold",10,[255,255,255]);doc.text(T("ATA DE REUNIÃO Nº "+a.num),W-14,25.4,{align:"right",charSpace:.5});
+    fonte("normal",7.5,[220,232,250]);doc.text(T("Página "+i+" de "+n),W-14,29.8,{align:"right",charSpace:.2});
+    fonte("normal",7.5,SUB);doc.text(T(p.name||""),M,FIM+8);
+    fonte("normal",7.5,[255,255,255]);doc.text(T("Emitido em "+emi),W-12,290,{align:"right"});
+  }
   if(!a.pdfAt)p.log.push({id:uid(),date:today(),disc:"geral",type:"Reunião",text:"Ata "+a.num+" gerada"+(a.subject?": "+a.subject:"")});
   a.pdfAt=today();touchProject(curId,false);
   save(ataBase(a)+".pdf",doc.output("arraybuffer"),"atas").then(()=>{if(tab==="atas")renderAtas()});

@@ -7,3 +7,9 @@ export async function gerarPDFApresentacao({ token, ...resto }) {
   const r = await m.gerarPDFApresentacao({ ...resto, baixar: id => drive.baixar(token, id) });
   return { ...r, modelo: m.MODELO_PDF };
 }
+
+// Imagem da capa (mesmo desenho da capa do PDF) para enviar ao cliente pelo WhatsApp
+export async function gerarCapaApresentacao({ token, ...resto }) {
+  const m = await import(/* @vite-ignore */ "/vendor/apresentacao-pdf.js");
+  return m.gerarCapaImagem({ ...resto, baixar: id => drive.baixar(token, id) });
+}
