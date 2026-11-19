@@ -37,7 +37,31 @@ async function linkAssinado(caminho) {
   } catch { return ''; }
 }
 
+const JSON_H = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' };
+const VERSAO_OK = /^\d{4}-\d{2}-\d{2}$/;
+
+// POST { token, acao: "aceite", versao } — registra o aceite dos Termos de uso / ciência da Política de Privacidade
+// (prova do aceite: projeto, versão dos termos, data/hora, IP e navegador). Não devolve dados do projeto.
+async function registrarAceite(req) {
+  let corpo;
+  try { const txt = await req.text(); if (txt.length > 2000) throw 0; corpo = JSON.parse(txt); } catch { await registrar(req, 'dados_invalidos', { rota: 'cliente-aceite' }); return new Response(JSON.stringify({ error: 'Dados inválidos' }), { status: 400, headers: JSON_H }); }
+  const token = typeof corpo?.token === 'string' ? corpo.token.slice(0, 200) : '';
+  const versao = typeof corpo?.versao === 'string' ? corpo.versao : '';
+  if (!token || corpo?.acao !== 'aceite' || !VERSAO_OK.test(versao)) return new Response(JSON.stringify({ error: 'Dados inválidos' }), { status: 400, headers: JSON_H });
+  const projetos = await supabaseGet('projetos', `token_cliente=eq.${encodeURIComponent(token)}&select=id,link_cliente_ativo`);
+  if (!projetos?.length || !projetos[0].link_cliente_ativo) { await registrar(req, 'token_invalido', { rota: 'cliente-aceite' }); return new Response(JSON.stringify({ error: 'Link inválido ou expirado' }), { status: 404, headers: JSON_H }); }
+  const ip = String(req.headers.get('x-real-ip') || (req.headers.get('x-forwarded-for') || '').split(',')[0] || '').trim().slice(0, 64);
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/portal_aceites`, {
+    method: 'POST', headers: { apikey: SUPABASE_KEY, ...authSb(SUPABASE_KEY), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    body: JSON.stringify({ projeto_id: projetos[0].id, versao, documento: 'termos_privacidade_cookies', ip, navegador: String(req.headers.get('user-agent') || '').slice(0, 200) }),
+  }).catch(() => null);
+  return new Response(JSON.stringify({ ok: !!r?.ok }), { status: 200, headers: JSON_H });
+}
+
 export default async function handler(req) {
+  if (req.method === 'POST') {
+    try { return await registrarAceite(req); } catch { return new Response(JSON.stringify({ error: 'Erro interno' }), { status: 500, headers: JSON_H }); }
+  }
   const url    = new URL(req.url);
   const token  = url.searchParams.get('token');
 

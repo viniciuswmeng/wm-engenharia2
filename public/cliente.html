@@ -155,6 +155,23 @@ nav.sec a.on{color:var(--azul);border-bottom-color:var(--azul)}
 .g-tab th{text-align:left;background:var(--fundo);color:#0a2557;padding:7px 9px;font-size:12px;text-transform:uppercase;letter-spacing:.4px}
 .g-tab td{padding:7px 9px;border-top:1px solid var(--borda);vertical-align:top}
 .g-faq details{border-top:1px solid var(--borda);padding:9px 0}.g-faq summary{cursor:pointer;font-weight:700;color:#0a2557}.g-faq p{margin:6px 0 0}
+/* Termos de uso / privacidade */
+.aceite-fundo{position:fixed;inset:0;z-index:500;background:rgba(10,37,87,.55);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:14px}
+.aceite{background:#fff;border-radius:16px;max-width:640px;width:100%;max-height:calc(100vh - 28px);display:flex;flex-direction:column;box-shadow:0 30px 80px rgba(10,37,87,.35)}
+.aceite-cab{padding:18px 20px 8px}.aceite-cab h2{margin:0;color:#0a2557;font-size:19px}
+.aceite-corpo{padding:0 20px;overflow:auto;font-size:14px;line-height:1.6;color:#334155}
+.aceite-corpo ul{padding-left:20px;margin:0 0 10px}.aceite-corpo li{margin-bottom:5px}
+.aceite-pe{padding:12px 20px 18px;border-top:1px solid var(--borda);display:grid;gap:10px}
+.aceite-pe label{display:flex;gap:9px;align-items:flex-start;font-size:13.5px;cursor:pointer}
+.aceite-pe input{width:18px;height:18px;margin-top:1px;accent-color:#1565d8;flex-shrink:0}
+.aceite-pe .btn.pri[disabled]{opacity:.45;cursor:not-allowed}
+.doc-leg{border:1px solid var(--borda);border-radius:10px;margin-bottom:8px}
+.doc-leg>summary{cursor:pointer;padding:10px 12px;font-weight:700;color:#0a2557;list-style:none;display:flex}
+.doc-leg>summary::-webkit-details-marker{display:none}.doc-leg>summary::after{content:"▾";margin-left:auto;color:var(--sub)}
+.doc-leg[open]>summary::after{transform:rotate(180deg)}
+.doc-leg .g-corpo{padding:0 14px 12px;font-size:13.5px}
+.doc-leg h4{margin:12px 0 4px;color:#0a2557;font-size:13.5px}.doc-leg ul{padding-left:20px;margin:0 0 8px}
+.rod a.leg{color:inherit}
 </style>
 </head>
 <body>
@@ -166,9 +183,10 @@ nav.sec a.on{color:var(--azul);border-bottom-color:var(--azul)}
 </header>
 <nav class="sec" id="nav" hidden><div class="in" id="navIn"></div></nav>
 <main class="main" id="app"><div class="carreg"><div class="spin"></div>Carregando o seu projeto…</div></main>
-<div class="rod"><span style="white-space:nowrap">WM Engenharia Integrada</span> · <a href="mailto:projeto@wmengenhariaintegrada.com.br" style="white-space:nowrap">projeto@wmengenhariaintegrada.com.br</a> · <span style="white-space:nowrap">(33) 98416-1081</span></div>
+<div class="rod"><span style="white-space:nowrap">WM Engenharia Integrada</span> · <a href="mailto:projeto@wmengenhariaintegrada.com.br" style="white-space:nowrap">projeto@wmengenhariaintegrada.com.br</a> · <span style="white-space:nowrap">(33) 98416-1081</span><br><a class="leg" href="#privacidade" data-leg="termos">Termos de uso</a> · <a class="leg" href="#privacidade" data-leg="privacidade">Privacidade e LGPD</a> · <a class="leg" href="#privacidade" data-leg="cookies">Cookies</a></div>
 
 <script src="/portal/guia.js"></script>
+<script src="/portal/legal.js"></script>
 <script>
 var TIPOS={PE:"Projeto Estrutural",PR:"Projeto de Reforço",LT:"Laudo Técnico",CB:"Compatibilização de projetos",EL:"Projeto Elétrico",PH:"Projeto Hidrossanitário",PA:"Projeto Arquitetônico",PF:"Projeto de Fundação",CT:"Consultoria",RE:"Revisão",PP:"Projeto de Piscina",PI:"Projeto de Interiores"};
 var STATUS={"Em andamento":["Em andamento","#3b82f6"],"Novo/Definir":["Em preparação","#a9c8f5"],"PAUSADO":["Pausado","#f59e0b"],"PAUSADO PARCIAL":["Em andamento (parte pausada)","#f59e0b"],"ATRASADO":["Em andamento","#3b82f6"],"CONCLUÍDO":["Concluído","#22c55e"],"CONCLUIDO":["Concluído","#22c55e"],"CANCELADO":["Cancelado","#9ca3af"]};
@@ -209,8 +227,49 @@ function ajudaHtml(){
 }
 document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a[data-g]");if(!a)return;var d=document.getElementById("g-"+a.getAttribute("data-g"));if(d){e.preventDefault();d.open=true;d.scrollIntoView({behavior:"smooth",block:"start"})}});
 
+// ── Termos de uso, privacidade e cookies
+function docsLegais(prefixo){
+  var L=window.WM_LEGAL;if(!L)return"";
+  return L.docs.map(function(x){return '<details class="doc-leg" id="'+prefixo+x.id+'"><summary>'+esc(x.titulo)+'</summary><div class="g-corpo">'+x.html+'</div></details>'}).join("");
+}
+function legalHtml(){
+  var L=window.WM_LEGAL;if(!L)return"";
+  var a=aceiteGuardado();
+  return '<p class="sub" style="margin:-6px 0 12px">Como tratamos os seus dados neste portal, conforme a Lei Geral de Proteção de Dados (LGPD). Versão de '+esc(L.atualizado)+'.'+(a&&a.em?' Você aceitou os termos neste aparelho em '+data(a.em)+'.':'')+'</p>'+docsLegais("leg-");
+}
+function chaveAceite(){var h=5381;for(var i=0;i<token.length;i++)h=((h<<5)+h+token.charCodeAt(i))>>>0;return "wm-termos-"+h.toString(36)}
+var aceiteMem=null;
+function aceiteGuardado(){try{var v=JSON.parse(localStorage.getItem(chaveAceite())||"null");if(v)return v}catch(e){}return aceiteMem}
+function precisaAceite(){var L=window.WM_LEGAL;if(!L)return false;var a=aceiteGuardado();return !a||a.versao!==L.versao}
+function pedirAceite(depois){
+  var L=window.WM_LEGAL;
+  document.getElementById("app").innerHTML='<div class="card" style="text-align:center;padding:40px 20px"><div style="font-size:40px">🔐</div><p class="sub">Aceite os termos de uso para ver o seu projeto.</p></div>';
+  var f=document.createElement("div");f.className="aceite-fundo";f.setAttribute("role","dialog");f.setAttribute("aria-modal","true");f.setAttribute("aria-labelledby","aceiteTit");
+  f.innerHTML='<div class="aceite"><div class="aceite-cab"><div class="sub" style="font-weight:700;letter-spacing:1.5px;font-size:11px;color:#1565d8">PORTAL DO CLIENTE · WM ENGENHARIA</div><h2 id="aceiteTit">Termos de uso e privacidade</h2></div>'+
+    '<div class="aceite-corpo">'+L.resumo+'<p style="margin:6px 0 8px;font-weight:700;color:#0a2557">Leia os documentos completos:</p>'+docsLegais("ac-")+'</div>'+
+    '<div class="aceite-pe"><label><input type="checkbox" id="aceiteOk"> <span>Li e aceito os <b>Termos de uso</b> e estou ciente da <b>Política de Privacidade</b> e da <b>Política de Cookies</b>.</span></label>'+
+    '<button class="btn pri" id="aceiteBt" disabled style="justify-content:center">Aceitar e entrar</button><span class="sub" id="aceiteMsg" style="font-size:12px"></span></div></div>';
+  document.body.appendChild(f);document.body.style.overflow="hidden";
+  var ck=f.querySelector("#aceiteOk"),bt=f.querySelector("#aceiteBt");
+  ck.addEventListener("change",function(){bt.disabled=!ck.checked});
+  bt.addEventListener("click",async function(){
+    if(!ck.checked)return;bt.disabled=true;bt.textContent="Registrando…";
+    var ok=false;
+    try{var ctl=new AbortController(),t=setTimeout(function(){ctl.abort()},8000);
+      var r=await fetch("/api/cliente",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token:token,acao:"aceite",versao:L.versao}),signal:ctl.signal});clearTimeout(t);
+      if(r.status===404){var j=await r.json().catch(function(){return{}});f.remove();document.body.style.overflow="";erro(j.error);return}
+      ok=r.ok;
+    }catch(e){}
+    if(!ok){bt.disabled=false;bt.textContent="Aceitar e entrar";f.querySelector("#aceiteMsg").textContent="Não foi possível registrar o aceite. Verifique a internet e tente de novo.";return}
+    var reg={versao:L.versao,em:new Date().toISOString()};aceiteMem=reg;try{localStorage.setItem(chaveAceite(),JSON.stringify(reg))}catch(e){}
+    f.remove();document.body.style.overflow="";depois();
+  });
+  ck.focus();
+}
+document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a[data-leg]");if(!a)return;var d=document.getElementById("leg-"+a.getAttribute("data-leg"));if(d){e.preventDefault();d.open=true;d.scrollIntoView({behavior:"smooth",block:"start"})}});
+
 function render(d){
-  var abertos=[].map.call(document.querySelectorAll("#ajuda details[open]"),function(x){return x.id});
+  var abertos=[].map.call(document.querySelectorAll("#ajuda details[open],#privacidade details[open]"),function(x){return x.id});
   var st=STATUS[d.status]||STATUS["Em andamento"];
   var prog=Math.min(100,Math.max(0,d.progresso||0));
   var dias=diasAte(d.dataEntregaPrevista);
@@ -326,6 +385,10 @@ function render(d){
   h+=sec("andamento","📈","Andamento do projeto",ca,equipe.length?'<span class="sub">Equipe: <b style="color:#0f1f3d">'+esc(equipe.join(", "))+'</b></span>':'');
   secoes.push(["andamento","Andamento"]);
 
+  // ── Privacidade: termos de uso, política de privacidade (LGPD) e cookies
+  var lg=legalHtml();
+  if(lg){h+=sec("privacidade","🔐","Privacidade, cookies e LGPD",lg);secoes.push(["privacidade","Privacidade"])}
+
   // ── Ajuda: o mesmo guia do manual em PDF
   var aj=ajudaHtml();
   if(aj){h+=sec("ajuda","❓","Ajuda · como usar o portal",aj);secoes.push(["ajuda","Ajuda"])}
@@ -353,8 +416,10 @@ async function carregar(primeira){
     var y=window.scrollY;render(d);if(!primeira)window.scrollTo(0,y);
   }catch(e){if(primeira)erro("Não foi possível carregar os dados do projeto. Verifique a sua internet e tente de novo.")}
 }
-carregar(true);
-setInterval(function(){if(!document.hidden)carregar(false)},3*60*1000);
+function iniciar(){carregar(true);setInterval(function(){if(!document.hidden&&!precisaAceite())carregar(false)},3*60*1000)}
+if(!token)carregar(true);
+else if(precisaAceite())pedirAceite(iniciar);
+else iniciar();
 </script>
 </body>
 </html>
