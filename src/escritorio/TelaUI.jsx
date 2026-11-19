@@ -4,19 +4,33 @@ import { useEffect, useRef, useState } from "react";
 
 const B = (cor, borda = cor, tx = "#fff") => ({ border: `1px solid ${borda}`, background: cor, color: tx, borderRadius: 10, padding: "7px 11px", fontWeight: 700, cursor: "pointer", fontSize: 13, whiteSpace: "nowrap" });
 
+function Cameras({ lista }) {
+  if (!lista.length) return null;
+  return (
+    <div style={{ display: "flex", gap: 8, padding: "8px 10px 0", overflowX: "auto" }}>
+      {lista.map(c => (
+        <div key={c.id} style={{ position: "relative", flex: "0 0 auto", width: 132, height: 99, borderRadius: 10, overflow: "hidden", background: "#1e293b", border: "1px solid rgba(255,255,255,.15)" }}>
+          <Video stream={c.stream} estilo={{ width: "100%", height: "100%", objectFit: "cover", display: "block", transform: c.eu ? "scaleX(-1)" : "none" }} />
+          <span style={{ position: "absolute", left: 6, bottom: 5, fontSize: 11, color: "#fff", background: "rgba(0,0,0,.55)", borderRadius: 6, padding: "1px 6px" }}>{c.nome}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function Video({ stream, estilo }) {
   const ref = useRef(null);
   useEffect(() => { if (ref.current && ref.current.srcObject !== stream) ref.current.srcObject = stream || null; }, [stream]);
   return <video ref={ref} autoPlay playsInline muted style={estilo} />;
 }
 
-function Sala({ titulo, aviso, stream, pessoas, micLigado, onMic, botoes }) {
+function Sala({ titulo, aviso, stream, pessoas, micLigado, onMic, camLigada, onCam, cameras, botoes }) {
   const [pos, setPos] = useState({ x: Math.max(12, window.innerWidth - 600), y: 90 });
   const [grande, setGrande] = useState(false);
   const arr = useRef(null);
   return (
     <div role="dialog" aria-label={titulo} style={grande ? { position: "fixed", inset: 12, zIndex: 390, background: "#0b1220", borderRadius: 16, display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(0,0,0,.5)" }
-      : { position: "fixed", left: pos.x, top: pos.y, zIndex: 390, width: 560, height: 420, maxWidth: "calc(100vw - 24px)", background: "#0b1220", borderRadius: 14, boxShadow: "0 20px 60px rgba(0,0,0,.45)", resize: "both", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+      : { position: "fixed", left: pos.x, top: pos.y, zIndex: 390, width: 560, height: cameras.length ? 560 : 450, maxWidth: "calc(100vw - 24px)", background: "#0b1220", borderRadius: 14, boxShadow: "0 20px 60px rgba(0,0,0,.45)", resize: "both", overflow: "hidden", display: "flex", flexDirection: "column" }}>
       <div onPointerDown={e => { if (grande || e.target.closest("button")) return; arr.current = { dx: e.clientX - pos.x, dy: e.clientY - pos.y }; e.currentTarget.setPointerCapture(e.pointerId); }}
         onPointerMove={e => { if (arr.current) setPos({ x: Math.max(0, e.clientX - arr.current.dx), y: Math.max(0, e.clientY - arr.current.dy) }); }} onPointerUp={() => { arr.current = null; }}
         style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", color: "#e2e8f0", cursor: grande ? "default" : "move", userSelect: "none" }}>
@@ -27,23 +41,26 @@ function Sala({ titulo, aviso, stream, pessoas, micLigado, onMic, botoes }) {
       <div style={{ flex: 1, minHeight: 120, display: "flex", alignItems: "center", justifyContent: "center", background: "#000" }}>
         {stream ? <Video stream={stream} estilo={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} /> : <span style={{ color: "#94a3b8", fontSize: 13 }}>Aguardando a imagem…</span>}
       </div>
+      <Cameras lista={cameras} />
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", color: "#e2e8f0", flexWrap: "wrap" }}>
-        <span style={{ fontSize: 12, color: "#94a3b8" }}>Na sala:</span>
-        <div style={{ flex: 1, display: "flex", gap: 6, flexWrap: "wrap", minWidth: 0 }}>
+        <div style={{ flex: "1 1 100%", display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", minWidth: 0 }}>
+          <span style={{ fontSize: 12, color: "#94a3b8" }}>Na sala:</span>
           {pessoas.map(p => (
             <span key={p.id} title={p.mic ? "Microfone ligado" : "Microfone desligado"} style={{ fontSize: 12, padding: "3px 9px", borderRadius: 999, background: p.mic ? "rgba(34,197,94,.18)" : "rgba(255,255,255,.08)", border: `1px solid ${p.mic ? "rgba(34,197,94,.55)" : "rgba(255,255,255,.15)"}` }}>
               {p.mic ? "🎙" : "🔇"} {p.nome}{p.tag ? <span style={{ color: "#94a3b8" }}> · {p.tag}</span> : null}
             </span>
           ))}
         </div>
+        <span style={{ flex: 1 }} />
         <button type="button" onClick={onMic} aria-pressed={micLigado} style={micLigado ? B("#16a34a") : B("#fff", "#fff", "#0f1f3d")}>{micLigado ? "🎙 Microfone ligado · silenciar" : "🔇 Ligar microfone"}</button>
+        <button type="button" onClick={onCam} aria-pressed={camLigada} style={camLigada ? B("#16a34a") : B("#fff", "#fff", "#0f1f3d")}>{camLigada ? "📷 Câmera ligada · desligar" : "📷 Ligar câmera"}</button>
       </div>
     </div>
   );
 }
 
 export default function TelaUI({ tela, usuarios }) {
-  const { minha, transmissoes, assistindo, erro, micLigado } = tela;
+  const { minha, transmissoes, assistindo, erro, micLigado, camLigada, minhaCam } = tela;
   const nome = id => (usuarios || []).find(u => u.id === id)?.nome?.split(/\s+/)[0] || "Colega";
   const [minStream, setMinStream] = useState(null); // minimizada vale só para o compartilhamento atual
   const minimizada = !!minha && minStream === minha.stream;
@@ -56,6 +73,16 @@ export default function TelaUI({ tela, usuarios }) {
     { id: assistindo.de, nome: nome(assistindo.de), tag: "compartilhando", mic: !!sala?.mics?.[assistindo.de] },
     ...(sala?.vendo || []).map(id => ({ id, nome: tela.euId === id ? "Você" : nome(id), mic: !!sala?.mics?.[id] })),
   ] : [];
+
+  const eu = camLigada && minhaCam ? [{ id: "eu", nome: "Você", stream: minhaCam, eu: true }] : [];
+  const camsMinha = minha ? [...eu, ...Object.entries(minha.camStreams || {}).map(([id, st]) => ({ id, nome: nome(id), stream: st }))] : [];
+  const camsVendo = [];
+  if (assistindo) {
+    camsVendo.push(...eu);
+    const v = assistindo.videos || {};
+    if (sala?.cams?.[assistindo.de] && assistindo.camMid && v[assistindo.camMid]) camsVendo.push({ id: assistindo.de, nome: nome(assistindo.de), stream: v[assistindo.camMid] });
+    for (const [mid, id] of Object.entries(assistindo.mapa || {})) if (id !== tela.euId && sala?.cams?.[id] && v[mid]) camsVendo.push({ id, nome: nome(id), stream: v[mid] });
+  }
 
   return (
     <>
@@ -77,7 +104,7 @@ export default function TelaUI({ tela, usuarios }) {
       </div>
 
       {minha && !minimizada && !assistindo && (
-        <Sala titulo="Sua tela" aviso={`${(minha.vendo || []).length} assistindo`} stream={minha.stream} pessoas={pessoasMinha} micLigado={micLigado} onMic={tela.alternarMic}
+        <Sala titulo="Sua tela" aviso={`${(minha.vendo || []).length} assistindo`} stream={minha.stream} pessoas={pessoasMinha} micLigado={micLigado} onMic={tela.alternarMic} camLigada={camLigada} onCam={tela.alternarCam} cameras={camsMinha}
           botoes={<>
             <button type="button" onClick={() => setMinimizada(true)} style={B("transparent", "rgba(255,255,255,.3)")}>Minimizar</button>
             <button type="button" onClick={tela.parar} style={B("#dc2626")}>Parar</button>
@@ -85,7 +112,7 @@ export default function TelaUI({ tela, usuarios }) {
       )}
       {assistindo && (
         <Sala titulo={`Tela de ${nome(assistindo.de)}`} aviso={assistindo.estado === "conectando" ? "conectando…" : assistindo.estado === "falhou" ? "a rede bloqueou a conexão" : ""}
-          stream={assistindo.stream} pessoas={pessoasVendo} micLigado={micLigado} onMic={tela.alternarMic}
+          stream={assistindo.stream} pessoas={pessoasVendo} micLigado={micLigado} onMic={tela.alternarMic} camLigada={camLigada} onCam={tela.alternarCam} cameras={camsVendo}
           botoes={<button type="button" onClick={tela.sairAssistir} style={B("transparent", "rgba(255,255,255,.3)")}>Sair</button>} />
       )}
     </>

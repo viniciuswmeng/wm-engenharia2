@@ -2,8 +2,12 @@
 // clicar em "Assistir" (WebRTC, uma conexão por pessoa). A combinação passa pelo canal privado da equipe.
 // Áudio da sala: cada pessoa pode ligar o microfone. Quem compartilha mistura as vozes no próprio navegador e
 // devolve para cada espectador a mistura dos outros (sem a própria voz), então todos se ouvem.
+// Câmera (facecam): cada conexão já nasce com espaços de vídeo reservados; quem compartilha repassa a câmera
+// de cada espectador para os outros (até RELAY pessoas), sem precisar renegociar a conexão.
 import { useCallback, useEffect, useRef, useState } from "react";
 
+const RELAY = 5;
+const CAM = { width: { ideal: 320 }, height: { ideal: 240 }, frameRate: { ideal: 15, max: 15 } };
 const ICE = [{ urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun1.l.google.com:19302" }];
 const DEMO = import.meta.env.VITE_ESCRITORIO_DEMO === "1";
 const ID_OK = v => typeof v === "string" && v.length > 0 && v.length <= 64;
@@ -18,19 +22,24 @@ export function useTelaCompartilhada(presenca, user) {
   const [transmissoes, setTransmissoes] = useState({});  // { idDeQuemCompartilha: { em, vendo, mics } }
   const [assistindo, setAssistindo] = useState(null);    // { de, stream, estado }
   const [micLigado, setMicLigado] = useState(false);
+  const [camLigada, setCamLigada] = useState(false);
+  const [minhaCam, setMinhaCam] = useState(null);       // prévia da minha câmera
   const [erro, setErro] = useState("");
   const tx = useRef(new Map());   // espectador -> { pc, dest, src, audioEl }
   const rx = useRef(null), rxAudio = useRef(null), minhaRef = useRef(null), batida = useRef(null), filaIce = useRef([]);
   const ctx = useRef(null), mic = useRef(null), micSrc = useRef(null), mics = useRef({}), micLigadoRef = useRef(false), assistindoRef = useRef(null);
-  useEffect(() => { minhaRef.current = minha; micLigadoRef.current = micLigado; assistindoRef.current = assistindo; });
+  const cam = useRef(null), camLigadaRef = useRef(false), cams = useRef({});
+  useEffect(() => { minhaRef.current = minha; micLigadoRef.current = micLigado; camLigadaRef.current = camLigada; assistindoRef.current = assistindo; });
 
   // ---------- quem compartilha: avisa a sala (quem está vendo e quem está com o microfone ligado)
   const anunciar = useCallback(() => {
     if (!minhaRef.current) return;
     const vendo = [...tx.current.keys()];
     const m = { ...mics.current, [user?.id]: micLigadoRef.current };
-    setMinha(x => (x ? { ...x, vendo, mics: m } : x));
-    enviarSinal({ tipo: "tela", acao: "inicio", vendo, mics: m });
+    const c = { ...cams.current, [user?.id]: camLigadaRef.current };
+    const camStreams = {}; tx.current.forEach((e, id) => { if (cams.current[id] && e.camStream) camStreams[id] = e.camStream; });
+    setMinha(x => (x ? { ...x, vendo, mics: m, cams: c, camStreams } : x));
+    enviarSinal({ tipo: "tela", acao: "inicio", vendo, mics: m, cams: c });
   }, [enviarSinal, user?.id]);
 
   const religarMistura = useCallback(() => {
@@ -43,10 +52,26 @@ export function useTelaCompartilhada(presenca, user) {
     }
   }, []);
 
+  // câmeras: cada espectador recebe nos espaços reservados a câmera dos outros espectadores
+  const religarCams = useCallback(() => {
+    const lista = [...tx.current.entries()];
+    for (const [id, e] of lista) {
+      const outros = lista.filter(([id2, e2]) => id2 !== id && cams.current[id2] && e2.camTrack).slice(0, RELAY);
+      const mapa = {};
+      e.relays.forEach((tr, i) => {
+        const o = outros[i], track = o ? o[1].camTrack : null;
+        if (tr.sender.track !== track) tr.sender.replaceTrack(track).catch(() => {});
+        if (o && tr.mid) mapa[tr.mid] = o[0];
+      });
+      const txt = JSON.stringify(mapa);
+      if (txt !== e.mapaEnviado) { e.mapaEnviado = txt; enviarSinal({ tipo: "tela", acao: "cams", para: id, mapa }); }
+    }
+  }, [enviarSinal]);
+
   const tirarEspectador = useCallback(id => {
     const e = tx.current.get(id); if (!e) return;
     try { e.src?.disconnect(); } catch { /* ok */ } if (e.audioEl) e.audioEl.srcObject = null;
-    fechar(e.pc); tx.current.delete(id); delete mics.current[id];
+    fechar(e.pc); tx.current.delete(id); delete mics.current[id]; delete cams.current[id];
   }, []);
 
   const pararMic = useCallback(() => {
@@ -55,13 +80,18 @@ export function useTelaCompartilhada(presenca, user) {
     setMicLigado(false);
   }, []);
 
+  const pararCam = useCallback(() => {
+    cam.current?.getTracks().forEach(t => t.stop()); cam.current = null;
+    camLigadaRef.current = false; setCamLigada(false); setMinhaCam(null);
+  }, []);
+
   const parar = useCallback(() => {
     clearInterval(batida.current);
     [...tx.current.keys()].forEach(tirarEspectador);
     minhaRef.current?.stream.getTracks().forEach(t => t.stop());
-    pararMic(); ctx.current?.close().catch(() => {}); ctx.current = null;
+    pararMic(); pararCam(); ctx.current?.close().catch(() => {}); ctx.current = null;
     setMinha(null); enviarSinal({ tipo: "tela", acao: "fim" });
-  }, [enviarSinal, tirarEspectador, pararMic]);
+  }, [enviarSinal, tirarEspectador, pararMic, pararCam]);
 
   const iniciar = useCallback(async () => {
     setErro("");
@@ -70,7 +100,7 @@ export function useTelaCompartilhada(presenca, user) {
       const stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 15, max: 24 } }, audio: false });
       stream.getVideoTracks()[0].onended = () => parar();
       ctx.current = new AudioContext();
-      mics.current = {};
+      mics.current = {}; cams.current = {};
       minhaRef.current = { stream, vendo: [], mics: {} };
       setMinha(minhaRef.current);
       anunciar();
@@ -82,14 +112,14 @@ export function useTelaCompartilhada(presenca, user) {
   const sairAssistir = useCallback(() => {
     fechar(rx.current); rx.current = null;
     if (rxAudio.current) { rxAudio.current.srcObject = null; rxAudio.current = null; }
-    if (!minhaRef.current) pararMic();
+    if (!minhaRef.current) { pararMic(); pararCam(); }
     setAssistindo(a => { if (a) enviarSinal({ tipo: "tela", acao: "sair", para: a.de }); return null; });
-  }, [enviarSinal, pararMic]);
+  }, [enviarSinal, pararMic, pararCam]);
 
   const assistir = useCallback(de => {
     fechar(rx.current); rx.current = null;
     filaIce.current = [];
-    setAssistindo({ de, stream: null, estado: "conectando" });
+    setAssistindo({ de, stream: null, estado: "conectando", videos: {}, mapa: {}, camMid: null });
     enviarSinal({ tipo: "tela", acao: "pedir", para: de });
   }, [enviarSinal]);
 
@@ -116,6 +146,27 @@ export function useTelaCompartilhada(presenca, user) {
     }
   }, [anunciar, religarMistura, enviarSinal]);
 
+  // ---------- câmera (facecam)
+  const alternarCam = useCallback(async () => {
+    setErro("");
+    let track = null;
+    if (camLigadaRef.current) pararCam();
+    else {
+      try { cam.current = await navigator.mediaDevices.getUserMedia({ video: CAM }); }
+      catch { setErro("Não foi possível usar a câmera. Verifique a permissão do navegador."); return; }
+      track = cam.current.getVideoTracks()[0]; track.contentHint = "motion";
+      camLigadaRef.current = true; setCamLigada(true); setMinhaCam(cam.current);
+    }
+    if (minhaRef.current) {
+      tx.current.forEach(e => { e.t0.sender.replaceTrack(track).catch(() => {}); });
+      anunciar();
+    } else if (rx.current && assistindoRef.current) {
+      const tr = rx.current.getTransceivers().find(t => t.mid && t.mid === assistindoRef.current.camMid);
+      if (tr) await tr.sender.replaceTrack(track).catch(() => {});
+      enviarSinal({ tipo: "tela", acao: "cam", para: assistindoRef.current.de, on: !!track });
+    }
+  }, [anunciar, enviarSinal, pararCam]);
+
   useEffect(() => ouvirSinal(async s => {
     if (s.tipo !== "tela" || s.de === user?.id || !ID_OK(s.de)) return;
     if (!DEMO && !pessoas[s.de]) return; // só quem está no escritório
@@ -123,41 +174,52 @@ export function useTelaCompartilhada(presenca, user) {
       if (s.acao === "inicio") {
         const vendo = Array.isArray(s.vendo) ? s.vendo.filter(ID_OK).slice(0, 40) : [];
         const m = {}; if (s.mics && typeof s.mics === "object") for (const [k, v] of Object.entries(s.mics).slice(0, 41)) if (ID_OK(k)) m[k] = v === true;
-        setTransmissoes(t => ({ ...t, [s.de]: { em: Date.now(), vendo, mics: m } }));
+        const c = {}; if (s.cams && typeof s.cams === "object") for (const [k, v] of Object.entries(s.cams).slice(0, 41)) if (ID_OK(k)) c[k] = v === true;
+        setTransmissoes(t => ({ ...t, [s.de]: { em: Date.now(), vendo, mics: m, cams: c } }));
       } else if (s.acao === "fim") {
         setTransmissoes(t => { const n = { ...t }; delete n[s.de]; return n; });
-        if (assistindoRef.current?.de === s.de) { fechar(rx.current); rx.current = null; if (!minhaRef.current) pararMic(); setAssistindo(null); }
+        if (assistindoRef.current?.de === s.de) { fechar(rx.current); rx.current = null; if (!minhaRef.current) { pararMic(); pararCam(); } setAssistindo(null); }
       }
       // eu compartilho: alguém quer assistir
       else if (s.acao === "pedir" && s.para === user?.id && minhaRef.current && ctx.current) {
         tirarEspectador(s.de);
         const pc = new RTCPeerConnection({ iceServers: ICE });
         const dest = ctx.current.createMediaStreamDestination();
-        const e = { pc, dest, src: null, audioEl: null };
+        const e = { pc, dest, src: null, audioEl: null, t0: null, relays: [], camTrack: null, camStream: null, mapaEnviado: "" };
         tx.current.set(s.de, e);
         pc.onicecandidate = ev => { if (ev.candidate) enviarSinal({ tipo: "tela", acao: "ice", para: s.de, lado: "rx", cand: ev.candidate.toJSON() }); };
         pc.ontrack = ev => {
-          if (ev.track.kind !== "audio") return;
+          if (ev.track.kind === "video") {
+            if (ev.transceiver === e.t0) { e.camTrack = ev.track; e.camStream = new MediaStream([ev.track]); religarCams(); anunciar(); }
+            return;
+          }
           const st = new MediaStream([ev.track]);
           e.audioEl = manterVivo(st);
           e.src = ctx.current.createMediaStreamSource(st);
           e.src.connect(ctx.current.destination); // eu ouço o espectador
           religarMistura();
         };
-        pc.onconnectionstatechange = () => { if (["failed", "closed"].includes(pc.connectionState)) { tirarEspectador(s.de); anunciar(); } };
-        minhaRef.current.stream.getVideoTracks().forEach(t => pc.addTrack(t, minhaRef.current.stream));
+        pc.onconnectionstatechange = () => { if (["failed", "closed"].includes(pc.connectionState)) { tirarEspectador(s.de); religarCams(); anunciar(); } };
+        const telaTr = pc.addTransceiver(minhaRef.current.stream.getVideoTracks()[0], { direction: "sendonly", streams: [minhaRef.current.stream] });
+        e.t0 = pc.addTransceiver(camLigadaRef.current && cam.current ? cam.current.getVideoTracks()[0] : "video", { direction: "sendrecv" });
+        for (let i = 0; i < RELAY; i++) e.relays.push(pc.addTransceiver("video", { direction: "sendonly" }));
         pc.addTransceiver(dest.stream.getAudioTracks()[0], { direction: "sendrecv", streams: [dest.stream] });
         religarMistura();
         ctx.current.resume().catch(() => {});
         await pc.setLocalDescription(await pc.createOffer());
-        enviarSinal({ tipo: "tela", acao: "oferta", para: s.de, sdp: pc.localDescription.toJSON() });
-        anunciar();
+        enviarSinal({ tipo: "tela", acao: "oferta", para: s.de, sdp: pc.localDescription.toJSON(), telaMid: telaTr.mid, camMid: e.t0.mid });
+        e.mapaEnviado = ""; religarCams(); anunciar();
       } else if (s.acao === "resposta" && s.para === user?.id && tx.current.get(s.de) && s.sdp?.type === "answer") {
         await tx.current.get(s.de).pc.setRemoteDescription(s.sdp);
       } else if (s.acao === "sair" && s.para === user?.id) {
-        tirarEspectador(s.de); religarMistura(); anunciar();
+        tirarEspectador(s.de); religarMistura(); religarCams(); anunciar();
       } else if (s.acao === "mic" && s.para === user?.id && tx.current.has(s.de)) {
         mics.current[s.de] = s.on === true; anunciar();
+      } else if (s.acao === "cam" && s.para === user?.id && tx.current.has(s.de)) {
+        cams.current[s.de] = s.on === true; religarCams(); anunciar();
+      } else if (s.acao === "cams" && s.para === user?.id && assistindoRef.current?.de === s.de && s.mapa && typeof s.mapa === "object") {
+        const mapa = {}; for (const [k, v] of Object.entries(s.mapa).slice(0, RELAY)) if (typeof k === "string" && k.length < 8 && ID_OK(v)) mapa[k] = v;
+        setAssistindo(a => (a && a.de === s.de ? { ...a, mapa } : a));
       } else if (s.acao === "ice" && s.para === user?.id && s.cand) {
         if (s.lado === "tx") { const e = tx.current.get(s.de); if (e) await e.pc.addIceCandidate(s.cand).catch(() => {}); }
         else if (rx.current?.remoteDescription) await rx.current.addIceCandidate(s.cand).catch(() => {});
@@ -167,21 +229,30 @@ export function useTelaCompartilhada(presenca, user) {
       else if (s.acao === "oferta" && s.para === user?.id && s.sdp?.type === "offer" && assistindoRef.current?.de === s.de) {
         const pc = new RTCPeerConnection({ iceServers: ICE }); rx.current = pc;
         pc.onicecandidate = ev => { if (ev.candidate) enviarSinal({ tipo: "tela", acao: "ice", para: s.de, lado: "tx", cand: ev.candidate.toJSON() }); };
+        const telaMid = typeof s.telaMid === "string" ? s.telaMid : null, camMid = typeof s.camMid === "string" ? s.camMid : null;
+        setAssistindo(a => (a ? { ...a, camMid } : a));
         pc.ontrack = ev => {
-          if (ev.track.kind === "video") setAssistindo({ de: s.de, stream: ev.streams[0] || new MediaStream([ev.track]), estado: "ok" });
+          if (ev.track.kind === "video") {
+            const mid = ev.transceiver?.mid;
+            if (mid === telaMid || !telaMid) setAssistindo(a => (a ? { ...a, stream: ev.streams[0] || new MediaStream([ev.track]), estado: "ok" } : a));
+            else if (mid) { const st = new MediaStream([ev.track]); setAssistindo(a => (a ? { ...a, videos: { ...a.videos, [mid]: st } } : a)); }
+          }
           else { const a = new Audio(); a.srcObject = new MediaStream([ev.track]); a.play().catch(() => {}); rxAudio.current = a; }
         };
         pc.onconnectionstatechange = () => { if (pc.connectionState === "failed") setAssistindo(a => (a ? { ...a, estado: "falhou" } : a)); };
         await pc.setRemoteDescription(s.sdp);
         const tr = pc.getTransceivers().find(t => t.receiver.track?.kind === "audio");
         if (tr) { tr.direction = "sendrecv"; if (micLigadoRef.current && mic.current) await tr.sender.replaceTrack(mic.current.getAudioTracks()[0]); }
+        const trCam = pc.getTransceivers().find(t => t.mid && t.mid === camMid);
+        if (trCam) { trCam.direction = "sendrecv"; if (camLigadaRef.current && cam.current) await trCam.sender.replaceTrack(cam.current.getVideoTracks()[0]); }
         for (const c of filaIce.current.splice(0)) await pc.addIceCandidate(c).catch(() => {});
         await pc.setLocalDescription(await pc.createAnswer());
         enviarSinal({ tipo: "tela", acao: "resposta", para: s.de, sdp: pc.localDescription.toJSON() });
         if (micLigadoRef.current) enviarSinal({ tipo: "tela", acao: "mic", para: s.de, on: true });
+        if (camLigadaRef.current) enviarSinal({ tipo: "tela", acao: "cam", para: s.de, on: true });
       }
     } catch (e) { setErro("Erro no compartilhamento: " + (e?.message || e)); }
-  }), [ouvirSinal, enviarSinal, pessoas, user?.id, anunciar, religarMistura, tirarEspectador, pararMic]);
+  }), [ouvirSinal, enviarSinal, pessoas, user?.id, anunciar, religarMistura, religarCams, tirarEspectador, pararMic, pararCam]);
 
   // transmissões que pararam de dar sinal somem; quem saiu do escritório também
   useEffect(() => {
@@ -190,8 +261,8 @@ export function useTelaCompartilhada(presenca, user) {
   }, [pessoas]);
   useEffect(() => () => {
     clearInterval(batida.current); tx.current.forEach(e => fechar(e.pc)); fechar(rx.current);
-    minhaRef.current?.stream.getTracks().forEach(t => t.stop()); mic.current?.getTracks().forEach(t => t.stop()); ctx.current?.close().catch(() => {});
+    minhaRef.current?.stream.getTracks().forEach(t => t.stop()); mic.current?.getTracks().forEach(t => t.stop()); cam.current?.getTracks().forEach(t => t.stop()); ctx.current?.close().catch(() => {});
   }, []);
 
-  return { euId: user?.id, minha, transmissoes, assistindo, micLigado, erro, iniciar, parar, assistir, sairAssistir, alternarMic, limparErro: () => setErro("") };
+  return { euId: user?.id, minha, transmissoes, assistindo, micLigado, camLigada, minhaCam, erro, iniciar, parar, assistir, sairAssistir, alternarMic, alternarCam, limparErro: () => setErro("") };
 }
