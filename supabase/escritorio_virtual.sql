@@ -2,7 +2,7 @@
 -- Não cria tabela: a presença (posição, status, sessão) não fica gravada; some quando a pessoa sai.
 -- Rode uma vez no Supabase → SQL Editor.
 
-alter table realtime.messages enable row level security;
+-- (realtime.messages já vem com RLS ligado pelo Supabase; não tente alterar a tabela — ela pertence ao Supabase)
 
 drop policy if exists "escritorio_wm_ler" on realtime.messages;
 create policy "escritorio_wm_ler" on realtime.messages
