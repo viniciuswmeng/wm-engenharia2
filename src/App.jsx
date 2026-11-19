@@ -9,6 +9,8 @@ import { ACESSOS_GOOGLE, C, listaDisciplinas, prepararFoto, CHECK_INTERVAL, Tela
 import { ModalHoras } from "./paginas/ModalHoras.jsx";
 import Icone from "./ui/Icone.jsx";
 import { usePresencaEscritorio } from "./escritorio/presenca.js";
+import { useVozEscritorio } from "./escritorio/voz.js";
+import VozUI from "./escritorio/VozUI.jsx";
 import { BuscaGlobal, MenuUsuario, CarregandoPagina, CabecalhoPagina } from "./ui/Topo.jsx";
 import { Abas } from "./ui/ds.jsx";
 
@@ -925,7 +927,8 @@ export default function App(){
   // ── Login com Google (Supabase Auth) ──
   const [authStatus, setAuthStatus] = useState("verificando"); // verificando | fora | dentro
   // Escritório virtual: presença em tempo real (entra no canal enquanto a pessoa está logada)
-  const presenca=usePresencaEscritorio({ user: authStatus==="dentro" ? user : null, usuarios, sessaoAtiva });
+  const presenca=usePresencaEscritorio({ user: authStatus==="dentro" ? user : null, sessaoAtiva, usuarios });
+  const voz=useVozEscritorio(presenca, authStatus==="dentro" ? user : null);
   const [authEmail,  setAuthEmail]  = useState("");
   const [authErro,   setAuthErro]   = useState("");
   useEffect(() => {
@@ -1159,7 +1162,7 @@ export default function App(){
             {barraSubAbas}
             {CABECALHOS[aba]&&<CabecalhoPagina {...CABECALHOS[aba]}/>} 
         {aba==="dashboard" &&<Dashboard projetos={projetos} onAbrirProjeto={abrirP} drive={drive} onImportar={importar} usuarioAtual={user} onIrPara={setAba} permissoes={permissoes.dashboard} tarefas={central.tarefas} registros={registros} calendario={calendario}/>}
-        {aba==="escritorio" && <EscritorioVirtual presenca={presenca} usuarios={usuarios} projetos={projetos} user={user}/>}
+        {aba==="escritorio" && <EscritorioVirtual presenca={presenca} voz={voz} usuarios={usuarios} projetos={projetos} user={user}/>}
         {aba==="projetos"  &&<ListaProjetos projetos={projetosAba} onAbrirProjeto={abrirP} onNovoProjeto={novoP} usuarios={usuarios} usuarioAtual={user}/>}
         {aba==="financeiro"&&<Financeiro projetos={projetos}/>}
         {aba==="horas"     &&<AbaHoras registros={registros} setRegistros={setRegistros} usuarios={usuarios} projetos={projetos} usuarioAtual={user} calendario={calendario} onAbrirEncerramento={()=>setModalH("encerramento")}/>}
@@ -1203,6 +1206,7 @@ export default function App(){
       <Suspense fallback={null}>
       {modal&&<ModalProjeto projeto={modal.projeto} modo={modal.modo} onClose={()=>setModal(null)} onSave={salvarP} onExcluir={excluirP} usuarios={usuarios} usuarioAtual={user}/>}
 
+      <VozUI voz={voz} usuarios={usuarios}/>
       {presenca.acenos.length>0&&<div style={{position:"fixed",right:18,bottom:86,zIndex:300,display:"grid",gap:8}} aria-live="polite">
         {presenca.acenos.map(a=>{const u=usuarios.find(x=>x.id===a.de);return(
           <div key={a.id} role="status" style={{background:"#fff",border:"1px solid #bcd3f5",borderRadius:12,boxShadow:"0 10px 30px rgba(15,31,61,.18)",padding:"10px 12px",display:"flex",gap:10,alignItems:"center",minWidth:260}}>

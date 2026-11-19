@@ -99,15 +99,23 @@ const TOPICOS = [
       ]},
     ]},
   { id:"escritorio", icone:"🏢", titulo:"Escritório virtual", aba:"escritorio",
-    resumo:"Mapa do escritório com a equipe em tempo real: quem está online, onde está, o status e em que projeto está trabalhando.",
+    resumo:"Escritório em 3D (estilo Habbo) com a equipe em tempo real: status, projeto da sessão de horas, conversa por voz, chamada com câmera e moodboard.",
     secoes:[
-      { t:"Como usar", itens:[
-        "Abra Escritório virtual no menu. Você aparece na sua mesa; clique em qualquer ponto do mapa (ou use as setas / WASD) para andar até a copa, a sala de reunião, a sala de foco…",
-        "Escolha o seu status (Disponível, Focado, Em reunião, Almoço / pausa, Ausente) e, se quiser, deixe um recado curto (ex.: volto às 14h).",
-        "Quando você inicia uma sessão de horas, o projeto aparece sozinho acima do seu avatar e na lista da equipe, com o tempo da sessão.",
-        "Clique num colega para ver o status, o local e o projeto. O botão Acenar manda um aviso para ele (em qualquer tela do sistema); Ir até leva o seu avatar para perto.",
-        "Depois de 10 minutos sem mexer no sistema, o status vira Ausente e volta sozinho quando você retorna.",
-        "Nada fica gravado: a posição e o status somem quando a pessoa fecha o sistema. Só a equipe logada entra no escritório.",
+      { t:"Andar e ver a equipe", itens:[
+        "Clique num piso para andar (o boneco desvia dos móveis) ou use as setas / WASD. Use + e − no canto do mapa para aproximar e ◎ para centralizar em você.",
+        "Escolha o seu status e deixe um recado curto. Quando você inicia uma sessão de horas, o projeto aparece acima do seu boneco.",
+        "Clique num colega para ver status, sala e projeto; Acenar manda um aviso para ele em qualquer tela.",
+        "Depois de 10 minutos sem mexer no sistema, o status vira Ausente e volta sozinho.",
+      ]},
+      { t:"Conversar", itens:[
+        "Chegue a até 3 pisos de alguém: aparece Falar (só áudio, dentro do sistema). A outra pessoa aceita e vocês conversam como walkie-talkie: segure o botão (ou a barra de espaço) para falar.",
+        "Afastar-se no mapa encerra a conversa. O áudio vai direto entre os navegadores; em algumas redes muito fechadas ele pode não conectar — use a chamada com câmera.",
+        "🎥 Meet cria uma reunião do Google Meet na sua agenda e manda o convite para o colega; Zoom usa o link da sua sala (cadastre em ⚙ Minhas configurações).",
+      ]},
+      { t:"Personalizar", itens:[
+        "Meu avatar: pele, cabelo, barba, roupa, cores e acessórios (óculos, capacete de obra, fone, boné, trena).",
+        "Editar escritório (gestores): escolha um móvel no catálogo e clique no piso para colocar; selecione um móvel para mover, girar (R), trocar a cor, duplicar ou remover (Del). Pintar piso define as salas. Salve para todos verem.",
+        "Moodboard: clique no quadro da sala de reunião (ou em Abrir moodboards) para criar quadros com títulos e notas coloridas, ligar a um projeto e salvar. Quem estiver com o mesmo quadro aberto é avisado da versão nova.",
       ]},
     ]},
   { id:"horas", icone:"⏱", titulo:"Horas trabalhadas", aba:"horas",

@@ -209,8 +209,13 @@ html[data-tema="escuro"] .wm-projeto-pagina { background: #0b1426; }
 
 /* Escritório virtual */
 .wm-ev-avatar{transition:transform .6s cubic-bezier(.4,0,.2,1)}
+.wm-ev-av{transition:transform .23s linear}.wm-ev-av{outline:none}.wm-ev-av:focus-visible{filter:drop-shadow(0 0 4px #60a5fa)}
+.wm-bon.andando .perna-e{animation:wm-passo .46s infinite}.wm-bon.andando .perna-d{animation:wm-passo .46s infinite reverse}.wm-bon.andando .braco-e{animation:wm-braco .46s infinite reverse}.wm-bon.andando .braco-d{animation:wm-braco .46s infinite}
+@keyframes wm-passo{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}@keyframes wm-braco{0%,100%{transform:translateY(0)}50%{transform:translateY(2px)}}
+.wm-ev-ondas{animation:wm-ondas .8s infinite}@keyframes wm-ondas{50%{opacity:.25}}
+@media (max-width:760px){.wm-mb-grade{grid-template-columns:1fr!important}.wm-mb-grade>aside{max-height:30vh}.wm-ev-editor-av{grid-template-columns:1fr!important}}
 .wm-ev-avatar{outline:none}.wm-ev-avatar:focus-visible{filter:drop-shadow(0 0 4px #1565d8)}
-@media (prefers-reduced-motion:reduce){.wm-ev-avatar{transition:none}}
+@media (prefers-reduced-motion:reduce){.wm-ev-avatar,.wm-ev-av{transition:none}.wm-bon.andando *{animation:none!important}}
 @media (max-width:900px){.wm-ev-grade{grid-template-columns:1fr!important}}
 /* topo no celular estreito: ícones mais juntos para nada sair da tela */
 @media (max-width: 480px) {
