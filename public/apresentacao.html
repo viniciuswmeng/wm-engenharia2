@@ -196,7 +196,7 @@ async function api(metodo, corpo) {
   if (!r.ok) throw new Error(j.erro || "Não foi possível carregar agora.");
   return j;
 }
-function erro(t) { document.getElementById("palco").innerHTML = `<div class="erro"><div style="font-size:42px">🛋️</div><h2 style="color:var(--mar);margin:8px 0">Apresentação indisponível</h2><p style="color:var(--sub)">${esc(t)}</p><p style="color:var(--sub);font-size:13px">Fale com a WM Engenharia: projeto@wmengenhariaintegrada.com.br · (33) 99931-7042</p></div>`; document.getElementById("tTopo").textContent = "WM Engenharia"; }
+function erro(t) { document.getElementById("palco").innerHTML = `<div class="erro"><div style="font-size:42px">🛋️</div><h2 style="color:var(--mar);margin:8px 0">Apresentação indisponível</h2><p style="color:var(--sub)">${esc(t)}</p><p style="color:var(--sub);font-size:13px">Fale com a WM Engenharia: projeto@wmengenhariaintegrada.com.br · (33) 98416-1081</p></div>`; document.getElementById("tTopo").textContent = "WM Engenharia"; }
 
 const resp = id => (D.respostas || {})[id];
 const base = () => (D.planta ? 2 : 1);            // índice do 1º ambiente

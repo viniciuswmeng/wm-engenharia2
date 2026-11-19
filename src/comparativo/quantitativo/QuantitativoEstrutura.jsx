@@ -62,11 +62,22 @@ function ModalSalvos({ onAbrir, onFechar }) {
   );
 }
 
+// campo numérico (vírgula ou ponto): guarda o texto enquanto a pessoa digita e só grava o número quando ele é válido
+function CampoNum({ valor, onValor, estilo, rotulo }) {
+  const [txt, setTxt] = useState(null);
+  const mostra = txt ?? (valor == null || !Number.isFinite(Number(valor)) ? "" : String(valor).replace(".", ","));
+  return (
+    <input value={mostra} inputMode="decimal" aria-label={rotulo} style={estilo}
+      onChange={e => { const v = e.target.value.replace(/[^\d.,-]/g, "").slice(0, 14); setTxt(v); if (v.trim() === "") onValor(null); else { const n = numBR(v); if (Number.isFinite(n)) onValor(n); } }}
+      onBlur={() => setTxt(null)} />
+  );
+}
+
 // um quadro lido: elemento (editável), bitolas e conferência
 function Quadro({ t, onMudar, onRemover }) {
   const [aberto, setAberto] = useState(false);
   const c = conferir(t), pesoSem = t.aco.filter(a => !a.trelica).reduce((s, a) => s + (Number(a.peso) || 0), 0);
-  const setAco = (i, campo, v) => onMudar({ aco: t.aco.map((a, j) => (j === i ? { ...a, [campo]: numBR(v) } : a)) });
+  const setAco = (i, campo, v) => onMudar({ aco: t.aco.map((a, j) => (j === i ? { ...a, [campo]: v ?? 0 } : a)) });
   return (
     <div style={{ border: `1px solid ${t.categoria ? K.borda : "#fde68a"}`, borderLeft: `4px solid ${COR_CAT[t.categoria] || "#f59e0b"}`, borderRadius: 12, padding: "10px 12px", background: t.incluir ? "#fff" : "#f8fafc", opacity: t.incluir ? 1 : .6 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
@@ -94,12 +105,12 @@ function Quadro({ t, onMudar, onRemover }) {
               <tr key={i} style={{ borderTop: `1px solid ${K.borda}` }}>
                 <td style={{ padding: 4, fontWeight: 700 }}>{a.tipo}</td><td style={{ padding: 4 }}>{a.trelica ? `${a.diam} (treliça)` : rotDiam(a.diam)}</td>
                 <td style={{ padding: 4 }}>{fmtN(a.comp, 1)}</td>
-                <td style={{ padding: 4 }}><input value={String(a.peso ?? "").replace(".", ",")} onChange={e => setAco(i, "peso", e.target.value)} inputMode="decimal" style={{ ...inp, width: 110, padding: "4px 7px" }} aria-label="Peso" /></td>
+                <td style={{ padding: 4 }}><CampoNum valor={a.peso} onValor={v => setAco(i, "peso", v)} estilo={{ ...inp, width: 110, padding: "4px 7px" }} rotulo="Peso" /></td>
               </tr>))}</tbody>
           </table>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-            <label style={{ fontSize: 12.5 }}>Concreto (m³) <input value={t.volume == null ? "" : String(t.volume).replace(".", ",")} onChange={e => onMudar({ volume: e.target.value === "" ? null : numBR(e.target.value) })} inputMode="decimal" style={{ ...inp, width: 100, padding: "4px 7px", display: "inline-block" }} /></label>
-            <label style={{ fontSize: 12.5 }}>Forma (m²) <input value={t.forma == null ? "" : String(t.forma).replace(".", ",")} onChange={e => onMudar({ forma: e.target.value === "" ? null : numBR(e.target.value) })} inputMode="decimal" style={{ ...inp, width: 100, padding: "4px 7px", display: "inline-block" }} /></label>
+            <label style={{ fontSize: 12.5 }}>Concreto (m³) <CampoNum valor={t.volume} onValor={v => onMudar({ volume: v })} estilo={{ ...inp, width: 100, padding: "4px 7px", display: "inline-block" }} rotulo="Concreto em metros cúbicos" /></label>
+            <label style={{ fontSize: 12.5 }}>Forma (m²) <CampoNum valor={t.forma} onValor={v => onMudar({ forma: v })} estilo={{ ...inp, width: 100, padding: "4px 7px", display: "inline-block" }} rotulo="Forma em metros quadrados" /></label>
             <span style={{ fontSize: 12, color: K.sub }}>Peso total do quadro: {Object.entries(t.pesoTotal || {}).map(([k, v]) => `${k} ${fmtN(v)} kg`).join(" · ") || "—"}</span>
             <span style={{ flex: 1 }} />
             <button type="button" onClick={onRemover} style={btn("sec", { padding: "5px 9px", fontSize: 12.5, color: "#e11d48" })}><Icone nome="lixeira" tam={14} />Tirar quadro</button>

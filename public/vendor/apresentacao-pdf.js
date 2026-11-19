@@ -130,7 +130,7 @@ export async function gerarPDFApresentacao({ baixar, projeto, versao, dados, aoP
     y += 8;
   });
   doc.line(xd, y - 4.2, xd + larg, y - 4.2);
-  fonte(F.sans, "normal", 7.5, CLARO); doc.text("projeto@wmengenhariaintegrada.com.br  ·  (33) 99931-7042", xd, H - 12);
+  fonte(F.sans, "normal", 7.5, CLARO); doc.text("projeto@wmengenhariaintegrada.com.br  ·  (33) 98416-1081", xd, H - 12);
 
   // ── planta geral ──
   let pagPlanta = 0, legenda = null;

@@ -18,6 +18,21 @@ export const numBR = s => {
 };
 const ehNum = s => Number.isFinite(numBR(s));
 
+const RE_VOL = /vol(?:ume|\.)?\s*de\s*concreto(?:\s*total)?\s*(?:\(\s*([A-Z]{1,2}-?\s?\d+)\s*\))?\s*=\s*([\d.,]+)/i;
+const NOTA = /^\s*(\*|\d+\s*[-–.)]\s)|;\s*$/; // linhas de notas ("1- CONCRETO…", "* A FUNDAÇÃO…")
+const cap = t => t.trim().toLowerCase().replace(/^./, c => c.toUpperCase());
+// junta as linhas de um título quebrado ("ARMAÇÃO POSITIVA DAS LAJES DO" + "PAVIMENTO TOPO TELHADO (NÍVEL +848)")
+function blocoTitulo(it, T) {
+  const linhas = [T];
+  for (let passo = 0; passo < 3; passo++) {
+    const ys = linhas.map(l => l.y), viz = it.filter(i => !linhas.includes(i) && Math.abs(i.h - T.h) <= 1.5 && Math.abs(i.x - T.x) < 60
+      && ys.some(y => Math.abs(i.y - y) <= T.h * 2) && !/^(ESC\b|ESC\.|SEM ESCALA|S\/ ESCALA)/i.test(sem(i.s).trim()) && !NOTA.test(i.s));
+    if (!viz.length) break;
+    linhas.push(viz.sort((a, b) => Math.min(...ys.map(y => Math.abs(a.y - y))) - Math.min(...ys.map(y => Math.abs(b.y - y))))[0]);
+  }
+  return linhas.sort((a, b) => b.y - a.y).map(i => i.s.trim()).join(" ").replace(/\s+/g, " ");
+}
+
 // agrupa itens em linhas (de cima para baixo), cada uma com os itens da esquerda para a direita
 function emLinhas(itens, tol = 3.5) {
   const ord = [...itens].sort((a, b) => b.y - a.y || a.x - b.x), L = [];
@@ -30,14 +45,18 @@ function emLinhas(itens, tol = 3.5) {
 }
 
 // classifica um quadro pelos nomes dos elementos e, se não der, pelos títulos da prancha
+// Regra do escritório: S… = fundações, P… = pilares, V… = vigas, L… / positivos / negativos = lajes
+// (antes disso: vigotas e treliças são laje, LE… é escada, PAR…/muro/cortina é parede)
+const Q = "^(\\d+\\s*x\\s*)?";
 const REGRAS_EL = [
-  ["lajes", /^(\d+\s*x\s*)?(VT|L\d|LJ|LAJE|NEGATIV|POSITIV|VIGOTA|TRELI)/i],
-  ["escada", /^(\d+\s*x\s*)?(LE\d|ESC|DEGR|PATAM|ESCADA)/i],
-  ["pilares", /^(\d+\s*x\s*)?(P\d|PIL|PR\d)/i],
-  ["vigas", /^(\d+\s*x\s*)?(V\d|VB|VC|VG|VIGA|BALDR)/i],
-  ["fundacoes", /^(\d+\s*x\s*)?(S\d|SAP|B\d|BL|BLOCO|EST\d|ESTACA|TB\d|TUB|RAD|CINT)/i],
-  ["arrimo", /^(\d+\s*x\s*)?(PAR\d|PA\d|ARR|MURO|M\d|CORT|CT\d)/i],
-  ["piscina", /^(\d+\s*x\s*)?(PISC|PSC|PS\d)/i],
+  ["lajes", new RegExp(Q + "(VT\\d|VIGOTA|TRELI|NEGATIV|POSITIV|LAJE|LJ\\d)", "i")],
+  ["escada", new RegExp(Q + "(LE\\d|ESC|DEGR|PATAM)", "i")],
+  ["arrimo", new RegExp(Q + "(PAR\\d|PA\\d|ARR|MURO|CORT|CT\\d)", "i")],
+  ["piscina", new RegExp(Q + "(PISC|PSC)", "i")],
+  ["lajes", new RegExp(Q + "L[A-Z]{0,2}\\d", "i")],
+  ["fundacoes", new RegExp(Q + "(S[A-Z]{0,2}\\d|SAP|B\\d|BL\\d|BLOCO|EST\\d|ESTACA|TB\\d|TUB|RAD|CINT)", "i")],
+  ["pilares", new RegExp(Q + "(P[A-Z]{0,2}\\d|PIL)", "i")],
+  ["vigas", new RegExp(Q + "(V[A-Z]{0,2}\\d|VIGA|BALDR)", "i")],
 ];
 const REGRAS_TXT = [
   ["piscina", /PISCINA/], ["arrimo", /ARRIMO|MURO|CORTINA|CONTENC/], ["escada", /ESCADA/],
@@ -70,7 +89,7 @@ export function analisarPagina(itens, n = 1) {
     const cab = dHdr ? it.filter(i => Math.abs(i.y - dHdr.y) <= 3 && i.x >= dHdr.x - 80 && i.x <= dHdr.x + 200) : it.filter(i => i.y < R.y && i.y > R.y - 45 && Math.abs(i.x - R.x) < 160);
     const centro = i => i.x + i.s.length * (i.h || 8) * 0.27;
     const colunas = [["diam", /^DIAM/i], ["comp", /C\.?\s?TOTAL/i], ["peso", /PESO/i]].map(([k, re]) => { const h = cab.find(i => re.test(i.s)); return h ? { k, cx: centro(h) } : null; }).filter(Boolean);
-    const x0 = Math.min(...cab.map(i => i.x), R.x) - 30, x1 = Math.max(...cab.map(i => i.x + (i.s.length * (i.h || 8) * .55)), R.x + 150) + 40;
+    const x0 = Math.min(...cab.map(i => i.x), R.x) - 60, x1 = Math.max(...cab.map(i => i.x + (i.s.length * (i.h || 8) * .55)), R.x + 150) + 40;
     // até o próximo resumo abaixo na mesma coluna
     const abaixo = resumos.filter(q => q !== R && q.y < R.y && Math.abs(q.x - R.x) < 200).map(q => q.y);
     const yFim = Math.max(R.y - 320, ...(abaixo.length ? [Math.max(...abaixo) + 5] : []));
@@ -79,9 +98,19 @@ export function analisarPagina(itens, n = 1) {
     const aco = []; let tipo = "", pesoTotal = {}, volume = null, forma = null, fck = "", fimTabela = false, emPesoTotal = false;
     for (const l of linhas) {
       const t = sem(l.texto);
-      const mv = /volume\s+de\s+concreto\s*\(?\s*(C-?\s?\d+)?\s*\)?\s*=\s*([\d.,]+)/i.exec(t); if (mv) { volume = numBR(mv[2]); fck = (mv[1] || "").replace(/\s/g, "").toUpperCase(); continue; }
+      const mv = RE_VOL.exec(t); if (mv) { volume = numBR(mv[2]); fck = /^C/i.test(mv[1] || "") ? mv[1].replace(/\s/g, "").toUpperCase() : ""; continue; }
       const mf = /area\s+de\s+f[oô]?rma\s*=\s*([\d.,]+)/i.exec(t); if (mf) { forma = numBR(mf[1]); continue; }
       if (/PESO\s+TOTAL/i.test(t)) { fimTabela = true; emPesoTotal = true; continue; }
+      if (/^TOTAL\s+GERAL/i.test(t)) { fimTabela = true; continue; }
+      // outro modelo de quadro: "8 CA-50 | QTD | 1081 m | 475,76" (a bitola vem junto com o aço)
+      const junto = l.itens.find(i => /^\d+([.,]\d+)?\s*CA-?\s?(25|50|60)$/i.test(i.s.trim()));
+      if (junto && !fimTabela) {
+        const [, d] = /^(\d+(?:[.,]\d+)?)/.exec(junto.s.trim()), tp = "CA" + /(25|50|60)\s*$/.exec(junto.s)[1];
+        const resto = l.itens.filter(i => i !== junto && i.x > junto.x);
+        const pesoIt = [...resto].reverse().find(i => ehNum(i.s)), compIt = resto.find(i => /^[\d.,]+\s*m$/i.test(i.s.trim()));
+        if (pesoIt) aco.push({ tipo: tp, diam: String(numBR(d)), comp: compIt ? numBR(compIt.s.replace(/m$/i, "")) : NaN, peso: numBR(pesoIt.s), trelica: false });
+        continue;
+      }
       if (/^(\(kg\)|\(mm\)|AÇO|ACO)/i.test(t) && !/CA-?\s?\d/.test(t)) continue;
       const mt = l.itens.find(i => /^CA-?\s?(25|50|60)$/i.test(i.s.replace(/\s/g, "")));
       if (mt) tipo = mt.s.replace(/[-\s]/g, "").toUpperCase();
@@ -110,22 +139,53 @@ export function analisarPagina(itens, n = 1) {
     if (rel) {
       const cabRel = it.filter(i => i.y < rel.y && i.y > rel.y - 40 && Math.abs(i.x - rel.x) < 300);
       const el = cabRel.find(i => /^ELEMENTO/i.test(i.s));
-      if (el) elementos = [...new Set(it.filter(i => i.y < el.y - 4 && i.y > R.y + 6 && Math.abs(i.x - el.x) < 30 && /^(\d+\s*x\s*)?[A-Za-z]{1,9}[\d.]*[a-z]?$/.test(i.s.replace(/\s/g, "")) && !/^(CA\d+|ESC|ELEMENTO)$/i.test(i.s)).sort((a, b) => b.y - a.y).map(i => i.s))];
+      if (el) elementos = [...new Set(it.filter(i => i.y < el.y - 4 && i.y > R.y + 6 && Math.abs(i.x - el.x) < 30 && /^(\d+\s*x\s*)?[A-Za-z]{1,12}[\d.]*[a-z]?$/.test(i.s.replace(/\s/g, "")) && !/^(CA\d+|ESC|ELEMENTO)$/i.test(i.s)).sort((a, b) => b.y - a.y).map(i => i.s))];
+    }
+    // volume de concreto escrito fora do quadro (ex.: "Vol. de concreto total (C-30) = 6,16 m3" ao lado da tabela)
+    if (volume == null) {
+      const v = it.filter(i => /vol(ume|\.)?\s*de\s*concreto/i.test(sem(i.s)) && i.y < R.y + 40 && i.y > R.y - 360 && Math.abs(i.x - R.x) < 420)
+        .sort((p, q) => Math.hypot(p.x - R.x, p.y - R.y) - Math.hypot(q.x - R.x, q.y - R.y))[0];
+      if (v) {
+        const linha = it.filter(i => Math.abs(i.y - v.y) <= 3 && i.x >= v.x - 2).sort((p, q) => p.x - q.x).map(i => sem(i.s)).join(" ");
+        const mv = RE_VOL.exec(linha);
+        if (mv) { volume = numBR(mv[2]); if (/^C/i.test(mv[1] || "")) fck = mv[1].replace(/\s/g, "").toUpperCase(); }
+      }
     }
     // contexto para classificar: títulos grandes perto do quadro + carimbo da prancha
-    const proxTit = it.filter(i => i.h >= 14 && i.s.length > 8 && /[A-Z]{4}/.test(sem(i.s)) && !/RELACAO|RESUMO/i.test(sem(i.s)))
+    const proxTit = it.filter(i => i.h >= 14 && i.s.length > 8 && /[A-Z]{4}/.test(sem(i.s)) && !/RELACAO|RESUMO/i.test(sem(i.s)) && !NOTA.test(i.s))
       .sort((a, b) => Math.hypot(a.x - R.x, (a.y - R.y) * 1.5) - Math.hypot(b.x - R.x, (b.y - R.y) * 1.5)).map(i => i.s);
     const contexto = [...proxTit.slice(0, 1), ...carimbo, ...titulos].join(" · ");
     const c = classificar(elementos, contexto);
-    // nome do quadro: o título de detalhamento mais perto que combine com o elemento (sem "VISTA 3D", "SEM ESCALA"…)
-    const PAL = { vigas: /VIGA/, pilares: /PILAR/, lajes: /LAJE|VIGOTA/, escada: /ESCADA/, fundacoes: /SAPATA|BLOCO|ESTACA|FUNDA/, arrimo: /ARRIMO|MURO|CORTINA/, piscina: /PISCINA/ };
-    const bons = it.filter(i => i.h >= 12 && i.s.length > 10 && /[A-Z]{4}/.test(sem(i.s)) && !/^(VISTA|SEM ESCALA|ESC\b|CORTE|RELACAO|RESUMO|NOTA)/i.test(sem(i.s).trim()))
+    // nome do quadro: o título mais perto que combine com o elemento (juntando as linhas do título);
+    // se nenhum combinar, o nome sai do próprio elemento (ex.: "Fundações — SP10, 2xSP11 (-56)")
+    const PAL = { vigas: /VIGA/, pilares: /PILAR/, lajes: /LAJE|VIGOTA|POSITIV|NEGATIV/, escada: /ESCADA/, fundacoes: /SAPATA|BLOCO|ESTACA|FUNDA|TUBUL|RADIER/, arrimo: /ARRIMO|MURO|CORTINA|PAREDE/, piscina: /PISCINA/ };
+    const bons = it.filter(i => i.h >= 12 && i.s.length > 10 && /[A-Z]{4}/.test(sem(i.s)) && !NOTA.test(i.s) && !/^(VISTA|SEM ESCALA|ESC\b|CORTE|RELACAO|RESUMO|NOTA|PERSPECTIVA)/i.test(sem(i.s).trim()))
       .sort((a, b) => Math.hypot(a.x - R.x, a.y - R.y) - Math.hypot(b.x - R.x, b.y - R.y));
     const re = PAL[c.categoria];
-    const titulo = (re && (bons.find(i => re.test(sem(i.s).toUpperCase())) || carimbo.find(t => re.test(sem(t).toUpperCase()))))?.s ?? (re && carimbo.find(t => re.test(sem(t).toUpperCase())))
-      ?? bons.find(i => /DETALHAMENTO|ARMAC|PLANTA DE F/i.test(sem(i.s)))?.s ?? carimbo[0] ?? `Prancha ${n}`;
+    const daTabela = /a[cç]o\s+d[aeo]s?\s+(.+)$/i.exec(R.s.trim());
+    let titulo;
+    if (daTabela) titulo = cap(daTabela[1]) + (c.categoria === "piscina" && !/PISCINA/i.test(daTabela[1]) ? " da piscina" : "");
+    const pos = elementos.some(e => /^POSITIV/i.test(e)), neg = elementos.some(e => /^NEGATIV/i.test(e));
+    if (!titulo && c.categoria === "lajes" && (pos || neg)) {
+      const quer = pos ? /POSITIV/ : /NEGATIV/;
+      const t = bons.find(i => { const b = sem(blocoTitulo(it, i)).toUpperCase(); return quer.test(b) && /LAJE/.test(b); });
+      if (t) titulo = blocoTitulo(it, t).replace(/POSITIVA/i, m => (pos && neg ? (m === m.toUpperCase() ? "POSITIVA E NEGATIVA" : "positiva e negativa") : m));
+    }
+    if (!titulo && re) {
+      const t = bons.find(i => re.test(sem(blocoTitulo(it, i)).toUpperCase()));
+      if (t) titulo = blocoTitulo(it, t);
+      else if (elementos.length) {
+        const nivel = bons[0] ? (/\([+-]?\d+\)\s*$/.exec(blocoTitulo(it, bons[0])) || [""])[0] : "";
+        titulo = `${NOME_CAT[c.categoria]} — ${elementos.slice(0, 4).join(", ")}${elementos.length > 4 ? "…" : ""}${nivel ? " " + nivel : ""}`;
+      } else titulo = carimbo.find(x => re.test(sem(x).toUpperCase()));
+    }
+    if (!titulo) { const t = bons.find(i => /DETALHAMENTO|ARMAC|PLANTA DE F/i.test(sem(i.s))); titulo = t ? blocoTitulo(it, t) : carimbo[0] || `Prancha ${n}`; }
     if (aco.length || volume != null || forma != null)
-      tabelas.push({ id: `p${n}t${k + 1}`, pagina: n, titulo: typeof titulo === "string" ? titulo : titulo?.s || `Prancha ${n}`, elementos, aco, pesoTotal, volume, forma, fck, ...c, incluir: true });
+      tabelas.push({ id: `p${n}t${k + 1}`, pagina: n, titulo, elementos, aco, pesoTotal, volume, forma, fck, ...c, incluir: true });
   });
+  // dois quadros com o mesmo nome na prancha: acrescenta os elementos para diferenciar
+  const vistos = {};
+  tabelas.forEach(t => { vistos[t.titulo] = (vistos[t.titulo] || 0) + 1; });
+  tabelas.forEach(t => { if (vistos[t.titulo] > 1 && t.elementos.length) t.titulo = `${t.titulo} — ${t.elementos.slice(0, 3).join(", ")}${t.elementos.length > 3 ? "…" : ""}`; });
   return { tabelas, titulo: carimbo[0] || titulos[0] || "" };
 }
