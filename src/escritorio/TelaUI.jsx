@@ -1,28 +1,69 @@
-// Compartilhamento de tela: aviso de quem está compartilhando, janela para assistir (arrastável) e barra de quem compartilha
+// Compartilhamento de tela: aviso de quem está compartilhando e a "sala da tela" (janela arrastável) com o vídeo,
+// quem está vendo e o botão de microfone. Aparece para quem compartilha (prévia da própria tela) e para quem assiste.
 import { useEffect, useRef, useState } from "react";
 
-const B = (cor, borda = cor, tx = "#fff") => ({ border: `1px solid ${borda}`, background: cor, color: tx, borderRadius: 10, padding: "7px 11px", fontWeight: 700, cursor: "pointer", fontSize: 13 });
+const B = (cor, borda = cor, tx = "#fff") => ({ border: `1px solid ${borda}`, background: cor, color: tx, borderRadius: 10, padding: "7px 11px", fontWeight: 700, cursor: "pointer", fontSize: 13, whiteSpace: "nowrap" });
 
-function Video({ stream, mudo = true, estilo }) {
+function Video({ stream, estilo }) {
   const ref = useRef(null);
   useEffect(() => { if (ref.current && ref.current.srcObject !== stream) ref.current.srcObject = stream || null; }, [stream]);
-  return <video ref={ref} autoPlay playsInline muted={mudo} style={estilo} />;
+  return <video ref={ref} autoPlay playsInline muted style={estilo} />;
+}
+
+function Sala({ titulo, aviso, stream, pessoas, micLigado, onMic, botoes }) {
+  const [pos, setPos] = useState({ x: Math.max(12, window.innerWidth - 600), y: 90 });
+  const [grande, setGrande] = useState(false);
+  const arr = useRef(null);
+  return (
+    <div role="dialog" aria-label={titulo} style={grande ? { position: "fixed", inset: 12, zIndex: 390, background: "#0b1220", borderRadius: 16, display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(0,0,0,.5)" }
+      : { position: "fixed", left: pos.x, top: pos.y, zIndex: 390, width: 560, height: 420, maxWidth: "calc(100vw - 24px)", background: "#0b1220", borderRadius: 14, boxShadow: "0 20px 60px rgba(0,0,0,.45)", resize: "both", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+      <div onPointerDown={e => { if (grande || e.target.closest("button")) return; arr.current = { dx: e.clientX - pos.x, dy: e.clientY - pos.y }; e.currentTarget.setPointerCapture(e.pointerId); }}
+        onPointerMove={e => { if (arr.current) setPos({ x: Math.max(0, e.clientX - arr.current.dx), y: Math.max(0, e.clientY - arr.current.dy) }); }} onPointerUp={() => { arr.current = null; }}
+        style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", color: "#e2e8f0", cursor: grande ? "default" : "move", userSelect: "none" }}>
+        <span style={{ flex: 1, fontSize: 13, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>🖥️ <b>{titulo}</b>{aviso ? ` · ${aviso}` : ""}</span>
+        <button type="button" onClick={() => setGrande(g => !g)} style={B("transparent", "rgba(255,255,255,.3)")}>{grande ? "Reduzir" : "Ampliar"}</button>
+        {botoes}
+      </div>
+      <div style={{ flex: 1, minHeight: 120, display: "flex", alignItems: "center", justifyContent: "center", background: "#000" }}>
+        {stream ? <Video stream={stream} estilo={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} /> : <span style={{ color: "#94a3b8", fontSize: 13 }}>Aguardando a imagem…</span>}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", color: "#e2e8f0", flexWrap: "wrap" }}>
+        <span style={{ fontSize: 12, color: "#94a3b8" }}>Na sala:</span>
+        <div style={{ flex: 1, display: "flex", gap: 6, flexWrap: "wrap", minWidth: 0 }}>
+          {pessoas.map(p => (
+            <span key={p.id} title={p.mic ? "Microfone ligado" : "Microfone desligado"} style={{ fontSize: 12, padding: "3px 9px", borderRadius: 999, background: p.mic ? "rgba(34,197,94,.18)" : "rgba(255,255,255,.08)", border: `1px solid ${p.mic ? "rgba(34,197,94,.55)" : "rgba(255,255,255,.15)"}` }}>
+              {p.mic ? "🎙" : "🔇"} {p.nome}{p.tag ? <span style={{ color: "#94a3b8" }}> · {p.tag}</span> : null}
+            </span>
+          ))}
+        </div>
+        <button type="button" onClick={onMic} aria-pressed={micLigado} style={micLigado ? B("#16a34a") : B("#fff", "#fff", "#0f1f3d")}>{micLigado ? "🎙 Microfone ligado · silenciar" : "🔇 Ligar microfone"}</button>
+      </div>
+    </div>
+  );
 }
 
 export default function TelaUI({ tela, usuarios }) {
-  const { minha, transmissoes, assistindo, erro } = tela;
+  const { minha, transmissoes, assistindo, erro, micLigado } = tela;
   const nome = id => (usuarios || []).find(u => u.id === id)?.nome?.split(/\s+/)[0] || "Colega";
-  const [pos, setPos] = useState({ x: 24, y: 90 });
-  const [grande, setGrande] = useState(false);
-  const arr = useRef(null), caixa = useRef(null);
+  const [minStream, setMinStream] = useState(null); // minimizada vale só para o compartilhamento atual
+  const minimizada = !!minha && minStream === minha.stream;
+  const setMinimizada = v => setMinStream(v ? minha?.stream : null);
   const disponiveis = Object.keys(transmissoes).filter(id => id !== assistindo?.de);
+
+  const pessoasMinha = minha ? [{ id: "eu", nome: "Você", tag: "compartilhando", mic: micLigado }, ...(minha.vendo || []).map(id => ({ id, nome: nome(id), mic: !!minha.mics?.[id] }))] : [];
+  const sala = assistindo ? transmissoes[assistindo.de] : null;
+  const pessoasVendo = assistindo ? [
+    { id: assistindo.de, nome: nome(assistindo.de), tag: "compartilhando", mic: !!sala?.mics?.[assistindo.de] },
+    ...(sala?.vendo || []).map(id => ({ id, nome: tela.euId === id ? "Você" : nome(id), mic: !!sala?.mics?.[id] })),
+  ] : [];
 
   return (
     <>
       <div style={{ position: "fixed", left: "50%", transform: "translateX(-50%)", top: 76, zIndex: 330, display: "grid", gap: 8, width: "min(460px, calc(100vw - 24px))" }} aria-live="polite">
-        {minha && (
+        {minha && minimizada && (
           <div style={{ background: "#16a34a", color: "#fff", borderRadius: 14, padding: "8px 12px", display: "flex", alignItems: "center", gap: 10, boxShadow: "0 10px 30px rgba(22,163,74,.35)" }}>
-            <span style={{ fontSize: 18 }}>🖥️</span><span style={{ flex: 1, fontSize: 13.5 }}><b>Você está compartilhando a tela</b> · {minha.espectadores} assistindo</span>
+            <span style={{ fontSize: 18 }}>🖥️</span><span style={{ flex: 1, fontSize: 13.5 }}><b>Você está compartilhando a tela</b> · {(minha.vendo || []).length} assistindo</span>
+            <button type="button" onClick={() => setMinimizada(false)} style={B("transparent", "#fff")}>Abrir</button>
             <button type="button" onClick={tela.parar} style={B("#fff", "#fff", "#166534")}>Parar</button>
           </div>
         )}
@@ -34,20 +75,18 @@ export default function TelaUI({ tela, usuarios }) {
         ))}
         {erro && <div role="alert" style={{ background: "#fff1f2", border: "1px solid #fecdd3", color: "#9f1239", borderRadius: 12, padding: "8px 12px", fontSize: 13, display: "flex", gap: 8 }}><span style={{ flex: 1 }}>{erro}</span><button type="button" onClick={tela.limparErro} style={{ border: 0, background: "none", cursor: "pointer" }}>×</button></div>}
       </div>
+
+      {minha && !minimizada && !assistindo && (
+        <Sala titulo="Sua tela" aviso={`${(minha.vendo || []).length} assistindo`} stream={minha.stream} pessoas={pessoasMinha} micLigado={micLigado} onMic={tela.alternarMic}
+          botoes={<>
+            <button type="button" onClick={() => setMinimizada(true)} style={B("transparent", "rgba(255,255,255,.3)")}>Minimizar</button>
+            <button type="button" onClick={tela.parar} style={B("#dc2626")}>Parar</button>
+          </>} />
+      )}
       {assistindo && (
-        <div ref={caixa} style={grande ? { position: "fixed", inset: 12, zIndex: 390, background: "#0b1220", borderRadius: 16, display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(0,0,0,.5)" }
-          : { position: "fixed", left: pos.x, top: pos.y, zIndex: 390, width: 520, maxWidth: "calc(100vw - 24px)", background: "#0b1220", borderRadius: 14, boxShadow: "0 20px 60px rgba(0,0,0,.45)", resize: "both", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-          <div onPointerDown={e => { if (grande) return; arr.current = { dx: e.clientX - pos.x, dy: e.clientY - pos.y }; e.currentTarget.setPointerCapture(e.pointerId); }}
-            onPointerMove={e => { if (arr.current) setPos({ x: Math.max(0, e.clientX - arr.current.dx), y: Math.max(0, e.clientY - arr.current.dy) }); }} onPointerUp={() => { arr.current = null; }}
-            style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", color: "#e2e8f0", cursor: grande ? "default" : "move", userSelect: "none" }}>
-            <span style={{ flex: 1, fontSize: 13 }}>🖥️ Tela de <b>{nome(assistindo.de)}</b>{assistindo.estado === "conectando" ? " · conectando…" : assistindo.estado === "falhou" ? " · a rede bloqueou a conexão" : ""}</span>
-            <button type="button" onClick={() => setGrande(g => !g)} style={B("transparent", "rgba(255,255,255,.3)")}>{grande ? "Reduzir" : "Ampliar"}</button>
-            <button type="button" onClick={tela.sairAssistir} style={B("transparent", "rgba(255,255,255,.3)")}>Fechar</button>
-          </div>
-          <div style={{ flex: 1, minHeight: 200, display: "flex", alignItems: "center", justifyContent: "center", background: "#000" }}>
-            {assistindo.stream ? <Video stream={assistindo.stream} estilo={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} /> : <span style={{ color: "#94a3b8", fontSize: 13 }}>Aguardando a imagem…</span>}
-          </div>
-        </div>
+        <Sala titulo={`Tela de ${nome(assistindo.de)}`} aviso={assistindo.estado === "conectando" ? "conectando…" : assistindo.estado === "falhou" ? "a rede bloqueou a conexão" : ""}
+          stream={assistindo.stream} pessoas={pessoasVendo} micLigado={micLigado} onMic={tela.alternarMic}
+          botoes={<button type="button" onClick={tela.sairAssistir} style={B("transparent", "rgba(255,255,255,.3)")}>Sair</button>} />
       )}
     </>
   );
