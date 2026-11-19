@@ -927,6 +927,8 @@ export default function App(){
   // ── Login com Google (Supabase Auth) ──
   const [authStatus, setAuthStatus] = useState("verificando"); // verificando | fora | dentro
   // Escritório virtual: presença em tempo real (entra no canal enquanto a pessoa está logada)
+  // links internos (ex.: "Ver agenda completa" do escritório virtual) pedem para trocar de aba
+  useEffect(()=>{ const f=e=>{ if(typeof e.detail==="string"&&/^[a-z]{3,20}$/.test(e.detail)) setAba(e.detail); }; window.addEventListener("wm-ir-aba",f); return ()=>window.removeEventListener("wm-ir-aba",f); },[]);
   const presenca=usePresencaEscritorio({ user: authStatus==="dentro" ? user : null, sessaoAtiva, usuarios });
   const voz=useVozEscritorio(presenca, authStatus==="dentro" ? user : null);
   const [authEmail,  setAuthEmail]  = useState("");
@@ -1162,7 +1164,7 @@ export default function App(){
             {barraSubAbas}
             {CABECALHOS[aba]&&<CabecalhoPagina {...CABECALHOS[aba]}/>} 
         {aba==="dashboard" &&<Dashboard projetos={projetos} onAbrirProjeto={abrirP} drive={drive} onImportar={importar} usuarioAtual={user} onIrPara={setAba} permissoes={permissoes.dashboard} tarefas={central.tarefas} registros={registros} calendario={calendario}/>}
-        {aba==="escritorio" && <EscritorioVirtual presenca={presenca} voz={voz} usuarios={usuarios} projetos={projetos} user={user}/>}
+        {aba==="escritorio" && <EscritorioVirtual presenca={presenca} voz={voz} usuarios={usuarios} projetos={projetos} user={user} onMensagem={u=>{setChatAberto(true);chatIniciarDM(u).catch(()=>{});}}/>}
         {aba==="projetos"  &&<ListaProjetos projetos={projetosAba} onAbrirProjeto={abrirP} onNovoProjeto={novoP} usuarios={usuarios} usuarioAtual={user}/>}
         {aba==="financeiro"&&<Financeiro projetos={projetos}/>}
         {aba==="horas"     &&<AbaHoras registros={registros} setRegistros={setRegistros} usuarios={usuarios} projetos={projetos} usuarioAtual={user} calendario={calendario} onAbrirEncerramento={()=>setModalH("encerramento")}/>}
