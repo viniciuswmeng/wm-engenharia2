@@ -9,7 +9,7 @@ const CANAL = "escritorio-wm";
 const CHAVE_LOCAL = "wm-escritorio-2";
 const OCIOSO_MS = 10 * 60 * 1000;
 const DEMO = import.meta.env.VITE_ESCRITORIO_DEMO === "1";
-export const TIPOS_SINAL = ["aceno", "voz", "video", "layout", "moodboard", "avatar"];
+export const TIPOS_SINAL = ["aceno", "voz", "video", "layout", "moodboard", "avatar", "tela", "mb"];
 
 const lerLocal = () => { try { return JSON.parse(localStorage.getItem(CHAVE_LOCAL) || "{}"); } catch { return {}; } };
 const gravarLocal = v => { try { localStorage.setItem(CHAVE_LOCAL, JSON.stringify(v)); } catch { /* sem armazenamento */ } };
@@ -96,7 +96,7 @@ export function usePresencaEscritorio({ user, sessaoAtiva, usuarios }) {
   const enviarSinal = useCallback(s => {
     if (!meuId || !TIPOS_SINAL.includes(s?.tipo)) return;
     const msg = { ...s, de: meuId, em: Date.now() };
-    if (DEMO) { ouvintes.current.forEach(f => f({ ...msg, eco: true })); return; }
+    if (DEMO) { ouvintes.current.forEach(f => f({ ...msg, eco: true })); demoCanal()?.postMessage(msg); return; }
     canalRef.current?.send({ type: "broadcast", event: "sinal", payload: msg }).catch(() => {});
   }, [meuId]);
   const ouvirSinal = useCallback(f => { ouvintes.current.add(f); return () => ouvintes.current.delete(f); }, []);
@@ -120,6 +120,10 @@ export function usePresencaEscritorio({ user, sessaoAtiva, usuarios }) {
   };
 }
 
+// no build de demonstração, os sinais passam entre abas do mesmo navegador (para testar o "ao vivo")
+let bc = null;
+function demoCanal() { if (!DEMO || typeof BroadcastChannel === "undefined") return null; if (!bc) bc = new BroadcastChannel("wm-ev-demo"); return bc; }
+
 // ── Modo demonstração (só no build de teste com VITE_ESCRITORIO_DEMO=1): colegas fictícios ──
 function iniciarDemo(setPessoas, setAcenos, meuId, ouvintes, usuarios) {
   const ids = (usuarios || []).map(u => u.id).filter(id => id !== meuId);
@@ -138,5 +142,7 @@ function iniciarDemo(setPessoas, setAcenos, meuId, ouvintes, usuarios) {
   // o colega fictício aceita conversar
   const resp = s => { if (s.eco && s.tipo === "voz" && s.acao === "pedido") setTimeout(() => ouvintes.current.forEach(f => f({ tipo: "voz", acao: "aceito", de: s.para, para: meuId, demo: true })), 800); };
   ouvintes.current.add(resp);
-  return () => { clearInterval(t); clearTimeout(a); ouvintes.current.delete(resp); };
+  const canal = demoCanal(), rec = e => ouvintes.current.forEach(f => f(e.data));
+  canal?.addEventListener("message", rec);
+  return () => { clearInterval(t); clearTimeout(a); ouvintes.current.delete(resp); canal?.removeEventListener("message", rec); };
 }

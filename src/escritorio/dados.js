@@ -4,7 +4,8 @@ import { layoutPadrao, limparLayout } from "./iso.js";
 
 const DEMO = import.meta.env.VITE_ESCRITORIO_DEMO === "1";
 export const faltaTabelaEV = e => /escritorio_|relation .* does not exist|schema cache|PGRST205/i.test(e?.message || e?.code || "");
-const memoria = { layout: null, avatares: {}, boards: [] }; // modo demonstração
+const memoria = { layout: null, avatares: {}, get boards() { try { return JSON.parse(localStorage.getItem("wm-ev-demo-boards") || "[]"); } catch { return []; } },
+  set boards(v) { try { localStorage.setItem("wm-ev-demo-boards", JSON.stringify(v)); } catch { /* cheio */ } } }; // modo demonstração (entre abas)
 
 export async function carregarLayout() {
   if (DEMO) return memoria.layout || layoutPadrao();
@@ -33,14 +34,43 @@ export async function salvarAvatar(usuarioId, dados) {
 }
 
 // ── moodboards ──
-const COR_NOTA = /^#[0-9a-f]{6}$/i;
+export const QW = 2400, QH = 1500; // tamanho do quadro
+const COR_NOTA = /^#[0-9a-f]{6}$/i, TIPOS_ITEM = ["nota", "titulo", "texto", "imagem", "seta"];
+const lim = (v, a, b) => Math.max(a, Math.min(b, Math.round(Number(v) || 0)));
+export function limparItem(n, i = 0) {
+  const tipo = TIPOS_ITEM.includes(n?.tipo) ? n.tipo : "nota";
+  const o = { id: String(n?.id || `n${i}`).slice(0, 24), tipo, x: lim(n?.x, 0, QW - 20), y: lim(n?.y, 0, QH - 20), z: lim(n?.z, 0, 100000),
+    cor: COR_NOTA.test(n?.cor || "") ? n.cor : tipo === "seta" ? "#0a2557" : "#fde68a" };
+  if (tipo === "seta") Object.assign(o, { x2: lim(n?.x2, 0, QW), y2: lim(n?.y2, 0, QH) });
+  else Object.assign(o, { w: lim(n?.w || (tipo === "titulo" ? 380 : tipo === "texto" ? 340 : tipo === "imagem" ? 320 : 210), 60, 1400) });
+  if (tipo === "imagem") Object.assign(o, { h: lim(n?.h || 220, 40, 1400), path: /^boards\/[\w-]+\/[\w.-]+$/.test(n?.path || "") ? n.path : "" });
+  else if (tipo !== "seta") o.texto = String(n?.texto || "").slice(0, 4000);
+  return o;
+}
 export function limparBoard(b) {
-  const itens = (Array.isArray(b?.itens) ? b.itens : []).slice(0, 120).map((n, i) => ({
-    id: String(n?.id || `n${i}`).slice(0, 24), tipo: n?.tipo === "titulo" ? "titulo" : "nota",
-    x: Math.max(0, Math.min(1560, Math.round(Number(n?.x) || 0))), y: Math.max(0, Math.min(940, Math.round(Number(n?.y) || 0))),
-    texto: String(n?.texto || "").slice(0, 600), cor: COR_NOTA.test(n?.cor || "") ? n.cor : "#fde68a",
-  }));
+  const itens = (Array.isArray(b?.itens) ? b.itens : []).slice(0, 300).map(limparItem).filter(n => n.tipo !== "imagem" || n.path);
   return { id: b?.id, titulo: String(b?.titulo || "Novo moodboard").slice(0, 80), projeto_id: b?.projeto_id ? String(b.projeto_id).slice(0, 40) : null, itens };
+}
+// imagens do moodboard: bucket privado, lidas com link assinado
+const BUCKET = "escritorio-moodboard", urls = new Map();
+export async function enviarImagemBoard(boardId, arquivo) {
+  const bmp = await createImageBitmap(arquivo), max = 1800, e = Math.min(1, max / Math.max(bmp.width, bmp.height));
+  const cv = document.createElement("canvas"); cv.width = Math.round(bmp.width * e); cv.height = Math.round(bmp.height * e);
+  cv.getContext("2d").drawImage(bmp, 0, 0, cv.width, cv.height);
+  const blob = await new Promise(r => cv.toBlob(r, "image/jpeg", 0.86));
+  const path = `boards/${String(boardId).replace(/[^\w-]/g, "")}/${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}.jpg`;
+  if (DEMO) { urls.set(path, URL.createObjectURL(blob)); return { path, w: cv.width, h: cv.height }; }
+  const { error } = await supabase.storage.from(BUCKET).upload(path, blob, { contentType: "image/jpeg", upsert: false });
+  if (error) throw new Error(/bucket|not found/i.test(error.message) ? "Rode o SQL do escritório virtual (parte 3) para liberar as imagens." : error.message);
+  return { path, w: cv.width, h: cv.height };
+}
+export async function urlsImagens(paths) {
+  const falta = [...new Set(paths.filter(p => p && !urls.has(p)))];
+  if (falta.length && !DEMO) {
+    const { data } = await supabase.storage.from(BUCKET).createSignedUrls(falta, 60 * 60 * 6);
+    (data || []).forEach(d => { if (d.signedUrl) urls.set(d.path, d.signedUrl); });
+  }
+  return Object.fromEntries(paths.map(p => [p, urls.get(p) || ""]));
 }
 export async function listarBoards() {
   if (DEMO) return memoria.boards.map(b => ({ ...b }));

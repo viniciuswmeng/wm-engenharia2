@@ -171,7 +171,7 @@ function Reunioes({ user }) {
   );
 }
 
-export default function EscritorioVirtual({ presenca, voz, usuarios, projetos, user, onMensagem }) {
+export default function EscritorioVirtual({ presenca, voz, tela, usuarios, projetos, user, onMensagem }) {
   const { estado, pessoas, eu, mover, definirStatus, acenar, definirAvatar, definirZoom, ouvirSinal, enviarSinal } = presenca;
   const ehGestor = String(user?.perfil || "").toLowerCase() === "gestor";
   const [modo, setModo] = useState(() => localStorage.getItem("wm-ev-modo") || "mundo");
@@ -521,7 +521,7 @@ export default function EscritorioVirtual({ presenca, voz, usuarios, projetos, u
                       }} />
                     : <PessoaNoMapa key={d.p.id} alvo={{ x: d.p.x, y: d.p.y }} layout={L} oc={oc} P={P} u={porId[d.p.id] || user} avatar={avatarDe(d.p.id)} status={d.p.status} eu={!!d.eu}
                         sel={sel === d.p.id} rotProj={rotProjDe(d.eu ? euP : d.p)} visual={visual} esc={visual === "cartao" ? escTela * .9 : Math.max(1, escTela * .75)}
-                        falando={ch?.fase === "ativa" && ((d.eu && ch.mic) || (!d.eu && ch.com === d.p.id && ch.remotoFalando))}
+                        falando={ch?.fase === "ativa" && ((d.eu && ch.mic && ch.euFalando) || (!d.eu && ch.com === d.p.id && ch.remotoFalando))}
                         onClick={() => setSel(d.p.id)} />)}
                   {/* nomes das salas em balões */}
                   {rotulosSalas(L).map((r, i) => { const [sx, sy] = P(r.x + .5, r.y + .5), pz = PISOS[r.t], w = 30 + pz.nome.length * 8.6 + (pz.icone ? 20 : 0); return (
@@ -531,7 +531,7 @@ export default function EscritorioVirtual({ presenca, voz, usuarios, projetos, u
                     </g>); })}
                   {desenho.filter(d => d.k >= 5e3).map(d => <PessoaNoMapa key={d.p.id} alvo={{ x: d.p.x, y: d.p.y }} layout={L} oc={oc} P={P} u={porId[d.p.id] || user} avatar={avatarDe(d.p.id)} status={d.p.status} eu={!!d.eu}
                     sel={sel === d.p.id} rotProj={rotProjDe(d.eu ? euP : d.p)} visual={visual} esc={escTela * .9}
-                    falando={ch?.fase === "ativa" && ((d.eu && ch.mic) || (!d.eu && ch.com === d.p.id && ch.remotoFalando))}
+                    falando={ch?.fase === "ativa" && ((d.eu && ch.mic && ch.euFalando) || (!d.eu && ch.com === d.p.id && ch.remotoFalando))}
                     onClick={() => setSel(d.p.id)} />)}
                   {fantasma && <Movel item={fantasma} P={P} fantasma ruim={!cabe(L, fantasma)} />}
                 </svg>
@@ -548,10 +548,11 @@ export default function EscritorioVirtual({ presenca, voz, usuarios, projetos, u
               </div>
               {/* microfone, falar, câmera */}
               <div style={{ position: "absolute", right: 14, bottom: 14, display: "flex", gap: 8 }}>
-                <button type="button" aria-label={ch?.mic ? "Fechar microfone" : "Abrir microfone"} title={ch?.fase === "ativa" ? (ch.mic ? "Microfone aberto — clique para fechar" : "Abrir o microfone (ou segure a barra de espaço)") : "O microfone abre durante uma conversa"}
+                <button type="button" aria-label={ch?.mic ? "Fechar microfone" : "Abrir microfone"} title={ch?.fase === "ativa" ? (ch.mic ? "Microfone ligado — clique para silenciar" : "Microfone mudo — clique para ligar") : "O microfone liga sozinho quando a conversa conecta"}
                   disabled={ch?.fase !== "ativa"} onClick={() => voz.falar(!ch?.mic)} style={{ ...controle(ch?.mic), color: ch?.mic ? "#fff" : ch?.fase === "ativa" ? K.mar : "#dc2626", opacity: ch?.fase === "ativa" ? 1 : .9 }}><SV d={ch?.mic ? IC.mic : IC.micOff} t={20} /></button>
                 <button type="button" aria-label="Falar com quem está perto" title={perto[0] ? `Falar com ${primeiroNome(porId[perto[0].id]?.nome)}` : "Chegue perto de alguém para falar"} onClick={() => (ch ? voz.encerrar(true) : perto[0] ? voz.pedir(perto[0].id) : avisar("Chegue perto de alguém (até 3 pisos) para falar."))}
                   style={controle(!!ch)}><SV d={IC.fone} t={20} /></button>
+                {tela && <button type="button" aria-label={tela.minha ? "Parar de compartilhar a tela" : "Compartilhar a tela"} title={tela.minha ? "Parar de compartilhar a tela" : "Compartilhar a tela com a equipe"} onClick={() => (tela.minha ? tela.parar() : tela.iniciar())} style={{ ...controle(!!tela.minha), ...(tela.minha ? { background: "#16a34a", borderColor: "#16a34a" } : {}) }}><SV d="M3 4h18v12H3zM8 20h8M12 16v4" t={20} /></button>}
                 <button type="button" aria-label="Chamada com câmera (Meet)" title={alvoCamera ? `Chamada com câmera com ${primeiroNome(porId[alvoCamera]?.nome)} (Meet)` : "Clique numa pessoa ou chegue perto para chamar"} onClick={() => chamarVideo(alvoCamera, "meet")} style={controle(false)}><SV d={IC.video} t={20} /></button>
               </div>
 
@@ -639,7 +640,7 @@ export default function EscritorioVirtual({ presenca, voz, usuarios, projetos, u
       </div>
 
       {editAvatar && <EditorAvatar inicial={avatarDe(user.id)} usuario={porId[user.id] || user} salvando={salvandoAv} onSalvar={salvarMeuAvatar} onFechar={() => setEditAvatar(false)} />}
-      {mood && <Moodboard user={user} usuarios={usuarios} projetos={projetos} presenca={presenca} onFechar={() => setMood(false)} />}
+      {mood && <Moodboard user={user} usuarios={usuarios} projetos={projetos} presenca={presenca} tela={tela} onFechar={() => setMood(false)} />}
     </div>
   );
 

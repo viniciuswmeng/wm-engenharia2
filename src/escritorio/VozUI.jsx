@@ -1,5 +1,4 @@
 // Barra flutuante da conversa por voz (aparece em qualquer tela) e convites de chamada com câmera.
-import { useEffect } from "react";
 import { linkVideoOk } from "./voz.js";
 
 const B = (cor, borda = cor, tx = "#fff") => ({ border: `1px solid ${borda}`, background: cor, color: tx, borderRadius: 10, padding: "8px 12px", fontWeight: 700, cursor: "pointer", fontSize: 13.5 });
@@ -7,16 +6,6 @@ const B = (cor, borda = cor, tx = "#fff") => ({ border: `1px solid ${borda}`, ba
 export default function VozUI({ voz, usuarios }) {
   const { chamada: c, convites } = voz;
   const nome = id => (usuarios || []).find(u => u.id === id)?.nome?.split(/\s+/)[0] || "Colega";
-  // barra de espaço = falar (enquanto segura), fora de campos de texto
-  useEffect(() => {
-    if (c?.fase !== "ativa") return undefined;
-    const campo = e => /INPUT|TEXTAREA|SELECT/.test(e.target.tagName) || e.target.isContentEditable;
-    const d = e => { if (e.code === "Space" && !e.repeat && !campo(e)) { e.preventDefault(); voz.falar(true); } };
-    const u = e => { if (e.code === "Space" && !campo(e)) { e.preventDefault(); voz.falar(false); } };
-    window.addEventListener("keydown", d); window.addEventListener("keyup", u);
-    return () => { window.removeEventListener("keydown", d); window.removeEventListener("keyup", u); };
-  }, [c?.fase, voz]);
-
   if (!c && !convites.length) return null;
   return (
     <div style={{ position: "fixed", left: "50%", transform: "translateX(-50%)", bottom: 18, zIndex: 320, display: "grid", gap: 8, width: "min(460px, calc(100vw - 24px))" }} aria-live="polite">
@@ -36,7 +25,7 @@ export default function VozUI({ voz, usuarios }) {
               {c.fase === "chamando" && <>Chamando <b>{nome(c.com)}</b> para conversar…</>}
               {c.fase === "recebendo" && <><b>{nome(c.com)}</b> quer conversar com você (só áudio)</>}
               {c.fase === "conectando" && <>Conectando o áudio com <b>{nome(c.com)}</b>…</>}
-              {c.fase === "ativa" && <>Conversando com <b>{nome(c.com)}</b>{c.remotoFalando ? <span style={{ color: "#93c5fd" }}> · falando…</span> : ""}</>}
+              {c.fase === "ativa" && <>Conversando com <b>{nome(c.com)}</b>{c.remotoFalando ? <span style={{ color: "#93c5fd" }}> · falando…</span> : c.remotoMudo ? <span style={{ color: "#fca5a5" }}> · mudo</span> : ""}</>}
               {c.fase === "fim" && <>{c.erro || "Conversa encerrada."}</>}
             </span>
           </div>
@@ -45,12 +34,12 @@ export default function VozUI({ voz, usuarios }) {
             {c.fase === "recebendo" && <><button type="button" onClick={voz.aceitar} style={B("#16a34a")}>Aceitar</button><button type="button" onClick={voz.recusar} style={B("transparent", "rgba(255,255,255,.4)")}>Agora não</button></>}
             {(c.fase === "chamando" || c.fase === "conectando") && <button type="button" onClick={() => voz.encerrar(true)} style={B("transparent", "rgba(255,255,255,.4)")}>Cancelar</button>}
             {c.fase === "ativa" && <>
-              <button type="button" onPointerDown={e => { e.currentTarget.setPointerCapture?.(e.pointerId); voz.falar(true); }} onPointerUp={() => voz.falar(false)} onPointerCancel={() => voz.falar(false)} onContextMenu={e => e.preventDefault()}
-                style={{ ...B(c.mic ? "#dc2626" : "#1565d8"), flex: 1, padding: "12px 14px", fontSize: 15, touchAction: "none", userSelect: "none" }}>{c.mic ? "🎙 Falando… solte para ouvir" : "🎙 Segure para falar"}</button>
+              <button type="button" onClick={() => voz.falar(!c.mic)} aria-pressed={c.mic}
+                style={{ ...B(c.mic ? "#16a34a" : "#be123c"), flex: 1, padding: "12px 14px", fontSize: 15 }}>{c.mic ? (c.euFalando ? "🎙 Falando… (clique para silenciar)" : "🎙 Microfone ligado · silenciar") : "🔇 Microfone mudo · ligar"}</button>
               <button type="button" onClick={() => voz.encerrar(true)} style={B("#be123c")}>Encerrar</button>
             </>}
           </div>
-          {c.fase === "ativa" && <div style={{ fontSize: 11.5, color: "#a9c8f5" }}>Dica: segure a barra de espaço para falar. Afastar-se no mapa encerra a conversa.</div>}
+          {c.fase === "ativa" && <div style={{ fontSize: 11.5, color: "#a9c8f5" }}>É só falar, como numa ligação{c.remotoMudo ? " · o colega está com o microfone mudo" : ""}. Afastar-se no mapa encerra a conversa.</div>}
         </div>
       )}
     </div>

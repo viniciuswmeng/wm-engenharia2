@@ -1,6 +1,7 @@
 // Conversa por voz dentro do sistema (estilo walkie-talkie), entre duas pessoas que estão perto no mapa.
 // Áudio direto entre os navegadores (WebRTC); a "combinação" da chamada passa pelo canal privado da equipe.
-// Por padrão o microfone fica fechado: aperte e segure o botão (ou a barra de espaço) para falar.
+// O microfone abre quando a conversa conecta (como numa ligação); dá para silenciar e voltar com um clique.
+// Quem está falando é detectado pelo volume do áudio (não precisa segurar botão).
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const ICE = [{ urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun1.l.google.com:19302" }];
@@ -14,11 +15,12 @@ export function useVozEscritorio(presenca, user) {
   const { enviarSinal, ouvirSinal, pessoas, eu } = presenca;
   const [ch, setCh] = useState(null); // { com, fase: chamando|recebendo|conectando|ativa, mic, remotoFalando, erro }
   const [convites, setConvites] = useState([]);
-  const pc = useRef(null), stream = useRef(null), audio = useRef(null), filaIce = useRef([]), chRef = useRef(null), tempo = useRef(null);
+  const pc = useRef(null), stream = useRef(null), audio = useRef(null), filaIce = useRef([]), chRef = useRef(null), tempo = useRef(null), medidores = useRef([]);
   useEffect(() => { chRef.current = ch; });
 
   const limpar = useCallback(() => {
     clearTimeout(tempo.current);
+    medidores.current.forEach(f => f()); medidores.current = [];
     try { pc.current?.close(); } catch { /* já fechada */ }
     pc.current = null; filaIce.current = [];
     stream.current?.getTracks().forEach(t => t.stop()); stream.current = null;
@@ -32,15 +34,35 @@ export function useVozEscritorio(presenca, user) {
 
   async function microfone() {
     const s = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false });
-    s.getAudioTracks().forEach(t => { t.enabled = false; }); // walkie-talkie: começa fechado
-    stream.current = s; return s;
+    stream.current = s; medir(s, v => setCh(c => (c && c.euFalando !== v ? { ...c, euFalando: v } : c)));
+    return s;
+  }
+  // detecta fala pelo volume (para mostrar quem está falando no mapa)
+  function medir(st, aoMudar) {
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext; if (!Ctx) return;
+      const ctx = new Ctx(), src = ctx.createMediaStreamSource(st), an = ctx.createAnalyser(); an.fftSize = 512; src.connect(an);
+      const buf = new Uint8Array(an.fftSize); let ultimo = false, quieto = 0;
+      const t = setInterval(() => {
+        an.getByteTimeDomainData(buf); let s2 = 0; for (const v of buf) s2 += (v - 128) ** 2;
+        const rms = Math.sqrt(s2 / buf.length), fala = rms > 6;
+        quieto = fala ? 0 : quieto + 1;
+        const agora = fala || (ultimo && quieto < 4);
+        if (agora !== ultimo) { ultimo = agora; aoMudar(agora); }
+      }, 120);
+      medidores.current.push(() => { clearInterval(t); ctx.close().catch(() => {}); });
+    } catch { /* sem Web Audio */ }
   }
   function criarPc(com) {
     const p = new RTCPeerConnection({ iceServers: ICE });
     p.onicecandidate = e => { if (e.candidate) enviarSinal({ tipo: "voz", acao: "ice", para: com, cand: e.candidate.toJSON() }); };
-    p.ontrack = e => { const a = new Audio(); a.autoplay = true; a.srcObject = e.streams[0]; a.play().catch(() => {}); audio.current = a; };
+    p.ontrack = e => {
+      if (e.track.kind !== "audio") return;
+      const a = new Audio(); a.autoplay = true; a.srcObject = e.streams[0]; a.play().catch(() => {}); audio.current = a;
+      medir(e.streams[0], v => setCh(c => (c && c.remotoFalando !== v ? { ...c, remotoFalando: v } : c)));
+    };
     p.onconnectionstatechange = () => {
-      if (p.connectionState === "connected") setCh(c => (c ? { ...c, fase: "ativa", erro: "" } : c));
+      if (p.connectionState === "connected") setCh(c => (c ? { ...c, fase: "ativa", erro: "", mic: stream.current?.getAudioTracks().some(t => t.enabled) ?? true } : c));
       if (p.connectionState === "failed") { setCh(c => (c ? { ...c, erro: "Não foi possível conectar o áudio (rede bloqueando). Use a chamada com câmera." } : c)); }
       if (p.connectionState === "disconnected" || p.connectionState === "closed") { /* aguarda o sinal de fim */ }
     };
@@ -65,7 +87,7 @@ export function useVozEscritorio(presenca, user) {
         clearTimeout(tempo.current); tempo.current = setTimeout(() => { if (chRef.current?.fase === "recebendo") { limpar(); setCh(null); } }, 30000);
       } else if (s.acao === "aceito" && c?.com === s.de && c.fase === "chamando") {
         clearTimeout(tempo.current);
-        if (s.demo) { setCh({ ...c, fase: "ativa" }); return; }
+        if (s.demo) { setCh({ ...c, fase: "ativa", mic: true }); return; }
         setCh({ ...c, fase: "conectando" });
         const p = criarPc(s.de), m = await microfone();
         m.getTracks().forEach(t => p.addTrack(t, m));
@@ -86,7 +108,7 @@ export function useVozEscritorio(presenca, user) {
         limpar(); setCh({ com: s.de, fase: "fim", erro: s.acao === "ocupado" ? "Está em outra conversa." : "Não quis conversar agora." });
         setTimeout(() => setCh(x => (x?.fase === "fim" ? null : x)), 3500);
       } else if (s.acao === "fim" && c?.com === s.de) { limpar(); setCh(null); }
-      else if (s.acao === "ptt" && c?.com === s.de) setCh(x => (x ? { ...x, remotoFalando: !!s.on } : x));
+      else if (s.acao === "mudo" && c?.com === s.de) setCh(x => (x ? { ...x, remotoMudo: !!s.on } : x));
     } catch (e) {
       limpar(); setCh({ com: s.de, fase: "fim", erro: e?.name === "NotAllowedError" ? "O navegador bloqueou o microfone. Libere o acesso e tente de novo." : "Erro na conversa: " + (e?.message || e) });
     }
@@ -114,16 +136,17 @@ export function useVozEscritorio(presenca, user) {
     clearTimeout(tempo.current);
     try {
       if (!DEMO) { await microfone(); criarPc(c.com); }
-      setCh({ ...c, fase: DEMO ? "ativa" : "conectando" });
+      setCh({ ...c, fase: DEMO ? "ativa" : "conectando", mic: true });
       enviarSinal({ tipo: "voz", acao: "aceito", para: c.com });
     } catch (e) { limpar(); enviarSinal({ tipo: "voz", acao: "recusado", para: c.com }); setCh({ ...c, fase: "fim", erro: e?.name === "NotAllowedError" ? "O navegador bloqueou o microfone." : String(e?.message || e) }); }
   }, [enviarSinal, limpar]); // eslint-disable-line react-hooks/exhaustive-deps
   const recusar = useCallback(() => { const c = chRef.current; if (c) enviarSinal({ tipo: "voz", acao: "recusado", para: c.com }); limpar(); setCh(null); }, [enviarSinal, limpar]);
+  // liga/desliga o microfone (silenciar)
   const falar = useCallback(on => {
     const c = chRef.current; if (!c || c.fase !== "ativa" || c.mic === on) return;
     stream.current?.getAudioTracks().forEach(t => { t.enabled = on; });
-    setCh({ ...c, mic: on });
-    enviarSinal({ tipo: "voz", acao: "ptt", para: c.com, on });
+    setCh({ ...c, mic: on, euFalando: on ? c.euFalando : false });
+    enviarSinal({ tipo: "voz", acao: "mudo", para: c.com, on: !on });
   }, [enviarSinal]);
 
   const convidarVideo = useCallback((para, link, app) => {
