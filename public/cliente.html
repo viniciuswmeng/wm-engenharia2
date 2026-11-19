@@ -258,7 +258,7 @@ function pedirAceite(depois){
     try{var ctl=new AbortController(),t=setTimeout(function(){ctl.abort()},8000);
       var r=await fetch("/api/cliente",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token:token,acao:"aceite",versao:L.versao}),signal:ctl.signal});clearTimeout(t);
       if(r.status===404){var j=await r.json().catch(function(){return{}});f.remove();document.body.style.overflow="";erro(j.error);return}
-      ok=r.ok;
+      ok=r.ok; // 200 mesmo se a tabela de aceites ainda não existir no banco (o portal não fica bloqueado)
     }catch(e){}
     if(!ok){bt.disabled=false;bt.textContent="Aceitar e entrar";f.querySelector("#aceiteMsg").textContent="Não foi possível registrar o aceite. Verifique a internet e tente de novo.";return}
     var reg={versao:L.versao,em:new Date().toISOString()};aceiteMem=reg;try{localStorage.setItem(chaveAceite(),JSON.stringify(reg))}catch(e){}
