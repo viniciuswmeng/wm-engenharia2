@@ -157,7 +157,8 @@ export function analisarPagina(itens, n = 1) {
     const proxTit = it.filter(i => i.h >= 14 && i.s.length > 8 && /[A-Z]{4}/.test(sem(i.s)) && !/RELACAO|RESUMO/i.test(sem(i.s)) && !NOTA.test(i.s))
       .sort((a, b) => Math.hypot(a.x - R.x, (a.y - R.y) * 1.5) - Math.hypot(b.x - R.x, (b.y - R.y) * 1.5)).map(i => i.s);
     // sem elementos: vale primeiro o título mais perto do quadro; o carimbo (que traz o nome do projeto) só se não der
-    let c = classificar(elementos, proxTit.slice(0, 1).join(" · "));
+    let c = classificar(elementos, "");
+    for (const t of proxTit.slice(0, 6)) { if (c.categoria) break; const x = classificar(elementos, t); if (x.categoria) c = { ...x, motivo: "pelo título perto do quadro" }; }
     if (!c.categoria) c = classificar(elementos, [...proxTit.slice(0, 1), ...carimbo, ...titulos].join(" · "));
     // nome do quadro: o título mais perto que combine com o elemento (juntando as linhas do título);
     // se nenhum combinar, o nome sai do próprio elemento (ex.: "Fundações — SP10, 2xSP11 (-56)")
@@ -183,6 +184,7 @@ export function analisarPagina(itens, n = 1) {
       } else titulo = carimbo.find(x => re.test(sem(x).toUpperCase()));
     }
     if (!titulo) { const t = bons.find(i => /DETALHAMENTO|ARMAC|PLANTA DE F/i.test(sem(i.s))); titulo = t ? blocoTitulo(it, t) : carimbo[0] || `Prancha ${n}`; }
+    titulo = String(titulo).replace(/^\s*conte[uú]do\s*:?\s+/i, "").replace(/\s+(ESC\.?\s*[:\d].*|ESCALA\b.*|SEM ESCALA.*)$/i, "").trim();
     if (aco.length || volume != null || forma != null)
       tabelas.push({ id: `p${n}t${k + 1}`, pagina: n, titulo, elementos, aco, pesoTotal, volume, forma, fck, ...c, incluir: true });
   });

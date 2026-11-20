@@ -19,6 +19,15 @@ export async function lerPranchasQuantitativo(file, { aoProgredir, usarOcr = tru
   for (let n = 1; n <= doc.numPages; n++) {
     const pg = await doc.getPage(n), tc = await pg.getTextContent();
     const itens = tc.items.filter(i => i.str && i.str.trim()).map(i => ({ s: i.str, x: i.transform[4], y: i.transform[5], h: Math.abs(i.transform[3]) || Math.hypot(i.transform[2], i.transform[3]) || 8 }));
+    // AutoCAD com fontes SHX (PDFSHX ligado): o texto desenhado vai junto como "comentário" do PDF — lê de lá também
+    try {
+      for (const an of await pg.getAnnotations()) {
+        const t = String(an.contentsObj?.str || an.contents || "").trim();
+        if (!t || !Array.isArray(an.rect) || t.length > 300) continue;
+        const [x0, y0, x1, y1] = an.rect;
+        itens.push({ s: t, x: Math.min(x0, x1), y: Math.min(y0, y1), h: Math.abs(y1 - y0) || 8 });
+      }
+    } catch { /* sem anotações */ }
     const r = analisarPagina(itens, n);
     r.tabelas.forEach(t => tabelas.push({ ...t, id: `${base}-${t.id}`, arquivo: file.name }));
     if (precisaOcr(itens)) paraOcr.push(n);
