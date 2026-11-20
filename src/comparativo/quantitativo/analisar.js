@@ -153,6 +153,19 @@ export function analisarPagina(itens, n = 1) {
         if (mv) { volume = numBR(mv[2]); if (/^C/i.test(mv[1] || "")) fck = mv[1].replace(/\s/g, "").toUpperCase(); }
       }
     }
+    // quadro "RESUMO CONCRETO" à parte (escadas): cabeçalhos "Volume de Concreto (C-30)" e "Área de Forma" com os valores embaixo
+    if (volume == null || forma == null) {
+      const rc = it.filter(i => /resumo\s+(de\s+)?concreto/i.test(sem(i.s)) && i.y < R.y + 20 && i.y > R.y - 260 && Math.abs(i.x - R.x) < 260)
+        .sort((p, q) => Math.hypot(p.x - R.x, p.y - R.y) - Math.hypot(q.x - R.x, q.y - R.y))[0];
+      if (rc) {
+        const valorAbaixo = cab => it.filter(i => i.y < cab.y - 2 && i.y > cab.y - 45 && Math.abs(i.x - cab.x) < 90 && /^[\d.,]+\s*m/i.test(i.s.trim()))
+          .sort((p, q) => (cab.y - p.y) + Math.abs(p.x - cab.x) * .5 - ((cab.y - q.y) + Math.abs(q.x - cab.x) * .5))[0];
+        const hv = it.find(i => /^volume\s+de\s+concreto/i.test(sem(i.s)) && i.y < rc.y && i.y > rc.y - 60 && Math.abs(i.x - rc.x) < 200);
+        const hf = it.find(i => /^area\s+de\s+f[oô]?rma/i.test(sem(i.s)) && i.y < rc.y && i.y > rc.y - 60 && Math.abs(i.x - rc.x) < 260);
+        if (hv && volume == null) { const v = valorAbaixo(hv); if (v) volume = numBR(v.s.replace(/\s*m.*$/i, "")); const f = /\(\s*(C-?\s?\d+)\s*\)/i.exec(hv.s); if (f && !fck) fck = f[1].replace(/\s/g, "").toUpperCase(); }
+        if (hf && forma == null) { const v = valorAbaixo(hf); if (v) forma = numBR(v.s.replace(/\s*m.*$/i, "")); }
+      }
+    }
     // contexto para classificar: títulos grandes perto do quadro + carimbo da prancha
     const proxTit = it.filter(i => i.h >= 14 && i.s.length > 8 && /[A-Z]{4}/.test(sem(i.s)) && !/RELACAO|RESUMO/i.test(sem(i.s)) && !NOTA.test(i.s))
       .sort((a, b) => Math.hypot(a.x - R.x, (a.y - R.y) * 1.5) - Math.hypot(b.x - R.x, (b.y - R.y) * 1.5)).map(i => i.s);
