@@ -128,6 +128,8 @@ export default function QuantitativoEstrutura({ projetos = [], usuarioAtual }) {
   const [salvoId, setSalvoId] = useState(null);
   const [salvando, setSalvando] = useState(false);
   const [lendo, setLendo] = useState("");
+  const [usarOcr, setUsarOcrSt] = useState(() => { try { return localStorage.getItem("wm-quant-ocr") !== "0"; } catch { return true; } });
+  const setUsarOcr = v => { setUsarOcrSt(v); try { localStorage.setItem("wm-quant-ocr", v ? "1" : "0"); } catch { /* sem armazenamento */ } };
   const [msg, setMsg] = useState(null);
   const [modal, setModal] = useState(null);
   const [opcoesPdf, setOpcoesPdf] = useState({ responsavel: usuarioAtual?.nome || "", origem: true, pranchas: false });
@@ -150,12 +152,12 @@ export default function QuantitativoEstrutura({ projetos = [], usuarioAtual }) {
     try {
       for (const f of fs) {
         setLendo(`Lendo ${f.name}…`);
-        const res = await lerPranchasQuantitativo(f, { aoProgredir: (p, txt) => setLendo(`Lendo ${f.name}… ${Math.round(p * 100)}%${txt ? ` · ${txt}` : ""}`) });
+        const res = await lerPranchasQuantitativo(f, { usarOcr, aoProgredir: (p, txt) => setLendo(`Lendo ${f.name}… ${Math.round(p * 100)}%${txt ? ` · ${txt}` : ""}`) });
         novos += res.tabelas.length; ocr += res.porOcr || 0; puladas = [...puladas, ...(res.ocrPuladas || [])]; pag = [...pag, ...res.paginas];
         setQ(x => ({ ...x, arquivos: [...x.arquivos.filter(a => a.nome !== f.name), res.arquivo], tabelas: [...x.tabelas.filter(t => t.arquivo !== f.name), ...res.tabelas] }));
       }
       setPaginas(p => [...p, ...pag]);
-      avisar(novos ? `${novos} quadro(s) de aço encontrados${ocr ? ` (${ocr} lidos por OCR, porque o PDF não tem texto — confira os números com atenção)` : ""}. Confira o elemento de cada um abaixo.${puladas.length ? ` Não consegui ler a(s) folha(s) ${puladas.join(", ")} (desenho muito carregado).` : ""}` : "Não achei quadros “Resumo do aço” neste PDF, nem lendo a imagem das pranchas. Confira se é o PDF das pranchas de detalhamento do estrutural.", !!novos);
+      avisar(novos ? `${novos} quadro(s) de aço encontrados${ocr ? ` (${ocr} lidos por OCR, porque o PDF não tem texto — confira os números com atenção)` : ""}. Confira o elemento de cada um abaixo.${puladas.length ? ` Não consegui ler a(s) folha(s) ${puladas.join(", ")} (desenho muito carregado).` : ""}` : (usarOcr ? "Não achei quadros “Resumo do aço” neste PDF, nem lendo a imagem das pranchas. Confira se é o PDF das pranchas de detalhamento do estrutural." : "Não achei quadros “Resumo do aço” no texto deste PDF. Se ele foi impresso pelo PDF24 (texto virou desenho), ligue “Ler por OCR” e suba de novo."), !!novos);
     } catch (e) { avisar("Não foi possível ler o PDF: " + (e.message || e), false); }
     finally { setLendo(""); }
   }
@@ -212,6 +214,10 @@ export default function QuantitativoEstrutura({ projetos = [], usuarioAtual }) {
       <Secao n="1" titulo="PDF das pranchas do projeto estrutural" sub="O sistema lê os quadros “Resumo do aço”, o volume de concreto e a área de forma de cada prancha"
         direita={q.arquivos.length > 0 && <button onClick={() => pdfRef.current?.click()} style={btn("sec", { padding: "6px 10px", fontSize: 12.5 })}><Icone nome="upload" tam={14} />Adicionar outro PDF</button>}>
         <input ref={pdfRef} type="file" accept="application/pdf,.pdf" multiple hidden onChange={e => { lerPdfs(e.target.files); e.target.value = ""; }} />
+        <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 12.5, color: K.tx, marginBottom: 10, cursor: "pointer" }} title="Só é usado quando o PDF não tem texto (impresso pelo PDF24, por exemplo). É lento: alguns segundos por prancha.">
+          <input type="checkbox" checked={usarOcr} onChange={e => setUsarOcr(e.target.checked)} style={{ width: 16, height: 16, accentColor: K.azul }} />
+          Ler por OCR quando o PDF não tiver texto <span style={{ color: K.sub }}>(mais lento; só entra se o sistema não achar nenhum quadro no texto do PDF)</span>
+        </label>
         {!q.arquivos.length ? (
           <button onClick={() => pdfRef.current?.click()} onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); lerPdfs(e.dataTransfer?.files); }}
             style={{ width: "100%", border: "2px dashed #b9cff2", background: "#f8fbff", borderRadius: 14, padding: "26px 14px", cursor: "pointer", fontFamily: "inherit", color: K.mar }}>

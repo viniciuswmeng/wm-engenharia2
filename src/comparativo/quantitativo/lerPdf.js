@@ -11,7 +11,7 @@ async function pdfjs() {
   lib.GlobalWorkerOptions.workerSrc = workerUrl;
   return lib;
 }
-export async function lerPranchasQuantitativo(file, { aoProgredir } = {}) {
+export async function lerPranchasQuantitativo(file, { aoProgredir, usarOcr = true } = {}) {
   const lib = await pdfjs();
   const doc = await lib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
   const paginas = [], tabelas = [], paraOcr = [];
@@ -28,10 +28,12 @@ export async function lerPranchasQuantitativo(file, { aoProgredir } = {}) {
     const ctx = cv.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, cv.width, cv.height);
     await pg.render({ canvasContext: ctx, viewport: vp }).promise;
     paginas.push({ n, titulo: r.titulo, mini: cv.toDataURL("image/jpeg", 0.72), quadros: r.tabelas.length });
-    pg.cleanup(); aoProgredir?.(n / doc.numPages * (paraOcr.length ? 0.1 : 1));
+    pg.cleanup(); aoProgredir?.(n / doc.numPages);
   }
   // pranchas sem texto (impressas como desenho): OCR no navegador — bem mais lento, mostra o andamento
   let porOcr = 0; const puladas = [];
+  // OCR só quando o PDF inteiro não tem texto: nenhum quadro lido pelo texto e a maioria das pranchas sem texto
+  if (!usarOcr || tabelas.length || paraOcr.length < doc.numPages * 0.6) paraOcr.length = 0;
   if (paraOcr.length) {
     try {
       const tarefas = [];
