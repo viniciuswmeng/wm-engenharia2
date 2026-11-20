@@ -1097,7 +1097,7 @@ export default function App(){
             const ativo = a.grupoMenu ? grupoDaAba(aba)===a.grupoMenu : aba===a.id;
             return <button key={a.id} className={"wm-nav-item"+(ativo?" ativo":"")} aria-current={ativo?"page":undefined} aria-label={a.label}
               onMouseEnter={e=>mostrarDica(e,a.label)} onMouseLeave={()=>setDicaMenu(null)}
-              onClick={()=>{setAba(a.grupoMenu ? (abasMenu.some(x=>x.id===ultimaSub[a.grupoMenu]) ? ultimaSub[a.grupoMenu] : abasMenu.find(x=>x.menu===a.grupoMenu).id) : a.id);setMenuAberto(false);}}>
+              onClick={()=>{setAba(a.grupoMenu ? (abasMenu.some(x=>x.id===ultimaSub[a.grupoMenu]) ? ultimaSub[a.grupoMenu] : abasMenu.find(x=>x.menu===a.grupoMenu).id) : a.id);setMenuAberto(false);setModal(null);}}>
               <Icone nome={a.icone} tam={21}/>{a.linhas
                 ? <span style={{display:"flex",flexDirection:"column",lineHeight:1.15}}><span>{a.linhas[0]}</span><span style={{fontSize:"0.82em",fontWeight:500,opacity:.85}}>{a.linhas[1]}</span></span>
                 : <span>{a.label}</span>}
@@ -1106,7 +1106,7 @@ export default function App(){
         </nav>
         <div className="wm-nav-rodape">
           {abasMenu.filter(a=>a.grupo==="config"&&a.id!=="ajuda").map(a=>(
-            <button key={a.id} className={"wm-nav-item"+(aba===a.id?" ativo":"")} aria-label={a.label} onMouseEnter={e=>mostrarDica(e,a.label)} onMouseLeave={()=>setDicaMenu(null)} onClick={()=>{setAba(a.id);setMenuAberto(false);}}>
+            <button key={a.id} className={"wm-nav-item"+(aba===a.id?" ativo":"")} aria-label={a.label} onMouseEnter={e=>mostrarDica(e,a.label)} onMouseLeave={()=>setDicaMenu(null)} onClick={()=>{setAba(a.id);setMenuAberto(false);setModal(null);}}>
               <Icone nome={a.icone} tam={21}/><span>{a.label}</span>
             </button>
           ))}

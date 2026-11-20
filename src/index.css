@@ -109,7 +109,7 @@ input:focus, select:focus, textarea:focus {
 .wm-recolher {
   position: fixed; top: 74px; left: calc(var(--wm-sidebar) - 13px); width: 26px; height: 26px; border-radius: 50%;
   border: 1px solid rgba(255,255,255,.25); background: #123a7d; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 2px 8px rgba(0,0,0,.25); z-index: 310; padding: 0; transition: background .15s, left .2s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,.25); z-index: 910; padding: 0; /* acima da página do projeto (900) */ transition: background .15s, left .2s ease;
 }
 .wm-recolher:hover { background: var(--wm-azul); }
 .wm-recolher svg { transform: rotate(90deg); transition: transform .2s; }
