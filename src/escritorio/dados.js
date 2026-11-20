@@ -35,16 +35,25 @@ export async function salvarAvatar(usuarioId, dados) {
 
 // ── moodboards ──
 export const QW = 2400, QH = 1500; // tamanho do quadro
-const COR_NOTA = /^#[0-9a-f]{6}$/i, TIPOS_ITEM = ["nota", "titulo", "texto", "imagem", "seta"];
+const COR_NOTA = /^#[0-9a-f]{6}$/i, TIPOS_ITEM = ["nota", "titulo", "texto", "imagem", "seta", "traco", "forma"];
 const lim = (v, a, b) => Math.max(a, Math.min(b, Math.round(Number(v) || 0)));
+const DESENHO = ["seta", "traco", "forma"];
+export const ESTILOS_LINHA = ["solida", "tracejada", "pontilhada"], PONTAS = ["nenhuma", "fim", "ambas"], FORMAS = ["ret", "elipse"];
 export function limparItem(n, i = 0) {
   const tipo = TIPOS_ITEM.includes(n?.tipo) ? n.tipo : "nota";
   const o = { id: String(n?.id || `n${i}`).slice(0, 24), tipo, x: lim(n?.x, 0, QW - 20), y: lim(n?.y, 0, QH - 20), z: lim(n?.z, 0, 100000),
-    cor: COR_NOTA.test(n?.cor || "") ? n.cor : tipo === "seta" ? "#0a2557" : "#fde68a" };
-  if (tipo === "seta") Object.assign(o, { x2: lim(n?.x2, 0, QW), y2: lim(n?.y2, 0, QH) });
+    cor: COR_NOTA.test(n?.cor || "") ? n.cor : DESENHO.includes(tipo) ? "#0a2557" : "#fde68a" };
+  if (DESENHO.includes(tipo)) Object.assign(o, { esp: lim(n?.esp || 3, 1, 24), estilo: ESTILOS_LINHA.includes(n?.estilo) ? n.estilo : "solida" });
+  if (tipo === "seta") Object.assign(o, { x2: lim(n?.x2, 0, QW), y2: lim(n?.y2, 0, QH), pontas: PONTAS.includes(n?.pontas) ? n.pontas : "fim" });
+  else if (tipo === "traco") {
+    // desenho à mão livre: pontos absolutos no quadro (no máximo 1500)
+    const pts = (Array.isArray(n?.pts) ? n.pts : []).slice(0, 1500).filter(p => Array.isArray(p)).map(p => [lim(p[0], 0, QW), lim(p[1], 0, QH)]);
+    o.pts = pts.length ? pts : [[o.x, o.y]];
+    o.x = Math.min(...o.pts.map(p => p[0])); o.y = Math.min(...o.pts.map(p => p[1]));
+  } else if (tipo === "forma") Object.assign(o, { w: lim(n?.w || 160, 10, QW), h: lim(n?.h || 110, 10, QH), forma: FORMAS.includes(n?.forma) ? n.forma : "ret", preench: n?.preench === true });
   else Object.assign(o, { w: lim(n?.w || (tipo === "titulo" ? 380 : tipo === "texto" ? 340 : tipo === "imagem" ? 320 : 210), 60, 1400) });
   if (tipo === "imagem") Object.assign(o, { h: lim(n?.h || 220, 40, 1400), path: /^boards\/[\w-]+\/[\w.-]+$/.test(n?.path || "") ? n.path : "" });
-  else if (tipo !== "seta") o.texto = String(n?.texto || "").slice(0, 4000);
+  else if (!DESENHO.includes(tipo)) o.texto = String(n?.texto || "").slice(0, 4000);
   return o;
 }
 export function limparBoard(b) {

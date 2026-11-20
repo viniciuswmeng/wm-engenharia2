@@ -179,15 +179,6 @@ export const agenda = {
     try { await chamar(token, `${CAL}/calendars/${encodeURIComponent(calendarioId)}`); return true; }
     catch (e) { if (e.status === 404 || e.status === 403) return false; throw e; }
   },
-  // Cria agora um evento curto com link do Google Meet (para a chamada com câmera do escritório virtual)
-  async criarMeet(token, titulo) {
-    const ini = new Date(), fim = new Date(ini.getTime() + 30 * 60000);
-    const r = await chamar(token, `${CAL}/calendars/primary/events?conferenceDataVersion=1`, { method: "POST", body: {
-      summary: String(titulo || "Conversa · Escritório virtual WM").slice(0, 120), start: { dateTime: ini.toISOString() }, end: { dateTime: fim.toISOString() },
-      conferenceData: { createRequest: { requestId: (crypto.randomUUID?.() || String(Date.now())), conferenceSolutionKey: { type: "hangoutsMeet" } } },
-    } });
-    return r.hangoutLink || r.conferenceData?.entryPoints?.find(e => e.entryPointType === "video")?.uri || "";
-  },
   // Cria ou atualiza um evento com id fixo (sem duplicar)
   async gravarEvento(token, calendarioId, evento) {
     const base = `${CAL}/calendars/${encodeURIComponent(calendarioId)}/events`;

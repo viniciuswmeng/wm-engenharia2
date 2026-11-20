@@ -1,11 +1,11 @@
 // Escritório virtual: mapa isométrico com a equipe em tempo real (modo mundo e modo simples), editor de móveis e piso,
-// avatares personalizáveis, conversa por voz por proximidade, chamada com câmera (Meet/Zoom), reuniões do dia e moodboard.
+// avatares personalizáveis, conversa por voz por proximidade, chamada de vídeo e tela direto no sistema, reuniões do dia e moodboard.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CATALOGO, GRUPOS, PISOS, VAZIO, caixasDe, caminho, clarear, corOk, escurecer, layoutPadrao, ocupados, pisoEm, projetor, pts, rotulosSalas, tamanho, zonaEm } from "./iso.js";
 import { Boneco, EditorAvatar } from "./AvatarIso.jsx";
 import { limparAvatar } from "./avatarDados.js";
 import { carregarAvatares, carregarLayout, faltaTabelaEV, salvarAvatar, salvarLayout } from "./dados.js";
-import { DIST_FALAR, distancia, linkVideoOk } from "./voz.js";
+import { DIST_FALAR, distancia } from "./voz.js";
 import Moodboard from "./Moodboard.jsx";
 import { STATUS } from "./mapa.js";
 import { ESCOPO_AGENDA, agenda, obterToken, tokenEmCache } from "../google/googleApi.js";
@@ -172,7 +172,7 @@ function Reunioes({ user }) {
 }
 
 export default function EscritorioVirtual({ presenca, voz, tela, usuarios, projetos, user, onMensagem }) {
-  const { estado, pessoas, eu, mover, definirStatus, acenar, definirAvatar, definirZoom, ouvirSinal, enviarSinal } = presenca;
+  const { estado, pessoas, eu, mover, definirStatus, acenar, definirAvatar, ouvirSinal, enviarSinal } = presenca;
   const ehGestor = String(user?.perfil || "").toLowerCase() === "gestor";
   const [modo, setModo] = useState(() => localStorage.getItem("wm-ev-modo") || "mundo");
   const [visual, setVisual] = useState(() => localStorage.getItem("wm-ev-visual") || "cartao");
@@ -187,7 +187,6 @@ export default function EscritorioVirtual({ presenca, voz, tela, usuarios, proje
   const [salvandoAv, setSalvandoAv] = useState(false);
   const [mood, setMood] = useState(false);
   const [config, setConfig] = useState(false);
-  const [zoom, setZoom] = useState(eu.zoom || "");
   const [busca, setBusca] = useState("");
   const [todos, setTodos] = useState(false);
   const [ligarPara, setLigarPara] = useState(null); // indo até a pessoa para falar
@@ -312,21 +311,12 @@ export default function EscritorioVirtual({ presenca, voz, tela, usuarios, proje
     catch (e) { avisar(faltaTabelaEV(e) ? "Rode o SQL do escritório virtual (parte 2) para salvar a planta." : "Não foi possível salvar: " + e.message); }
   }
 
-  async function chamarVideo(para, app) {
-    if (!para) { avisar("Chegue perto de alguém (ou clique numa pessoa) para chamar com câmera."); return; }
-    if (app === "zoom" && !linkVideoOk(eu.zoom)) { setConfig(true); avisar("Cole o link da sua sala do Zoom em ⚙ Minhas configurações."); return; }
-    const janela = window.open("about:blank", "_blank");
-    try {
-      let link = eu.zoom;
-      if (app !== "zoom") {
-        const tk = await obterToken([ESCOPO_AGENDA], { dica: user.email });
-        link = await agenda.criarMeet(tk, `Conversa com ${porId[para]?.nome || "a equipe"} · Escritório virtual WM`);
-        if (!linkVideoOk(link)) throw new Error("o Google não devolveu o link do Meet.");
-      }
-      if (janela) { janela.opener = null; janela.location.href = link; } else window.open(link, "_blank", "noopener");
-      voz.convidarVideo(para, link, app);
-      avisar(`Convite enviado para ${primeiroNome(porId[para]?.nome)}.`);
-    } catch (e) { janela?.close(); avisar("Não foi possível abrir a chamada: " + (e.message || e)); }
+  // chamada de vídeo direta no sistema (sem Meet/Zoom): abre a sala e chama o colega
+  async function chamarVideo(para) {
+    if (!tela) return;
+    if (!para) { avisar("Clique numa pessoa (ou chegue perto de alguém) para fazer uma chamada de vídeo."); return; }
+    await tela.iniciar({ tela: false, convidar: [para] });
+    avisar(`Chamando ${primeiroNome(porId[para]?.nome)} para uma chamada de vídeo…`);
   }
   async function salvarMeuAvatar(a) {
     setSalvandoAv(true);
@@ -421,9 +411,6 @@ export default function EscritorioVirtual({ presenca, voz, tela, usuarios, proje
             <b style={{ fontSize: 13, color: K.mar }}>Minhas configurações</b>
             <span style={{ fontSize: 12.5, color: K.sub }}>No mapa, mostrar as pessoas como:</span>
             {[["cartao", "Cartão com foto"], ["boneco", "Boneco (avatar)"]].map(([v, r]) => <button key={v} type="button" onClick={() => { setVisual(v); lembrar("wm-ev-visual", v); }} style={bt(visual === v, { padding: "5px 10px" })}>{r}</button>)}
-            <span style={{ fontSize: 12.5, color: K.sub, marginLeft: 8 }}>Link da minha sala do Zoom:</span>
-            <input value={zoom} onChange={e => setZoom(e.target.value.trim())} placeholder="https://us05web.zoom.us/j/…" aria-label="Link da sala do Zoom" style={{ border: `1px solid ${K.borda}`, borderRadius: 8, padding: "6px 9px", flex: "1 1 220px", fontFamily: "ui-monospace,Consolas,monospace", fontSize: 12.5 }} />
-            <button type="button" onClick={() => { if (zoom && !linkVideoOk(zoom)) { avisar("Link inválido: use o link https://…zoom.us/j/… da sua sala."); return; } definirZoom(zoom); setConfig(false); avisar("Configurações salvas neste navegador."); }} style={bt(true)}>Salvar</button>
           </div>}
           {semTabela && <div style={{ fontSize: 13, color: "#92400e", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10, padding: "9px 12px" }}>Para salvar a planta, os avatares e os moodboards, rode no Supabase o arquivo <b>supabase/escritorio_virtual_2.sql</b>. Até lá, o escritório usa a planta padrão.</div>}
           {estado === "sem-permissao" && <div style={{ fontSize: 13, color: "#92400e", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10, padding: "9px 12px" }}>Para ver a equipe em tempo real, rode no Supabase o arquivo <b>supabase/escritorio_virtual.sql</b>.</div>}
@@ -553,7 +540,7 @@ export default function EscritorioVirtual({ presenca, voz, tela, usuarios, proje
                 <button type="button" aria-label="Falar com quem está perto" title={perto[0] ? `Falar com ${primeiroNome(porId[perto[0].id]?.nome)}` : "Chegue perto de alguém para falar"} onClick={() => (ch ? voz.encerrar(true) : perto[0] ? voz.pedir(perto[0].id) : avisar("Chegue perto de alguém (até 3 pisos) para falar."))}
                   style={controle(!!ch)}><SV d={IC.fone} t={20} /></button>
                 {tela && <button type="button" aria-label={tela.minha ? "Parar de compartilhar a tela" : "Compartilhar a tela"} title={tela.minha ? "Parar de compartilhar a tela" : "Compartilhar a tela com a equipe"} onClick={() => (tela.minha ? tela.parar() : tela.iniciar())} style={{ ...controle(!!tela.minha), ...(tela.minha ? { background: "#16a34a", borderColor: "#16a34a" } : {}) }}><SV d="M3 4h18v12H3zM8 20h8M12 16v4" t={20} /></button>}
-                <button type="button" aria-label="Chamada com câmera (Meet)" title={alvoCamera ? `Chamada com câmera com ${primeiroNome(porId[alvoCamera]?.nome)} (Meet)` : "Clique numa pessoa ou chegue perto para chamar"} onClick={() => chamarVideo(alvoCamera, "meet")} style={controle(false)}><SV d={IC.video} t={20} /></button>
+                <button type="button" aria-label="Chamada de vídeo" title={alvoCamera ? `Chamada de vídeo com ${primeiroNome(porId[alvoCamera]?.nome)}` : "Clique numa pessoa ou chegue perto para chamar"} onClick={() => chamarVideo(alvoCamera)} style={controle(false)}><SV d={IC.video} t={20} /></button>
               </div>
 
               {!edit && pSel && uSel && (
@@ -572,8 +559,7 @@ export default function EscritorioVirtual({ presenca, voz, tela, usuarios, proje
                     : "Sem sessão de horas aberta."}</div>
                   {sel !== user.id && <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     <button type="button" disabled={!!ch} onClick={() => ligar(sel)} style={bt(true, { flex: 1, justifyContent: "center" })}><SV d={IC.fone} t={15} />{distancia(pSel, eu) <= DIST_FALAR ? "Falar" : "Ir e falar"}</button>
-                    <button type="button" onClick={() => chamarVideo(sel, "meet")} style={bt(false)} title="Google Meet"><SV d={IC.video} t={15} />Meet</button>
-                    <button type="button" onClick={() => chamarVideo(sel, "zoom")} style={bt(false)}>Zoom</button>
+                    <button type="button" onClick={() => chamarVideo(sel)} style={bt(false)} title="Chamada de vídeo no sistema"><SV d={IC.video} t={15} />Vídeo</button>
                     <button type="button" onClick={() => { const ok = acenar(sel); avisar(ok ? `Você acenou para ${primeiroNome(uSel.nome)}.` : "Espere alguns segundos para acenar de novo."); }} style={bt(false)} title="Acenar">👋</button>
                     {onMensagem && <button type="button" onClick={() => onMensagem(uSel)} style={bt(false)} title="Mensagem"><SV d={IC.balao} t={15} /></button>}
                   </div>}

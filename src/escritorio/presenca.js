@@ -72,7 +72,7 @@ export function usePresencaEscritorio({ user, sessaoAtiva, usuarios }) {
     setEu(e => {
       const n = { ...e, ...parcial };
       euRef.current = n;
-      gravarLocal({ x: n.x, y: n.y, status: n.auto ? n.antes || "disponivel" : n.status, recado: n.recado, avatar: n.avatar, zoom: n.zoom });
+      gravarLocal({ x: n.x, y: n.y, status: n.auto ? n.antes || "disponivel" : n.status, recado: n.recado, avatar: n.avatar });
       return n;
     });
     anunciar();
@@ -115,7 +115,6 @@ export function usePresencaEscritorio({ user, sessaoAtiva, usuarios }) {
     mover: (x, y) => mudar({ x: inteiro(x, eu.x), y: inteiro(y, eu.y) }),
     definirStatus: (status, recado) => mudar({ status, auto: false, antes: undefined, ...(recado != null ? { recado: txt(recado, 60) } : {}) }),
     definirAvatar: avatar => mudar({ avatar }),
-    definirZoom: zoom => mudar({ zoom: txt(zoom, 200) }),
     dispensarAceno: id => setAcenos(a => a.filter(x => x.id !== id)),
   };
 }

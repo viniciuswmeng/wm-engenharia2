@@ -1,22 +1,13 @@
-// Barra flutuante da conversa por voz (aparece em qualquer tela) e convites de chamada com câmera.
-import { linkVideoOk } from "./voz.js";
+// Barra flutuante da conversa por voz (aparece em qualquer tela).
 
 const B = (cor, borda = cor, tx = "#fff") => ({ border: `1px solid ${borda}`, background: cor, color: tx, borderRadius: 10, padding: "8px 12px", fontWeight: 700, cursor: "pointer", fontSize: 13.5 });
 
 export default function VozUI({ voz, usuarios }) {
-  const { chamada: c, convites } = voz;
+  const { chamada: c } = voz;
   const nome = id => (usuarios || []).find(u => u.id === id)?.nome?.split(/\s+/)[0] || "Colega";
-  if (!c && !convites.length) return null;
+  if (!c) return null;
   return (
     <div style={{ position: "fixed", left: "50%", transform: "translateX(-50%)", bottom: 18, zIndex: 320, display: "grid", gap: 8, width: "min(460px, calc(100vw - 24px))" }} aria-live="polite">
-      {convites.map(v => (
-        <div key={v.id} role="status" style={{ background: "#fff", border: "1px solid #bcd3f5", borderRadius: 14, boxShadow: "0 12px 34px rgba(15,31,61,.2)", padding: "10px 12px", display: "flex", gap: 10, alignItems: "center" }}>
-          <span style={{ fontSize: 22 }}>🎥</span>
-          <span style={{ flex: 1, fontSize: 13.5 }}><b>{nome(v.de)}</b> chamou você para uma chamada no {v.app === "zoom" ? "Zoom" : "Google Meet"}</span>
-          {linkVideoOk(v.link) && <a href={v.link} target="_blank" rel="noopener noreferrer" onClick={() => voz.dispensarConvite(v.id)} style={{ ...B("#1565d8"), textDecoration: "none" }}>Entrar</a>}
-          <button type="button" onClick={() => voz.dispensarConvite(v.id)} aria-label="Fechar" style={{ border: 0, background: "none", fontSize: 18, color: "#6b7a90", cursor: "pointer" }}>×</button>
-        </div>
-      ))}
       {c && (
         <div style={{ background: "#0a2557", color: "#fff", borderRadius: 16, boxShadow: "0 14px 40px rgba(10,37,87,.35)", padding: "12px 14px", display: "grid", gap: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>

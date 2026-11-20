@@ -99,7 +99,7 @@ const TOPICOS = [
       ]},
     ]},
   { id:"escritorio", icone:"🏢", titulo:"Escritório virtual", aba:"escritorio",
-    resumo:"Escritório em 3D (estilo Habbo) com a equipe em tempo real: status, projeto da sessão de horas, conversa por voz, chamada com câmera e moodboard.",
+    resumo:"Escritório em 3D (estilo Habbo) com a equipe em tempo real: status, projeto da sessão de horas, conversa por voz, chamada de vídeo e tela compartilhada (direto no sistema) e moodboard.",
     secoes:[
       { t:"Andar e ver a equipe", itens:[
         "Clique num piso para andar (o boneco desvia dos móveis) ou use as setas / WASD. Use + e − no canto do mapa para aproximar e ◎ para centralizar em você.",
@@ -108,14 +108,21 @@ const TOPICOS = [
         "Depois de 10 minutos sem mexer no sistema, o status vira Ausente e volta sozinho.",
       ]},
       { t:"Conversar", itens:[
-        "Chegue a até 3 pisos de alguém: aparece Falar (só áudio, dentro do sistema). A outra pessoa aceita e vocês conversam como walkie-talkie: segure o botão (ou a barra de espaço) para falar.",
-        "Afastar-se no mapa encerra a conversa. O áudio vai direto entre os navegadores; em algumas redes muito fechadas ele pode não conectar — use a chamada com câmera.",
-        "🎥 Meet cria uma reunião do Google Meet na sua agenda e manda o convite para o colega; Zoom usa o link da sua sala (cadastre em ⚙ Minhas configurações).",
+        "Chegue a até 3 pisos de alguém: aparece Falar (só áudio). A outra pessoa aceita e o microfone abre sozinho, como numa ligação; o botão do microfone silencia e liga de novo.",
+        "Afastar-se no mapa encerra a conversa. O áudio vai direto entre os navegadores; em algumas redes muito fechadas ele pode não conectar.",
+      ]},
+      { t:"Chamada de vídeo e tela", itens:[
+        "📹 Vídeo (no cartão do colega ou no botão de câmera do mapa) abre uma chamada de vídeo no próprio sistema e chama a pessoa; ela recebe o aviso e toca em Atender. Câmera e microfone ligam sozinhos.",
+        "🖥 Compartilhar tela abre uma sala com a sua tela; a equipe recebe o aviso e toca em Assistir. Dentro de uma chamada, o botão Compartilhar tela liga e desliga a tela sem derrubar ninguém.",
+        "Layouts no topo da janela: Destaque (principal grande e os outros embaixo), Lateral, Grade (todos iguais) e Só o principal. Clique em qualquer quadro para fixá-lo no principal.",
+        "⧉ Janela separada tira a chamada do site: ela vira uma janelinha que fica por cima de qualquer programa e pode ser arrastada para outro monitor (Chrome ou Edge).",
+        "Funciona melhor com até 5 ou 6 pessoas; o vídeo de todos passa pelo computador de quem abriu a sala.",
       ]},
       { t:"Personalizar", itens:[
         "Meu avatar: pele, cabelo, barba, roupa, cores e acessórios (óculos, capacete de obra, fone, boné, trena).",
         "Editar escritório (gestores): escolha um móvel no catálogo e clique no piso para colocar; selecione um móvel para mover, girar (R), trocar a cor, duplicar ou remover (Del). Pintar piso define as salas. Salve para todos verem.",
-        "Moodboard: clique no quadro da sala de reunião (ou em Abrir moodboards) para criar quadros com títulos e notas coloridas, ligar a um projeto e salvar. Quem estiver com o mesmo quadro aberto é avisado da versão nova.",
+        "Moodboard: clique no quadro da sala de reunião (ou em Abrir moodboards). Tudo aparece ao vivo para quem está no mesmo quadro e salva sozinho: notas, títulos, textos, imagens e prints (Ctrl+V).",
+        "Desenho no moodboard: ✏️ Caneta (mão livre), ↗ Linha / seta (linha, seta ou seta dupla), ▭ Retângulo e ◯ Círculo (Shift deixa quadrado/redondo). Escolha cor, espessura e traço contínuo, tracejado ou pontilhado; selecione um desenho para mudar depois. Esc volta para Mover.",
       ]},
     ]},
   { id:"horas", icone:"⏱", titulo:"Horas trabalhadas", aba:"horas",

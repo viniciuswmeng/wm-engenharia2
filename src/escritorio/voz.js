@@ -9,12 +9,10 @@ export const DIST_FALAR = 3;     // pisos de distância para aparecer "Falar"
 const DIST_FIM = 6;              // se afastar mais que isso encerra a conversa
 const DEMO = import.meta.env.VITE_ESCRITORIO_DEMO === "1";
 export const distancia = (a, b) => (a && b ? Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y)) : 99);
-export const linkVideoOk = u => /^https:\/\/meet\.google\.com\/[a-z]{3,4}-[a-z]{3,4}-[a-z]{3,4}(\?[\w=&.-]*)?$/i.test(u || "") || /^https:\/\/([a-z0-9-]+\.)?zoom\.us\/(j|my|s)\/[\w.-]+(\?[\w=&.%-]*)?$/i.test(u || "");
 
 export function useVozEscritorio(presenca, user) {
   const { enviarSinal, ouvirSinal, pessoas, eu } = presenca;
   const [ch, setCh] = useState(null); // { com, fase: chamando|recebendo|conectando|ativa, mic, remotoFalando, erro }
-  const [convites, setConvites] = useState([]);
   const pc = useRef(null), stream = useRef(null), audio = useRef(null), filaIce = useRef([]), chRef = useRef(null), tempo = useRef(null), medidores = useRef([]);
   useEffect(() => { chRef.current = ch; });
 
@@ -63,20 +61,15 @@ export function useVozEscritorio(presenca, user) {
     };
     p.onconnectionstatechange = () => {
       if (p.connectionState === "connected") setCh(c => (c ? { ...c, fase: "ativa", erro: "", mic: stream.current?.getAudioTracks().some(t => t.enabled) ?? true } : c));
-      if (p.connectionState === "failed") { setCh(c => (c ? { ...c, erro: "Não foi possível conectar o áudio (rede bloqueando). Use a chamada com câmera." } : c)); }
+      if (p.connectionState === "failed") { setCh(c => (c ? { ...c, erro: "Não foi possível conectar o áudio (rede bloqueando). Tente a chamada de vídeo." } : c)); }
       if (p.connectionState === "disconnected" || p.connectionState === "closed") { /* aguarda o sinal de fim */ }
     };
     pc.current = p; return p;
   }
   async function aplicarIce() { for (const c of filaIce.current.splice(0)) { try { await pc.current.addIceCandidate(c); } catch { /* candidato inválido */ } } }
 
-  // recebe os sinais de voz e convites de vídeo
+  // recebe os sinais de voz
   useEffect(() => ouvirSinal(async s => {
-    if (s.tipo === "video") {
-      if (!linkVideoOk(s.link) || s.para !== user?.id) return;
-      setConvites(v => [...v.slice(-2), { id: Date.now() + Math.random(), de: s.de, link: s.link, app: s.app === "zoom" ? "zoom" : "meet" }]);
-      return;
-    }
     if (s.tipo !== "voz") return;
     const c = chRef.current;
     if (!DEMO && !pessoas[s.de] && !s.eco) return; // só quem está no escritório agora
@@ -149,11 +142,5 @@ export function useVozEscritorio(presenca, user) {
     enviarSinal({ tipo: "voz", acao: "mudo", para: c.com, on: !on });
   }, [enviarSinal]);
 
-  const convidarVideo = useCallback((para, link, app) => {
-    if (!linkVideoOk(link)) return false;
-    enviarSinal({ tipo: "video", para, link, app });
-    return true;
-  }, [enviarSinal]);
-
-  return { chamada: ch, convites, pedir, aceitar, recusar, encerrar, falar, convidarVideo, dispensarConvite: id => setConvites(v => v.filter(x => x.id !== id)) };
+  return { chamada: ch, pedir, aceitar, recusar, encerrar, falar };
 }

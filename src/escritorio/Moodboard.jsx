@@ -1,12 +1,19 @@
 // Moodboard da sala de reunião — colaborativo AO VIVO: o que cada um escreve, move ou desenha aparece na hora para
-// quem está com o mesmo quadro aberto. Notas, títulos, texto corrido, imagens/prints (colar com Ctrl+V) e setas.
+// quem está com o mesmo quadro aberto. Notas, títulos, texto corrido, imagens/prints (colar com Ctrl+V), linhas e setas,
+// desenho à mão livre e formas (retângulo e círculo), com cor, espessura e estilo do traço.
 // Salva sozinho. Pelo canal privado da equipe passam só as mudanças; as imagens vão para uma pasta privada do Storage.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { QW, QH, apagarBoard, enviarImagemBoard, faltaTabelaEV, limparBoard, limparItem, listarBoards, salvarBoard, urlsImagens } from "./dados.js";
+import { QW, QH, ESTILOS_LINHA, PONTAS, apagarBoard, enviarImagemBoard, faltaTabelaEV, limparBoard, limparItem, listarBoards, salvarBoard, urlsImagens } from "./dados.js";
 
 const K = { mar: "#0a2557", azul: "#1565d8", tx: "#0f1f3d", sub: "#6b7a90", borda: "#e6ecf4", fundo: "#f3f6fb" };
 const CORES = ["#fde68a", "#fecaca", "#bfdbfe", "#bbf7d0", "#e9d5ff", "#fed7aa", "#ffffff"];
-const CORES_SETA = ["#0a2557", "#1565d8", "#dc2626", "#16a34a", "#f59e0b", "#7c3aed"];
+const CORES_TRACO = ["#0a2557", "#1565d8", "#0ea5e9", "#dc2626", "#16a34a", "#f59e0b", "#7c3aed", "#111827", "#ffffff"];
+const DESENHO = ["seta", "traco", "forma"];
+const FERR_DESENHO = { caneta: "traco", seta: "seta", ret: "forma", elipse: "forma" };
+const traco = n => (n.estilo === "tracejada" ? `${n.esp * 3} ${n.esp * 2}` : n.estilo === "pontilhada" ? `0.1 ${n.esp * 2.2}` : undefined);
+const caminho = pts => pts.map((p, i) => `${i ? "L" : "M"}${p[0]} ${p[1]}`).join(" ");
+const caixaDe = n => n.tipo === "traco" ? (() => { const xs = n.pts.map(p => p[0]), ys = n.pts.map(p => p[1]); return { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) }; })() : n;
+const lerPincel = () => { try { return { cor: "#0a2557", esp: 3, estilo: "solida", pontas: "fim", preench: false, ...JSON.parse(localStorage.getItem("wm-mb-pincel") || "{}") }; } catch { return { cor: "#0a2557", esp: 3, estilo: "solida", pontas: "fim", preench: false }; } };
 const novaId = () => "n" + Date.now().toString(36).slice(-4) + Math.random().toString(36).slice(2, 7);
 const btn = (pri, extra) => ({ border: `1px solid ${pri ? K.azul : K.borda}`, background: pri ? K.azul : "#fff", color: pri ? "#fff" : K.mar, borderRadius: 9, padding: "7px 11px", fontWeight: 700, fontSize: 13, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6, ...extra });
 const ehCampo = el => /TEXTAREA|INPUT|SELECT/.test(el?.tagName) || el?.isContentEditable;
@@ -24,7 +31,8 @@ export default function Moodboard({ user, usuarios, projetos, presenca, tela, on
   const [remotos, setRemotos] = useState({});    // { itemId: userId } — quem está escrevendo onde
   const [vendo, setVendo] = useState({});        // { userId: em } — quem está com este quadro aberto
   const [enviando, setEnviando] = useState(0);
-  const [setaTemp, setSetaTemp] = useState(null);
+  const [temp, setTemp] = useState(null);          // desenho em andamento (seta, traço ou forma)
+  const [pincel, setPincelSt] = useState(lerPincel); // cor, espessura e estilo do próximo desenho
   const [focoNovo, setFocoNovo] = useState(null); // item recém-criado: já abre para escrever
   const quadro = useRef(null), area = useRef(null), arrasto = useRef(null), fila = useRef({ itens: new Map(), rem: new Set(), meta: null }), tFila = useRef(null), tSalvar = useRef(null), atualRef = useRef(null), arquivoRef = useRef(null), abertoEm = useRef(0);
   useEffect(() => { atualRef.current = atual; });
@@ -38,6 +46,7 @@ export default function Moodboard({ user, usuarios, projetos, presenca, tela, on
     const l = limparBoard(b); setAtual(l); atualRef.current = l; setSel(null); setRemotos({}); setVendo({}); abertoEm.current = Date.now();
     if (l.id) { enviarSinal({ tipo: "mb", board: l.id, ola: true, pedirEstado: true }); }
   }, [enviarSinal]);
+   
   // eslint-disable-next-line react-hooks/set-state-in-effect -- carrega os quadros ao abrir
   useEffect(() => { carregarLista().then(l => { if (l[0]) abrir(l[0]); }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -68,7 +77,7 @@ export default function Moodboard({ user, usuarios, projetos, presenca, tela, on
     const n = limparItem({ ...atualItem, ...p });
     mudar(a => ({ ...a, itens: upsert(a.itens, n) }), { itens: [n] });
   };
-  const addItem = it => { const z = Math.max(0, ...(atualRef.current?.itens || []).map(n => n.z || 0)) + 1, n = limparItem({ ...it, id: novaId(), z }); mudar(a => ({ ...a, itens: [...a.itens, n] }), { itens: [n] }); setSel(n.id); if (n.tipo !== "imagem" && n.tipo !== "seta" && !n.texto) setFocoNovo(n.id); return n; };
+  const addItem = (it, selecionar = true) => { const z = Math.max(0, ...(atualRef.current?.itens || []).map(n => n.z || 0)) + 1, n = limparItem({ ...it, id: novaId(), z }); mudar(a => ({ ...a, itens: [...a.itens, n] }), { itens: [n] }); if (selecionar) setSel(n.id); if (n.tipo !== "imagem" && !DESENHO.includes(n.tipo) && !n.texto) setFocoNovo(n.id); return n; };
   useEffect(() => { if (!focoNovo) return; const el = area.current?.querySelector(`textarea[data-id="${focoNovo}"]`); if (el) { el.focus(); setFocoNovo(null); } }, [focoNovo, atual]);
   const tirar = id => { mudar(a => ({ ...a, itens: a.itens.filter(n => n.id !== id) }), { rem: [id] }); setSel(s => (s === id ? null : s)); };
   const frente = id => { const z = Math.max(0, ...(atualRef.current?.itens || []).map(n => n.z || 0)); const it = atualRef.current?.itens.find(n => n.id === id); if (it && (it.z || 0) < z) setItem(id, { z: z + 1 }); };
@@ -137,38 +146,55 @@ export default function Moodboard({ user, usuarios, projetos, presenca, tela, on
     const tecla = e => {
       if (ehCampo(e.target)) return;
       if ((e.key === "Delete" || e.key === "Backspace") && sel) { e.preventDefault(); tirar(sel); }
-      if (e.key === "Escape") { setSel(null); setFerr("mover"); }
+      if (e.key === "Escape") { setSel(null); setFerr("mover"); setTemp(null); }
     };
     window.addEventListener("paste", colar); window.addEventListener("keydown", tecla);
     return () => { window.removeEventListener("paste", colar); window.removeEventListener("keydown", tecla); };
   });
 
-  // ── arrastar, redimensionar, desenhar setas ──
+  // ── arrastar, redimensionar e desenhar (caneta, linhas/setas e formas) ──
   const pos = e => { const r = area.current.getBoundingClientRect(); return { x: Math.max(0, Math.min(QW, e.clientX - r.left)), y: Math.max(0, Math.min(QH, e.clientY - r.top)) }; };
+  const setPincel = p => setPincelSt(x => { const n = { ...x, ...p }; try { localStorage.setItem("wm-mb-pincel", JSON.stringify(n)); } catch { /* sem armazenamento */ } return n; });
+  // muda o pincel e, se houver um desenho selecionado, aplica nele também
+  const ajustar = p => { setPincel(p); const it = atualRef.current?.itens.find(n => n.id === sel); if (it && DESENHO.includes(it.tipo)) setItem(it.id, p); };
   const iniciar = (e, n, modo) => {
     if (ehCampo(e.target) && modo === "mover") return;
     e.stopPropagation(); e.preventDefault(); setSel(n.id); frente(n.id);
-    arrasto.current = { id: n.id, modo, p0: pos(e), o: { ...n } };
+    arrasto.current = { id: n.id, modo, p0: pos(e), o: { ...n, pts: n.pts ? n.pts.map(p => [...p]) : undefined } };
+  };
+  const comecarDesenho = e => {
+    e.preventDefault(); e.currentTarget.setPointerCapture?.(e.pointerId);
+    const p = pos(e), base = { cor: pincel.cor, esp: pincel.esp, estilo: pincel.estilo };
+    setSel(null);
+    if (ferr === "caneta") setTemp({ tipo: "traco", ...base, pts: [[p.x, p.y]] });
+    else if (ferr === "seta") setTemp({ tipo: "seta", ...base, pontas: pincel.pontas, x: p.x, y: p.y, x2: p.x, y2: p.y });
+    else setTemp({ tipo: "forma", ...base, forma: ferr, preench: pincel.preench, x0: p.x, y0: p.y, x: p.x, y: p.y, w: 0, h: 0 });
   };
   const mover = e => {
-    const a = arrasto.current;
-    if (setaTemp) { const p = pos(e); setSetaTemp(s => ({ ...s, x2: p.x, y2: p.y })); return; }
-    if (!a) return;
+    if (temp) {
+      const p = pos(e);
+      if (temp.tipo === "traco") { const u = temp.pts[temp.pts.length - 1]; if (Math.hypot(p.x - u[0], p.y - u[1]) >= 3 && temp.pts.length < 1500) setTemp(t => ({ ...t, pts: [...t.pts, [Math.round(p.x), Math.round(p.y)]] })); }
+      else if (temp.tipo === "seta") setTemp(t => ({ ...t, x2: p.x, y2: p.y }));
+      else setTemp(t => { let x = Math.min(t.x0, p.x), y = Math.min(t.y0, p.y), w = Math.abs(p.x - t.x0), h = Math.abs(p.y - t.y0); if (e.shiftKey) { const m = Math.max(w, h); w = h = m; x = p.x < t.x0 ? t.x0 - m : t.x0; y = p.y < t.y0 ? t.y0 - m : t.y0; } return { ...t, x, y, w, h }; });
+      return;
+    }
+    const a = arrasto.current; if (!a) return;
     const p = pos(e), dx = p.x - a.p0.x, dy = p.y - a.p0.y, o = a.o;
-    if (a.modo === "mover") setItem(a.id, o.tipo === "seta" ? { x: o.x + dx, y: o.y + dy, x2: o.x2 + dx, y2: o.y2 + dy } : { x: o.x + dx, y: o.y + dy });
-    else if (a.modo === "tam") setItem(a.id, o.tipo === "imagem" ? { w: o.w + dx, h: Math.round((o.w + dx) * o.h / o.w) } : { w: o.w + dx });
+    if (a.modo === "mover") setItem(a.id, o.tipo === "seta" ? { x: o.x + dx, y: o.y + dy, x2: o.x2 + dx, y2: o.y2 + dy } : o.tipo === "traco" ? { pts: o.pts.map(q => [q[0] + dx, q[1] + dy]) } : { x: o.x + dx, y: o.y + dy });
+    else if (a.modo === "tam") setItem(a.id, o.tipo === "imagem" ? { w: o.w + dx, h: Math.round((o.w + dx) * o.h / o.w) } : o.tipo === "forma" ? { w: Math.max(10, o.w + dx), h: Math.max(10, o.h + dy) } : { w: o.w + dx });
     else if (a.modo === "p1") setItem(a.id, { x: p.x, y: p.y });
     else if (a.modo === "p2") setItem(a.id, { x2: p.x, y2: p.y });
   };
   const soltar = () => {
-    if (setaTemp) { if (Math.hypot(setaTemp.x2 - setaTemp.x, setaTemp.y2 - setaTemp.y) > 20) addItem({ tipo: "seta", ...setaTemp }); setSetaTemp(null); }
+    if (temp) {
+      const t = temp; setTemp(null);
+      if (t.tipo === "traco" && t.pts.length > 1) addItem(t, false);
+      else if (t.tipo === "seta" && Math.hypot(t.x2 - t.x, t.y2 - t.y) > 12) addItem(t, false);
+      else if (t.tipo === "forma" && t.w > 8 && t.h > 8) addItem({ tipo: "forma", cor: t.cor, esp: t.esp, estilo: t.estilo, forma: t.forma, preench: t.preench, x: t.x, y: t.y, w: t.w, h: t.h }, false);
+    }
     arrasto.current = null;
   };
-  const fundoDown = e => {
-    if (e.target !== area.current) return;
-    setSel(null);
-    if (ferr === "seta") { const p = pos(e); setSetaTemp({ x: p.x, y: p.y, x2: p.x, y2: p.y, cor: "#0a2557" }); }
-  };
+  const fundoDown = e => { if (e.target === area.current) setSel(null); };
   const addNo = tipo => {
     const c = centroVisivel(), w = tipo === "titulo" ? 380 : tipo === "texto" ? 340 : 210, livre = (x, y) => !(atualRef.current?.itens || []).some(n => Math.abs(n.x - x) < 180 && Math.abs(n.y - y) < 120);
     let x = c.x - w / 2, y = c.y - 80;
@@ -178,8 +204,11 @@ export default function Moodboard({ user, usuarios, projetos, presenca, tela, on
 
   const focar = id => enviarSinal({ tipo: "mb", board: atualRef.current?.id, foco: id });
   const itens = [...(atual?.itens || [])].sort((a, b) => (a.z || 0) - (b.z || 0));
-  const caixas = itens.filter(n => n.tipo !== "seta"), setas = itens.filter(n => n.tipo === "seta");
+  const caixas = itens.filter(n => !DESENHO.includes(n.tipo)), desenhos = itens.filter(n => DESENHO.includes(n.tipo));
+  const desenhando = ferr !== "mover";
+  const cores = [...new Set([...CORES_TRACO, pincel.cor, ...desenhos.map(n => n.cor), ...(temp ? [temp.cor] : [])])];
   const selItem = itens.find(n => n.id === sel);
+  const opcoesDe = selItem && DESENHO.includes(selItem.tipo) ? selItem : desenhando ? { tipo: FERR_DESENHO[ferr], ...pincel } : null;
   const outrosVendo = Object.keys(vendo).filter(id => id !== user.id);
 
   return (
@@ -211,7 +240,10 @@ export default function Moodboard({ user, usuarios, projetos, presenca, tela, on
               <button type="button" onClick={() => addNo("texto")} style={btn(false)}>¶ Texto</button>
               <button type="button" onClick={() => arquivoRef.current?.click()} style={btn(false)}>🖼 Imagem{enviando ? ` (${enviando}…)` : ""}</button>
               <input ref={arquivoRef} type="file" accept="image/*" multiple hidden onChange={e => { addImagens(e.target.files); e.target.value = ""; }} />
-              <button type="button" onClick={() => setFerr(f => (f === "seta" ? "mover" : "seta"))} style={btn(ferr === "seta")} aria-pressed={ferr === "seta"} title="Clique e arraste no quadro para desenhar a seta">↗ Seta</button>
+              <span style={{ width: 1, height: 24, background: K.borda, margin: "0 2px" }} />
+              {[["mover", "🖐 Mover", "Selecionar, mover e editar"], ["caneta", "✏️ Caneta", "Desenhar à mão livre"], ["seta", "↗ Linha / seta", "Clique e arraste para desenhar"], ["ret", "▭ Retângulo", "Clique e arraste (Shift: quadrado)"], ["elipse", "◯ Círculo", "Clique e arraste (Shift: círculo perfeito)"]].map(([k, r, t]) => (
+                <button key={k} type="button" onClick={() => { setFerr(k); setSel(null); }} style={btn(ferr === k)} aria-pressed={ferr === k} title={t}>{r}</button>
+              ))}
               {tela && <button type="button" onClick={() => (tela.minha ? tela.parar() : tela.iniciar())} style={btn(!!tela.minha, tela.minha ? { background: "#16a34a", borderColor: "#16a34a" } : {})}>🖥 {tela.minha ? "Parar de compartilhar" : "Compartilhar tela"}</button>}
               <span style={{ flex: 1 }} />
               {outrosVendo.length > 0 && <span style={{ fontSize: 12, color: K.sub, display: "inline-flex", alignItems: "center", gap: 4 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "#16a34a" }} />Ao vivo com {outrosVendo.map(nomeDe).join(", ")}</span>}
@@ -220,16 +252,42 @@ export default function Moodboard({ user, usuarios, projetos, presenca, tela, on
             </> : <span style={{ flex: 1, color: K.sub, fontSize: 13.5 }}>Escolha um moodboard ao lado ou crie um novo.</span>}
             <button type="button" onClick={() => { if (tSalvar.current) { clearTimeout(tSalvar.current); tSalvar.current = null; salvarJa(); } onFechar(); }} aria-label="Fechar" style={{ border: 0, background: "none", fontSize: 24, color: K.sub, cursor: "pointer" }}>×</button>
           </div>
-          {selItem && (
+          {opcoesDe && (
+            <div style={{ display: "flex", gap: 8, alignItems: "center", padding: "6px 12px", borderBottom: `1px solid ${K.borda}`, background: "#fafbfd", fontSize: 12.5, flexWrap: "wrap" }}>
+              <b style={{ color: K.mar }}>{selItem ? { seta: "Linha / seta", traco: "Desenho", forma: "Forma" }[selItem.tipo] : { traco: "Caneta", seta: "Linha / seta", forma: "Forma" }[opcoesDe.tipo]}</b>
+              <span style={{ display: "inline-flex", gap: 4, alignItems: "center" }}>
+                {CORES_TRACO.map(c => <button key={c} type="button" onClick={() => ajustar({ cor: c })} aria-label={`Cor ${c}`} style={{ width: 20, height: 20, borderRadius: "50%", border: opcoesDe.cor === c ? "2px solid #1565d8" : "1px solid #cbd5e1", background: c, cursor: "pointer", boxShadow: opcoesDe.cor === c ? "0 0 0 2px #fff inset" : "none" }} />)}
+                <label title="Outra cor" style={{ width: 22, height: 22, borderRadius: "50%", overflow: "hidden", border: "1px solid #cbd5e1", cursor: "pointer", background: "conic-gradient(red,yellow,lime,cyan,blue,magenta,red)", display: "inline-block" }}>
+                  <input type="color" value={opcoesDe.cor} onChange={e => ajustar({ cor: e.target.value })} style={{ opacity: 0, width: 22, height: 22, cursor: "pointer" }} aria-label="Escolher outra cor" />
+                </label>
+              </span>
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 6, color: K.sub }}>Espessura
+                <input type="range" min={1} max={24} value={opcoesDe.esp} onChange={e => ajustar({ esp: Number(e.target.value) })} style={{ width: 110 }} />
+                <svg width="34" height="20" aria-hidden="true"><line x1="3" y1="10" x2="31" y2="10" stroke={opcoesDe.cor} strokeWidth={Math.min(18, opcoesDe.esp)} strokeLinecap="round" /></svg>
+              </label>
+              <span style={{ display: "inline-flex", gap: 3 }}>
+                {ESTILOS_LINHA.map(k => <button key={k} type="button" onClick={() => ajustar({ estilo: k })} title={{ solida: "Contínua", tracejada: "Tracejada", pontilhada: "Pontilhada" }[k]} aria-pressed={opcoesDe.estilo === k} style={btn(opcoesDe.estilo === k, { padding: "3px 8px" })}>
+                  <svg width="30" height="12" aria-hidden="true"><line x1="2" y1="6" x2="28" y2="6" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeDasharray={k === "tracejada" ? "7 4" : k === "pontilhada" ? "0.1 6" : undefined} /></svg>
+                </button>)}
+              </span>
+              {opcoesDe.tipo === "seta" && <span style={{ display: "inline-flex", gap: 3 }}>
+                {PONTAS.map(k => <button key={k} type="button" onClick={() => ajustar({ pontas: k })} aria-pressed={opcoesDe.pontas === k} style={btn(opcoesDe.pontas === k, { padding: "3px 9px" })}>{{ nenhuma: "— Linha", fim: "→ Seta", ambas: "↔ Dupla" }[k]}</button>)}
+              </span>}
+              {opcoesDe.tipo === "forma" && <label style={{ display: "inline-flex", gap: 5, alignItems: "center", cursor: "pointer" }}><input type="checkbox" checked={!!opcoesDe.preench} onChange={e => ajustar({ preench: e.target.checked })} /> Preenchida</label>}
+              <span style={{ color: K.sub }}>{selItem ? (selItem.tipo === "seta" ? "arraste as bolinhas para mudar as pontas" : "arraste para mover") : "desenhe no quadro · Esc volta para Mover"}</span>
+              {selItem && <button type="button" onClick={() => tirar(selItem.id)} style={btn(false, { padding: "4px 9px", color: "#be123c" })}>Apagar (Del)</button>}
+            </div>
+          )}
+          {selItem && !DESENHO.includes(selItem.tipo) && (
             <div style={{ display: "flex", gap: 6, alignItems: "center", padding: "6px 12px", borderBottom: `1px solid ${K.borda}`, background: "#fafbfd", fontSize: 12.5, flexWrap: "wrap" }}>
               <b style={{ color: K.mar }}>{{ nota: "Nota", titulo: "Título", texto: "Texto", imagem: "Imagem", seta: "Seta" }[selItem.tipo]}</b>
-              {(selItem.tipo === "nota" || selItem.tipo === "seta") && (selItem.tipo === "seta" ? CORES_SETA : CORES).map(c => <button key={c} type="button" onClick={() => setItem(selItem.id, { cor: c })} aria-label="Cor" style={{ width: 20, height: 20, borderRadius: 5, border: selItem.cor === c ? "2px solid #1565d8" : "1px solid #cbd5e1", background: c, cursor: "pointer" }} />)}
-              <span style={{ color: K.sub }}>{selItem.tipo === "seta" ? "arraste as bolinhas para mudar as pontas" : "arraste para mover · quadradinho azul muda o tamanho"}</span>
+              {selItem.tipo === "nota" && CORES.map(c => <button key={c} type="button" onClick={() => setItem(selItem.id, { cor: c })} aria-label="Cor" style={{ width: 20, height: 20, borderRadius: 5, border: selItem.cor === c ? "2px solid #1565d8" : "1px solid #cbd5e1", background: c, cursor: "pointer" }} />)}
+              <span style={{ color: K.sub }}>arraste para mover · quadradinho azul muda o tamanho</span>
               <button type="button" onClick={() => tirar(selItem.id)} style={btn(false, { padding: "4px 9px", color: "#be123c" })}>Apagar (Del)</button>
             </div>
           )}
           {msg && <div role="status" style={{ padding: "7px 12px", fontSize: 13, fontWeight: 600, background: "#fffbeb", color: "#92400e" }}>{msg}</div>}
-          <div ref={quadro} style={{ flex: 1, overflow: "auto", background: "#f7f5f1", cursor: ferr === "seta" ? "crosshair" : "default" }}
+          <div ref={quadro} style={{ flex: 1, overflow: "auto", background: "#f7f5f1", cursor: desenhando ? "crosshair" : "default" }}
             onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); if (e.dataTransfer?.files?.length && area.current) addImagens(e.dataTransfer.files, pos(e)); }}>
             {atual && (
               <div ref={area} onPointerDown={fundoDown} onPointerMove={mover} onPointerUp={soltar} onPointerLeave={soltar}
@@ -254,18 +312,40 @@ export default function Moodboard({ user, usuarios, projetos, presenca, tela, on
                   );
                 })}
                 <svg width={QW} height={QH} style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 99990 }}>
-                  <defs>{CORES_SETA.map(c => <marker key={c} id={`mb-pt-${c.slice(1)}`} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill={c} /></marker>)}</defs>
-                  {[...setas, ...(setaTemp ? [{ id: "_t", ...setaTemp }] : [])].map(n => (
-                    <g key={n.id}>
-                      <line x1={n.x} y1={n.y} x2={n.x2} y2={n.y2} stroke="transparent" strokeWidth="18" style={{ pointerEvents: n.id === "_t" ? "none" : "stroke", cursor: "grab" }} onPointerDown={e => n.id !== "_t" && iniciar(e, n, "mover")} />
-                      <line x1={n.x} y1={n.y} x2={n.x2} y2={n.y2} stroke={n.cor} strokeWidth={sel === n.id ? 4 : 3} strokeLinecap="round" markerEnd={`url(#mb-pt-${(CORES_SETA.includes(n.cor) ? n.cor : "#0a2557").slice(1)})`} />
-                      {sel === n.id && <>
-                        <circle cx={n.x} cy={n.y} r="7" fill="#fff" stroke="#1565d8" strokeWidth="2" style={{ pointerEvents: "all", cursor: "move" }} onPointerDown={e => iniciar(e, n, "p1")} />
-                        <circle cx={n.x2} cy={n.y2} r="7" fill="#fff" stroke="#1565d8" strokeWidth="2" style={{ pointerEvents: "all", cursor: "move" }} onPointerDown={e => iniciar(e, n, "p2")} />
-                      </>}
-                    </g>
-                  ))}
+                  <defs>{cores.map(c => <marker key={c} id={`mb-pt-${c.slice(1)}`} viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" markerUnits="strokeWidth" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill={c} /></marker>)}</defs>
+                  {[...desenhos, ...(temp ? [{ id: "_t", ...temp }] : [])].map(n => {
+                    const ativo = sel === n.id, vivo = n.id !== "_t", larg = n.esp + (ativo ? 1 : 0), dash = traco(n);
+                    const pega = { stroke: "transparent", strokeWidth: n.esp + 16, fill: "none", style: { pointerEvents: vivo && !desenhando ? "stroke" : "none", cursor: "grab" } };
+                    const pegar = e => { if (vivo) iniciar(e, n, "mover"); };
+                    const visual = { stroke: n.cor, strokeWidth: larg, strokeDasharray: dash, strokeLinecap: "round", strokeLinejoin: "round" };
+                    const bx = n.tipo === "traco" ? caixaDe(n) : null;
+                    const fp = n.tipo !== "forma" ? null : n.forma === "elipse" ? { cx: n.x + n.w / 2, cy: n.y + n.h / 2, rx: n.w / 2, ry: n.h / 2 } : { x: n.x, y: n.y, width: n.w, height: n.h, rx: 6 };
+                    const El = n.forma === "elipse" ? "ellipse" : "rect";
+                    return (
+                      <g key={n.id}>
+                        {n.tipo === "seta" && <>
+                          <line x1={n.x} y1={n.y} x2={n.x2} y2={n.y2} {...pega} onPointerDown={pegar} />
+                          <line x1={n.x} y1={n.y} x2={n.x2} y2={n.y2} {...visual} markerEnd={n.pontas !== "nenhuma" ? `url(#mb-pt-${n.cor.slice(1)})` : undefined} markerStart={n.pontas === "ambas" ? `url(#mb-pt-${n.cor.slice(1)})` : undefined} />
+                        </>}
+                        {n.tipo === "traco" && <>
+                          <path d={caminho(n.pts)} {...pega} onPointerDown={pegar} />
+                          <path d={caminho(n.pts)} fill="none" {...visual} />
+                          {ativo && <rect x={bx.x - 8} y={bx.y - 8} width={bx.w + 16} height={bx.h + 16} fill="none" stroke="#1565d8" strokeDasharray="5 4" strokeWidth="1.5" rx="6" />}
+                        </>}
+                        {n.tipo === "forma" && <>
+                          <El {...fp} {...pega} onPointerDown={pegar} fill={n.preench ? "transparent" : "none"} style={{ ...pega.style, pointerEvents: vivo && !desenhando ? (n.preench ? "all" : "stroke") : "none" }} />
+                          <El {...fp} {...visual} fill={n.preench ? n.cor : "none"} fillOpacity={n.preench ? .18 : 0} />
+                          {ativo && <rect x={n.x + n.w - 7} y={n.y + n.h - 7} width="14" height="14" rx="4" fill="#1565d8" stroke="#fff" strokeWidth="2" style={{ pointerEvents: "all", cursor: "nwse-resize" }} onPointerDown={e => iniciar(e, n, "tam")} />}
+                        </>}
+                        {ativo && n.tipo === "seta" && <>
+                          <circle cx={n.x} cy={n.y} r="7" fill="#fff" stroke="#1565d8" strokeWidth="2" style={{ pointerEvents: "all", cursor: "move" }} onPointerDown={e => iniciar(e, n, "p1")} />
+                          <circle cx={n.x2} cy={n.y2} r="7" fill="#fff" stroke="#1565d8" strokeWidth="2" style={{ pointerEvents: "all", cursor: "move" }} onPointerDown={e => iniciar(e, n, "p2")} />
+                        </>}
+                      </g>
+                    );
+                  })}
                 </svg>
+                {desenhando && <div onPointerDown={comecarDesenho} style={{ position: "absolute", inset: 0, zIndex: 99995, cursor: "crosshair", touchAction: "none" }} aria-label="Área de desenho" />}
               </div>
             )}
           </div>

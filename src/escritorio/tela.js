@@ -1,5 +1,7 @@
-// Compartilhar a tela com a equipe (como no Meet): quem compartilha manda o vídeo direto para cada pessoa que
-// clicar em "Assistir" (WebRTC, uma conexão por pessoa). A combinação passa pelo canal privado da equipe.
+// Sala de chamada da equipe (vídeo, voz e tela), direto no sistema: quem abre a sala (anfitrião) manda o vídeo para
+// cada pessoa que entra (WebRTC, uma conexão por pessoa). A combinação passa pelo canal privado da equipe.
+// A sala nasce como chamada de vídeo (convite a um colega) ou como compartilhamento de tela; o anfitrião pode
+// ligar e desligar a tela durante a chamada sem derrubar ninguém.
 // Áudio da sala: cada pessoa pode ligar o microfone. Quem compartilha mistura as vozes no próprio navegador e
 // devolve para cada espectador a mistura dos outros (sem a própria voz), então todos se ouvem.
 // Câmera (facecam): cada conexão já nasce com espaços de vídeo reservados; quem compartilha repassa a câmera
@@ -7,7 +9,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const RELAY = 5;
-const CAM = { width: { ideal: 320 }, height: { ideal: 240 }, frameRate: { ideal: 15, max: 15 } };
+const CAM = { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 20, max: 24 } };
 const ICE = [{ urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun1.l.google.com:19302" }];
 const DEMO = import.meta.env.VITE_ESCRITORIO_DEMO === "1";
 const ID_OK = v => typeof v === "string" && v.length > 0 && v.length <= 64;
@@ -25,6 +27,8 @@ export function useTelaCompartilhada(presenca, user) {
   const [camLigada, setCamLigada] = useState(false);
   const [minhaCam, setMinhaCam] = useState(null);       // prévia da minha câmera
   const [erro, setErro] = useState("");
+  const [convites, setConvites] = useState([]);           // [{ id, de }] chamadas recebidas
+  const [avisos, setAvisos] = useState([]);               // [{ id, t }] ex.: "Fulano recusou"
   const tx = useRef(new Map());   // espectador -> { pc, dest, src, audioEl }
   const rx = useRef(null), rxAudio = useRef(null), minhaRef = useRef(null), batida = useRef(null), filaIce = useRef([]);
   const ctx = useRef(null), mic = useRef(null), micSrc = useRef(null), mics = useRef({}), micLigadoRef = useRef(false), assistindoRef = useRef(null);
@@ -39,7 +43,9 @@ export function useTelaCompartilhada(presenca, user) {
     const c = { ...cams.current, [user?.id]: camLigadaRef.current };
     const camStreams = {}; tx.current.forEach((e, id) => { if (cams.current[id] && e.camStream) camStreams[id] = e.camStream; });
     setMinha(x => (x ? { ...x, vendo, mics: m, cams: c, camStreams } : x));
-    enviarSinal({ tipo: "tela", acao: "inicio", vendo, mics: m, cams: c });
+    const temTela = !!minhaRef.current.stream;
+    setMinha(x => (x ? { ...x, tela: temTela } : x));
+    enviarSinal({ tipo: "tela", acao: "inicio", vendo, mics: m, cams: c, tela: temTela });
   }, [enviarSinal, user?.id]);
 
   const religarMistura = useCallback(() => {
@@ -88,25 +94,10 @@ export function useTelaCompartilhada(presenca, user) {
   const parar = useCallback(() => {
     clearInterval(batida.current);
     [...tx.current.keys()].forEach(tirarEspectador);
-    minhaRef.current?.stream.getTracks().forEach(t => t.stop());
+    minhaRef.current?.stream?.getTracks().forEach(t => t.stop());
     pararMic(); pararCam(); ctx.current?.close().catch(() => {}); ctx.current = null;
     setMinha(null); enviarSinal({ tipo: "tela", acao: "fim" });
   }, [enviarSinal, tirarEspectador, pararMic, pararCam]);
-
-  const iniciar = useCallback(async () => {
-    setErro("");
-    if (!navigator.mediaDevices?.getDisplayMedia) { setErro("Este navegador não permite compartilhar a tela (use o Chrome ou o Edge no computador)."); return; }
-    try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 15, max: 24 } }, audio: false });
-      stream.getVideoTracks()[0].onended = () => parar();
-      ctx.current = new AudioContext();
-      mics.current = {}; cams.current = {};
-      minhaRef.current = { stream, vendo: [], mics: {} };
-      setMinha(minhaRef.current);
-      anunciar();
-      clearInterval(batida.current); batida.current = setInterval(anunciar, 10000);
-    } catch (e) { if (e?.name !== "NotAllowedError") setErro("Não foi possível compartilhar a tela: " + (e?.message || e)); }
-  }, [parar, anunciar]);
 
   // ---------- quem assiste
   const sairAssistir = useCallback(() => {
@@ -123,9 +114,11 @@ export function useTelaCompartilhada(presenca, user) {
     enviarSinal({ tipo: "tela", acao: "pedir", para: de });
   }, [enviarSinal]);
 
-  // ---------- microfone da sala (vale para quem compartilha e para quem assiste)
-  const alternarMic = useCallback(async () => {
+
+  // ---------- microfone da sala (vale para quem compartilha e para quem assiste); "querLigado" força ligar
+  const alternarMic = useCallback(async querLigado => {
     setErro("");
+    if (querLigado === true && micLigadoRef.current) return;
     if (micLigadoRef.current) {
       mic.current?.getAudioTracks().forEach(t => { t.enabled = false; });
       micLigadoRef.current = false; setMicLigado(false);
@@ -147,8 +140,9 @@ export function useTelaCompartilhada(presenca, user) {
   }, [anunciar, religarMistura, enviarSinal]);
 
   // ---------- câmera (facecam)
-  const alternarCam = useCallback(async () => {
+  const alternarCam = useCallback(async querLigada => {
     setErro("");
+    if (querLigada === true && camLigadaRef.current) return;
     let track = null;
     if (camLigadaRef.current) pararCam();
     else {
@@ -166,6 +160,65 @@ export function useTelaCompartilhada(presenca, user) {
       enviarSinal({ tipo: "tela", acao: "cam", para: assistindoRef.current.de, on: !!track });
     }
   }, [anunciar, enviarSinal, pararCam]);
+  // desliga a tela do anfitrião (a sala continua)
+  const desligarTela = useCallback(() => {
+    const m = minhaRef.current; if (!m?.stream) return;
+    m.stream.getTracks().forEach(t => t.stop());
+    tx.current.forEach(e => { e.telaTr?.sender.replaceTrack(null).catch(() => {}); });
+    minhaRef.current = { ...m, stream: null }; setMinha(x => (x ? { ...x, stream: null } : x));
+    anunciar();
+  }, [anunciar]);
+  // a tela do anfitrião durante a sala: liga, troca ou desliga sem renegociar (usa o espaço de vídeo reservado)
+  const trocarTela = useCallback(async ligar => {
+    const m = minhaRef.current; if (!m) return;
+    if (!ligar) { desligarTela(); return; }
+    let stream = null;
+    if (ligar) {
+      if (!navigator.mediaDevices?.getDisplayMedia) { setErro("Este navegador não permite compartilhar a tela (use o Chrome ou o Edge no computador)."); return; }
+      try { stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 15, max: 24 } }, audio: false }); }
+      catch (e) { if (e?.name !== "NotAllowedError") setErro("Não foi possível compartilhar a tela: " + (e?.message || e)); return; }
+      stream.getVideoTracks()[0].onended = () => { if (minhaRef.current?.stream === stream) desligarTela(); };
+    }
+    m.stream?.getTracks().forEach(t => t.stop());
+    const track = stream ? stream.getVideoTracks()[0] : null;
+    tx.current.forEach(e => { e.telaTr?.sender.replaceTrack(track).catch(() => {}); });
+    minhaRef.current = { ...m, stream }; setMinha(x => (x ? { ...x, stream } : x));
+    anunciar();
+  }, [anunciar, desligarTela]);
+
+  // abre a sala: { tela: true } = compartilhar a tela (padrão); { tela: false, convidar: [id] } = chamada de vídeo
+  const iniciar = useCallback(async (opcoes = {}) => {
+    setErro("");
+    const comTela = opcoes.tela !== false, convidar = (opcoes.convidar || []).filter(ID_OK).slice(0, 8);
+    if (minhaRef.current) { if (comTela && !minhaRef.current.stream) await trocarTela(true); convidar.forEach(id => enviarSinal({ tipo: "tela", acao: "convite", para: id })); return; }
+    if (assistindoRef.current) { setErro("Você já está numa chamada. Saia dela antes de abrir outra."); return; }
+    let stream = null;
+    if (comTela) {
+      if (!navigator.mediaDevices?.getDisplayMedia) { setErro("Este navegador não permite compartilhar a tela (use o Chrome ou o Edge no computador)."); return; }
+      try { stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 15, max: 24 } }, audio: false }); }
+      catch (e) { if (e?.name !== "NotAllowedError") setErro("Não foi possível compartilhar a tela: " + (e?.message || e)); return; }
+      // sala aberta só para a tela: parar a tela encerra a sala
+      stream.getVideoTracks()[0].onended = () => { if (minhaRef.current?.stream === stream) { if (minhaRef.current.chamada) desligarTela(); else parar(); } };
+    }
+    ctx.current = new AudioContext();
+    mics.current = {}; cams.current = {};
+    minhaRef.current = { stream, vendo: [], mics: {}, chamada: !comTela, desde: Date.now() };
+    setMinha(minhaRef.current);
+    anunciar();
+    clearInterval(batida.current); batida.current = setInterval(anunciar, 10000);
+    if (!comTela) { await alternarMic(true); await alternarCam(true); }
+    convidar.forEach(id => enviarSinal({ tipo: "tela", acao: "convite", para: id }));
+  }, [anunciar, enviarSinal, trocarTela, desligarTela, parar, alternarMic, alternarCam]);
+
+  // chamada recebida: atender liga microfone e câmera e entra na sala de quem chamou
+  const atender = useCallback(async id => {
+    setConvites(c => c.filter(x => x.de !== id));
+    if (minhaRef.current) { setErro("Encerre a sua sala antes de entrar em outra."); return; }
+    assistir(id);
+    await alternarMic(true); await alternarCam(true);
+  }, [assistir, alternarMic, alternarCam]);
+  const recusar = useCallback(id => { setConvites(c => c.filter(x => x.de !== id)); enviarSinal({ tipo: "tela", acao: "recusa", para: id }); }, [enviarSinal]);
+
 
   useEffect(() => ouvirSinal(async s => {
     if (s.tipo !== "tela" || s.de === user?.id || !ID_OK(s.de)) return;
@@ -175,9 +228,15 @@ export function useTelaCompartilhada(presenca, user) {
         const vendo = Array.isArray(s.vendo) ? s.vendo.filter(ID_OK).slice(0, 40) : [];
         const m = {}; if (s.mics && typeof s.mics === "object") for (const [k, v] of Object.entries(s.mics).slice(0, 41)) if (ID_OK(k)) m[k] = v === true;
         const c = {}; if (s.cams && typeof s.cams === "object") for (const [k, v] of Object.entries(s.cams).slice(0, 41)) if (ID_OK(k)) c[k] = v === true;
-        setTransmissoes(t => ({ ...t, [s.de]: { em: Date.now(), vendo, mics: m, cams: c } }));
+        setTransmissoes(t => ({ ...t, [s.de]: { em: Date.now(), vendo, mics: m, cams: c, tela: s.tela !== false } }));
+        setConvites(cv => (cv.some(x => x.de === s.de) ? cv.map(x => (x.de === s.de ? { ...x, em: Date.now() } : x)) : cv));
+      } else if (s.acao === "convite" && s.para === user?.id) {
+        setConvites(cv => [...cv.filter(x => x.de !== s.de).slice(-2), { id: Date.now() + Math.random(), de: s.de, em: Date.now() }]);
+      } else if (s.acao === "recusa" && s.para === user?.id && minhaRef.current) {
+        const id = Date.now() + Math.random(); setAvisos(a => [...a.slice(-2), { id, de: s.de, t: "recusou a chamada" }]); setTimeout(() => setAvisos(a => a.filter(x => x.id !== id)), 6000);
       } else if (s.acao === "fim") {
         setTransmissoes(t => { const n = { ...t }; delete n[s.de]; return n; });
+        setConvites(cv => cv.filter(x => x.de !== s.de));
         if (assistindoRef.current?.de === s.de) { fechar(rx.current); rx.current = null; if (!minhaRef.current) { pararMic(); pararCam(); } setAssistindo(null); }
       }
       // eu compartilho: alguém quer assistir
@@ -200,7 +259,9 @@ export function useTelaCompartilhada(presenca, user) {
           religarMistura();
         };
         pc.onconnectionstatechange = () => { if (["failed", "closed"].includes(pc.connectionState)) { tirarEspectador(s.de); religarCams(); anunciar(); } };
-        const telaTr = pc.addTransceiver(minhaRef.current.stream.getVideoTracks()[0], { direction: "sendonly", streams: [minhaRef.current.stream] });
+        const vt = minhaRef.current.stream?.getVideoTracks()[0];
+        const telaTr = pc.addTransceiver(vt || "video", { direction: "sendonly", ...(minhaRef.current.stream ? { streams: [minhaRef.current.stream] } : {}) });
+        e.telaTr = telaTr;
         e.t0 = pc.addTransceiver(camLigadaRef.current && cam.current ? cam.current.getVideoTracks()[0] : "video", { direction: "sendrecv" });
         for (let i = 0; i < RELAY; i++) e.relays.push(pc.addTransceiver("video", { direction: "sendonly" }));
         pc.addTransceiver(dest.stream.getAudioTracks()[0], { direction: "sendrecv", streams: [dest.stream] });
@@ -261,8 +322,16 @@ export function useTelaCompartilhada(presenca, user) {
   }, [pessoas]);
   useEffect(() => () => {
     clearInterval(batida.current); tx.current.forEach(e => fechar(e.pc)); fechar(rx.current);
-    minhaRef.current?.stream.getTracks().forEach(t => t.stop()); mic.current?.getTracks().forEach(t => t.stop()); cam.current?.getTracks().forEach(t => t.stop()); ctx.current?.close().catch(() => {});
+    minhaRef.current?.stream?.getTracks().forEach(t => t.stop()); mic.current?.getTracks().forEach(t => t.stop()); cam.current?.getTracks().forEach(t => t.stop()); ctx.current?.close().catch(() => {});
   }, []);
 
-  return { euId: user?.id, minha, transmissoes, assistindo, micLigado, camLigada, minhaCam, erro, iniciar, parar, assistir, sairAssistir, alternarMic, alternarCam, limparErro: () => setErro("") };
+  // convites antigos somem (1 min); a sala do colega precisa estar no ar
+  useEffect(() => {
+    const t = setInterval(() => setConvites(cv => { const n = cv.filter(x => Date.now() - x.em < 60000); return n.length === cv.length ? cv : n; }), 5000);
+    return () => clearInterval(t);
+  }, []);
+
+  const api = { convites, avisos, atender, recusar, trocarTela, euId: user?.id, minha, transmissoes, assistindo, micLigado, camLigada, minhaCam, erro, iniciar, parar, assistir, sairAssistir, alternarMic, alternarCam, limparErro: () => setErro("") };
+  useEffect(() => { if (DEMO) window.__wmTela = api; }); // só no build de teste
+  return api;
 }
