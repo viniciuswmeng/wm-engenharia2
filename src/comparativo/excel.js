@@ -412,6 +412,9 @@ export async function exportarQuantitativoExcel(q, r, nome) {
   l = linhaTotal(ws, l, ["Aço total (kg)", "", ...cols.map((k, i) => ({ formula: `${L(i + 3)}${lCa50}+${L(i + 3)}${lCa60}`, result: r.totalAco[k] })), { formula: `${L(C)}${lCa50}+${L(C)}${lCa60}`, result: r.totais.aco }], C, fmt, true);
   const lv = l; l = linhaTotal(ws, l, [`Concreto ${r.fck} (m³)`, "", ...cols.map(k => Math.round(r.volume[k] * 100) / 100), { formula: `SUM(C${lv}:${L(C - 1)}${lv})`, result: r.totais.volume }], C, fmt);
   const lf = l; l = linhaTotal(ws, l, ["Área de forma (m²)", "", ...cols.map(k => Math.round(r.forma[k] * 100) / 100), { formula: `SUM(C${lf}:${L(C - 1)}${lf})`, result: r.totais.forma }], C, fmt);
+  // consumo de aço por m³ de concreto (aço total ÷ concreto)
+  const lAco = lv - 1, tx = (kg, m3) => (m3 > 0 ? kg / m3 : 0);
+  l = linhaTotal(ws, l, ["Consumo de aço (kg/m³)", "", ...cols.map((k, i) => ({ formula: `IF(${L(i + 3)}${lv}>0,${L(i + 3)}${lAco}/${L(i + 3)}${lv},0)`, result: tx(r.totalAco[k], r.volume[k]) })), { formula: `IF(${L(C)}${lv}>0,${L(C)}${lAco}/${L(C)}${lv},0)`, result: tx(r.totais.aco, r.totais.volume) }], C, fmt);
   l++;
   if (r.totais.trelica > 0) { const c = ws.getCell(l, 1); c.value = `Treliças das vigotas pré-moldadas: ${r.totais.trelica.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} kg ${q.opcoes.trelicas ? "(incluídas no CA60)" : "(não incluídas acima)"}.`; c.font = { name: FONTE, size: 9.5, color: { argb: W.sub } }; ws.mergeCells(l, 1, l, C); l += 2; }
   rodape(ws, l, C, "Pesos com 10% de perdas, conforme as tabelas de aço do projeto. Quantitativo de referência para compra e orçamento.");

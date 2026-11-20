@@ -96,6 +96,27 @@ export default function RelatorioQuant({ q, r, opcoes, previas = [] }) {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>{previas.slice(0, 6).map((p, i) => <img key={i} src={p.mini} alt={`Folha ${p.n}`} style={{ width: "100%", border: `1px solid ${D.borda}`, borderRadius: 6 }} />)}</div>
     </div>
   );
+  // consumo de aço por m³ de concreto (taxa de armadura) — por elemento e no total
+  const taxa = (kg, m3) => (m3 > 0 ? kg / m3 : null);
+  const linhasTaxa = r.colunas.filter(k => r.totalAco[k] > 0 || r.volume[k] > 0);
+  if (linhasTaxa.length && r.totais.volume > 0) blocos.push(
+    <div key="taxa">
+      <Titulo sub="aço total ÷ volume de concreto">Consumo de aço por m³ de concreto</Titulo>
+      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <thead><tr>{["Elemento", "Aço (kg)", `Concreto ${r.fck} (m³)`, "Consumo (kg/m³)"].map((h, i) => <th key={h} style={{ ...th, textAlign: i ? "right" : "left", ...(i === 0 ? { borderTopLeftRadius: 6 } : i === 3 ? { borderTopRightRadius: 6 } : {}) }}>{h}</th>)}</tr></thead>
+        <tbody>
+          {linhasTaxa.map((k, i) => { const t = taxa(r.totalAco[k], r.volume[k]); return (
+            <tr key={k} style={{ background: i % 2 ? "#f8fafd" : "#fff" }}>
+              <td style={{ ...td, textAlign: "left", fontWeight: 700 }}>{NOME_CAT[k]}</td><td style={td}>{fmtN(r.totalAco[k])}</td>
+              <td style={td}>{r.volume[k] > 0 ? fmtN(r.volume[k]) : "—"}</td><td style={{ ...td, fontWeight: 800, color: D.mar }}>{t != null ? fmtN(t, 1) : "—"}</td>
+            </tr>); })}
+          <tr><td style={{ ...tdT, textAlign: "left", borderTop: `1.5px solid ${D.mar}` }}>Estrutura toda</td><td style={{ ...tdT, borderTop: `1.5px solid ${D.mar}` }}>{fmtN(r.totais.aco)}</td>
+            <td style={{ ...tdT, borderTop: `1.5px solid ${D.mar}` }}>{fmtN(r.totais.volume)}</td><td style={{ ...tdT, borderTop: `1.5px solid ${D.mar}`, background: "#dcfce7", color: "#166534" }}>{fmtN(taxa(r.totais.aco, r.totais.volume), 1)}</td></tr>
+        </tbody>
+      </table>
+      {linhasTaxa.some(k => !(r.volume[k] > 0)) && <div style={{ fontSize: 9, color: D.sub, marginTop: 4 }}>“—”: elemento sem volume de concreto nos quadros das pranchas.</div>}
+    </div>
+  );
   blocos.push(
     <div key="obs" style={{ fontSize: 9.5, color: D.sub, lineHeight: 1.55 }}>
       <Titulo>Observações</Titulo>
