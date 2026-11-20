@@ -134,12 +134,14 @@ export function analisarPagina(itens, n = 1) {
       aco.push({ tipo, diam: trelica ? diam.replace(/\s+/g, " ").toUpperCase() : String(numBR(diam)), comp, peso, trelica });
     }
     // elementos: "Relação do aço" mais próxima acima, coluna ELEMENTO
-    const rel = relacoes.filter(q => q.y > R.y && Math.abs(q.x - R.x) < 420).sort((a, b) => (a.y - R.y) - (b.y - R.y))[0];
+    const rel = relacoes.filter(q => q.y > R.y - 25 && Math.abs(q.x - R.x) < 420).sort((a, b) => Math.hypot(a.x - R.x, a.y - R.y) - Math.hypot(b.x - R.x, b.y - R.y))[0];
     let elementos = [];
     if (rel) {
       const cabRel = it.filter(i => i.y < rel.y && i.y > rel.y - 40 && Math.abs(i.x - rel.x) < 300);
       const el = cabRel.find(i => /^ELEMENTO/i.test(i.s));
-      if (el) elementos = [...new Set(it.filter(i => i.y < el.y - 4 && i.y > R.y + 6 && Math.abs(i.x - el.x) < 30 && /^(\d+\s*x\s*)?[A-Za-z]{1,12}[\d.]*[a-z]?$/.test(i.s.replace(/\s/g, "")) && !/^(CA\d+|ESC|ELEMENTO)$/i.test(i.s)).sort((a, b) => b.y - a.y).map(i => i.s))];
+      // relação acima do resumo: elementos entre o cabeçalho e o resumo; lado a lado: a coluna desce até o fim da relação
+      const yMin = Math.abs(rel.y - R.y) < 40 ? el.y - 450 : R.y + 6;
+      if (el) elementos = [...new Set(it.filter(i => i.y < el.y - 4 && i.y > yMin && Math.abs(i.x - el.x) < 30 && /^(\d+\s*x\s*)?[A-Za-z]{1,12}[\d.]*[a-z]?$/.test(i.s.replace(/\s/g, "")) && !/^(CA\d+|ESC|ELEMENTO)$/i.test(i.s)).sort((a, b) => b.y - a.y).map(i => i.s))];
     }
     // volume de concreto escrito fora do quadro (ex.: "Vol. de concreto total (C-30) = 6,16 m3" ao lado da tabela)
     if (volume == null) {
@@ -154,8 +156,9 @@ export function analisarPagina(itens, n = 1) {
     // contexto para classificar: títulos grandes perto do quadro + carimbo da prancha
     const proxTit = it.filter(i => i.h >= 14 && i.s.length > 8 && /[A-Z]{4}/.test(sem(i.s)) && !/RELACAO|RESUMO/i.test(sem(i.s)) && !NOTA.test(i.s))
       .sort((a, b) => Math.hypot(a.x - R.x, (a.y - R.y) * 1.5) - Math.hypot(b.x - R.x, (b.y - R.y) * 1.5)).map(i => i.s);
-    const contexto = [...proxTit.slice(0, 1), ...carimbo, ...titulos].join(" · ");
-    const c = classificar(elementos, contexto);
+    // sem elementos: vale primeiro o título mais perto do quadro; o carimbo (que traz o nome do projeto) só se não der
+    let c = classificar(elementos, proxTit.slice(0, 1).join(" · "));
+    if (!c.categoria) c = classificar(elementos, [...proxTit.slice(0, 1), ...carimbo, ...titulos].join(" · "));
     // nome do quadro: o título mais perto que combine com o elemento (juntando as linhas do título);
     // se nenhum combinar, o nome sai do próprio elemento (ex.: "Fundações — SP10, 2xSP11 (-56)")
     const PAL = { vigas: /VIGA/, pilares: /PILAR/, lajes: /LAJE|VIGOTA|POSITIV|NEGATIV/, escada: /ESCADA/, fundacoes: /SAPATA|BLOCO|ESTACA|FUNDA|TUBUL|RADIER/, arrimo: /ARRIMO|MURO|CORTINA|PAREDE/, piscina: /PISCINA/ };

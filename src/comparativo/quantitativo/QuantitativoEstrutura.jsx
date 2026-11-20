@@ -82,7 +82,7 @@ function Quadro({ t, onMudar, onRemover }) {
     <div style={{ border: `1px solid ${t.categoria ? K.borda : "#fde68a"}`, borderLeft: `4px solid ${COR_CAT[t.categoria] || "#f59e0b"}`, borderRadius: 12, padding: "10px 12px", background: t.incluir ? "#fff" : "#f8fafc", opacity: t.incluir ? 1 : .6 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <input type="checkbox" checked={t.incluir} onChange={e => onMudar({ incluir: e.target.checked })} aria-label="Incluir no quantitativo" style={{ width: 17, height: 17, accentColor: K.azul }} />
-        <span style={{ fontSize: 11.5, fontWeight: 800, color: K.sub, background: K.fundo, borderRadius: 6, padding: "2px 7px" }}>Folha {t.pagina}</span>
+        <span style={{ fontSize: 11.5, fontWeight: 800, color: K.sub, background: K.fundo, borderRadius: 6, padding: "2px 7px" }}>Folha {t.pagina}</span>{t.ocr && <span title="Lido por OCR (o PDF não tem texto): confira os números" style={{ fontSize: 11, fontWeight: 800, color: "#92400e", background: "#fef3c7", borderRadius: 6, padding: "2px 7px" }}>OCR</span>}
         <span style={{ flex: "1 1 200px", minWidth: 0 }}>
           <b style={{ display: "block", fontSize: 13.5, color: K.tx, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.titulo}</b>
           <span style={{ fontSize: 11.5, color: K.sub }}>{t.elementos.length ? `Elementos: ${t.elementos.slice(0, 8).join(", ")}${t.elementos.length > 8 ? "…" : ""}` : "Classificado " + t.motivo}</span>
@@ -146,16 +146,16 @@ export default function QuantitativoEstrutura({ projetos = [], usuarioAtual }) {
   async function lerPdfs(lista) {
     const fs = [...(lista || [])].filter(f => /\.pdf$/i.test(f.name));
     if (!fs.length) { avisar("Escolha o PDF das pranchas do projeto estrutural.", false); return; }
-    let novos = 0, pag = [];
+    let novos = 0, pag = [], ocr = 0, puladas = [];
     try {
       for (const f of fs) {
         setLendo(`Lendo ${f.name}…`);
-        const res = await lerPranchasQuantitativo(f, { aoProgredir: p => setLendo(`Lendo ${f.name}… ${Math.round(p * 100)}%`) });
-        novos += res.tabelas.length; pag = [...pag, ...res.paginas];
+        const res = await lerPranchasQuantitativo(f, { aoProgredir: (p, txt) => setLendo(`Lendo ${f.name}… ${Math.round(p * 100)}%${txt ? ` · ${txt}` : ""}`) });
+        novos += res.tabelas.length; ocr += res.porOcr || 0; puladas = [...puladas, ...(res.ocrPuladas || [])]; pag = [...pag, ...res.paginas];
         setQ(x => ({ ...x, arquivos: [...x.arquivos.filter(a => a.nome !== f.name), res.arquivo], tabelas: [...x.tabelas.filter(t => t.arquivo !== f.name), ...res.tabelas] }));
       }
       setPaginas(p => [...p, ...pag]);
-      avisar(novos ? `${novos} quadro(s) de aço encontrados. Confira o elemento de cada um abaixo.` : "Não achei quadros “Resumo do aço” neste PDF. Ele precisa ser o PDF vetorial exportado do programa de cálculo (não escaneado).", !!novos);
+      avisar(novos ? `${novos} quadro(s) de aço encontrados${ocr ? ` (${ocr} lidos por OCR, porque o PDF não tem texto — confira os números com atenção)` : ""}. Confira o elemento de cada um abaixo.${puladas.length ? ` Não consegui ler a(s) folha(s) ${puladas.join(", ")} (desenho muito carregado).` : ""}` : "Não achei quadros “Resumo do aço” neste PDF, nem lendo a imagem das pranchas. Confira se é o PDF das pranchas de detalhamento do estrutural.", !!novos);
     } catch (e) { avisar("Não foi possível ler o PDF: " + (e.message || e), false); }
     finally { setLendo(""); }
   }
