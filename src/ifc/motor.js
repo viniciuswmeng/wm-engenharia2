@@ -4,6 +4,31 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { IfcAPI, FILE_NAME } from "web-ifc";
 import wasmUrl from "web-ifc/web-ifc.wasm?url";
+
+// Perfis "C" (U enrijecido / terças metálicas): o web-ifc não desenha IfcCShapeProfileDef com raio interno de dobra
+// e a peça vira uma fita plana. Tira só o raio (vira canto vivo), mantendo altura, aba, espessura e enrijecedor.
+const CSHAPE = /(IFCCSHAPEPROFILEDEF\(([^;]*?))\);/g;
+export function corrigirPerfis(bytes) {
+  // procura rápida pelo nome (ASCII) antes de converter o arquivo inteiro
+  const alvo = "IFCCSHAPEPROFILEDEF", t0 = alvo.charCodeAt(0);
+  let tem = false;
+  for (let i = bytes.indexOf(t0); i !== -1 && i < bytes.length; i = bytes.indexOf(t0, i + 1)) {
+    let ok = true; for (let k = 1; k < alvo.length; k++) if (bytes[i + k] !== alvo.charCodeAt(k)) { ok = false; break; }
+    if (ok) { tem = true; break; }
+  }
+  if (!tem) return bytes;
+  const txt = new TextDecoder("latin1").decode(bytes);
+  const novo = txt.replace(CSHAPE, (m, cab, args) => {
+    const p = args.split(","); // ProfileType, Name, Position, Depth, Width, Wall, Girth, InternalFilletRadius[, CentreOfGravityInX]
+    if (p.length < 8 || p[7].trim() === "$") return m;
+    p[7] = "$";
+    return `IFCCSHAPEPROFILEDEF(${p.join(",")});`;
+  });
+  if (novo === txt) return bytes;
+  const out = new Uint8Array(novo.length);
+  for (let i = 0; i < novo.length; i++) out[i] = novo.charCodeAt(i) & 0xff;
+  return out;
+}
 import { classificar } from "./categorias.js";
 import { gerarIsometricoDXF } from "./isometrico.js";
 
@@ -258,7 +283,7 @@ export function criarVisualizador(el, { onSelecionar, onCaminharMudou } = {}) {
 
   async function carregar(buffer, { id, nome } = {}) {
     const api = await obterApi();
-    const mid = api.OpenModel(new Uint8Array(buffer), { COORDINATE_TO_ORIGIN: false, CIRCLE_SEGMENTS: 14 });
+    const mid = api.OpenModel(corrigirPerfis(new Uint8Array(buffer)), { COORDINATE_TO_ORIGIN: false, CIRCLE_SEGMENTS: 14 });
     if (mid < 0) throw new Error("Não foi possível abrir este arquivo IFC.");
     const modeloId = id || "m" + Date.now();
     const grupo = new THREE.Group(); grupo.name = nome || "Modelo";
