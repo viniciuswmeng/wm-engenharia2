@@ -1,8 +1,11 @@
 // Desenho em linhas SEM as linhas ocultas (o que fica atrás de outro elemento some) e sem linhas duplicadas.
+// Peças finas (chapas, mesas de perfis metálicos, parafusos) ficam menores que um pixel da imagem de profundidade:
+// nesses pontos duvidosos a visibilidade é decidida por um raio exato até a câmera (BVH), sem depender da resolução.
 // Como funciona: desenha a profundidade da cena numa imagem de alta resolução (vista paralela) e, para cada
 // aresta dos elementos, mantém só os trechos que estão na frente do que foi desenhado. Depois junta as
 // linhas que caem uma sobre a outra (fica a de maior prioridade: pilar > viga > laje > escada > fundação).
 import * as THREE from "three";
+import { MeshBVH } from "three-mesh-bvh";
 
 const VERT = `
 uniform float uNear; uniform float uFar;
@@ -94,12 +97,35 @@ export function vistaSemOcultas({ renderer, elementos, dir, corte = null, resolu
   }
   const prof = new Float32Array(W * H);
   for (let i = 0, j = 0; i < prof.length; i++, j += 4) prof[i] = (buf[j] * 65536 + buf[j + 1] * 256 + buf[j + 2]) / 16777215;
-  const maxViz = (px, py) => {
-    let m = 0;
-    for (let y = py - 1; y <= py + 1; y++) { if (y < 0 || y >= H) { m = 1; continue; } for (let x = px - 1; x <= px + 1; x++) { if (x < 0 || x >= W) { m = 1; continue; } const d = prof[y * W + x]; if (d > m) m = d; } }
-    return m;
+  const eps = 0.015 / (far - near) + 1.5 / 16777215, epsFino = 0.0005 / (far - near) + 1.5 / 16777215;
+  const vizinhos = (px, py) => {
+    let mn = 1, mx = 0;
+    for (let y = py - 1; y <= py + 1; y++) for (let x = px - 1; x <= px + 1; x++) {
+      const d = y < 0 || y >= H || x < 0 || x >= W ? 1 : prof[y * W + x]; if (d < mn) mn = d; if (d > mx) mx = d;
+    }
+    return [mn, mx];
   };
-  const eps = 0.015 / (far - near) + 1.5 / 16777215;
+  // BVH de toda a cena (coordenadas do mundo) para os raios dos pontos duvidosos
+  let bvh = null;
+  const montarBvh = () => {
+    let total = 0; usados.forEach(e => e.geos.forEach(g => { total += g.index ? g.index.count : g.attributes.position.count; }));
+    const pos = new Float32Array(total * 3); let o = 0;
+    usados.forEach(e => e.geos.forEach(g => {
+      const p = g.attributes.position.array, ix = g.index ? g.index.array : null, n = ix ? ix.length : p.length / 3;
+      for (let i = 0; i < n; i++) { const j = (ix ? ix[i] : i) * 3; pos[o++] = p[j]; pos[o++] = p[j + 1]; pos[o++] = p[j + 2]; }
+    }));
+    const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    bvh = new MeshBVH(geo, { maxLeafTris: 8 });
+  };
+  const raioV = new THREE.Ray(), paraCamera = dir.clone().negate().normalize(), pw = new THREE.Vector3();
+  const tapado = p => {
+    if (!bvh) montarBvh();
+    raioV.origin.copy(p).addScaledVector(paraCamera, 2e-4); raioV.direction.copy(paraCamera);
+    const f = bvh.raycastFirst(raioV, THREE.DoubleSide);
+    if (!f) return false;
+    if (f.distance > 1e-5 && (corte == null || f.point.y <= corte + 1e-6)) return true;
+    return bvh.raycast(raioV, THREE.DoubleSide).some(h => h.distance > 1e-5 && (corte == null || h.point.y <= corte + 1e-6));
+  };
 
   // ── arestas visíveis ──
   const crus = [];
@@ -119,7 +145,9 @@ export function vistaSemOcultas({ renderer, elementos, dir, corte = null, resolu
     let inicio = -1;
     for (let i = 0; i <= n; i++) {
       const t = i / n, px = pa[0] + (pb[0] - pa[0]) * t, py = pa[1] + (pb[1] - pa[1]) * t, d = pa[2] + (pb[2] - pa[2]) * t;
-      const vis = d <= maxViz(Math.floor(px), Math.floor(py)) + eps;
+      const [mn, mx] = vizinhos(Math.floor(px), Math.floor(py));
+      // certo: está na frente de tudo à volta (visível) ou atrás de tudo à volta com folga (oculto); senão, raio exato
+      const vis = d <= mn + epsFino ? true : d > mx + eps ? false : !tapado(pw.lerpVectors(a, b, t));
       if (vis && inicio < 0) inicio = i;
       if ((!vis || i === n) && inicio >= 0) {
         const fim = vis ? i : i - 1;
