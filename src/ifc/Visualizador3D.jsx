@@ -39,6 +39,8 @@ export default function Visualizador3D({ ref, altura = "calc(100vh - 230px)", pa
   const montagem = useRef(null);
   const ctrlRef = useRef(null);
   const caixaRef = useRef(null);
+  const raizRef = useRef(null);
+  const [cheia, setCheia] = useState(null); // null | "nativa" | "css"
   const [modelos, setModelos] = useState([]);
   const [carregando, setCarregando] = useState("");
   const [erro, setErro] = useState("");
@@ -62,6 +64,20 @@ export default function Visualizador3D({ ref, altura = "calc(100vh - 230px)", pa
     ctrlRef.current = ctrl;
     return () => { ctrl.dispose(); ctrlRef.current = null; };
   }, []);
+
+  // tela cheia: o visualizador inteiro (3D + painel) entra em tela cheia
+  useEffect(() => {
+    const mudou = () => setCheia(c => (document.fullscreenElement === raizRef.current ? "nativa" : c === "nativa" ? null : c));
+    document.addEventListener("fullscreenchange", mudou);
+    return () => document.removeEventListener("fullscreenchange", mudou);
+  }, []);
+  useEffect(() => {
+    if (cheia !== "css") return;
+    const esc = e => { if (e.key === "Escape") setCheia(null); };
+    const ov = document.body.style.overflow; document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", esc);
+    return () => { window.removeEventListener("keydown", esc); document.body.style.overflow = ov; };
+  }, [cheia]);
 
   // propriedades do elemento selecionado
   useEffect(() => {
@@ -120,9 +136,13 @@ export default function Visualizador3D({ ref, altura = "calc(100vh - 230px)", pa
   const porDisciplina = DISCIPLINAS.map(d => ({ ...d, itens: categorias.filter(x => x.disciplina === d.id) })).filter(d => d.itens.length);
 
   function telaCheia() {
-    const el = caixaRef.current; if (!el) return;
-    if (document.fullscreenElement) document.exitFullscreen?.(); else el.requestFullscreen?.();
+    if (cheia === "nativa") { document.exitFullscreen?.(); return; }
+    if (cheia === "css") { setCheia(null); return; }
+    const el = raizRef.current; if (!el) return;
+    // celulares (iPhone) não têm tela cheia de elemento: usa modo "cobrir a página"
+    if (el.requestFullscreen) el.requestFullscreen().catch(() => setCheia("css")); else setCheia("css");
   }
+  const alturaEf = cheia ? "calc(100dvh - 20px)" : altura;
   function baixarImagem() {
     const url = ctl()?.capturar(); if (!url) return;
     const a = document.createElement("a"); a.href = url; a.download = `${(modelos[0]?.nome || "modelo").replace(/\.ifc$/i, "")}.png`; a.click();
@@ -136,10 +156,12 @@ export default function Visualizador3D({ ref, altura = "calc(100vh - 230px)", pa
   const abasPainel = [["modelo", "Modelo"], ["props", "Propriedades"], ...(painelExtra ? [[painelExtra.id, painelExtra.label]] : [])];
 
   return (
-    <div className="wm-ifc" style={{ display: "grid", gridTemplateColumns: painelAberto ? "minmax(0,1fr) 320px" : "minmax(0,1fr)", gap: 16, alignItems: "stretch" }}>
+    <div ref={raizRef} className="wm-ifc" style={{ display: "grid", gridTemplateColumns: painelAberto ? "minmax(0,1fr) 320px" : "minmax(0,1fr)", gap: cheia ? 10 : 16, alignItems: "stretch",
+      ...(cheia ? { background: "#eef3fa", padding: 10, boxSizing: "border-box", width: "100%", height: "100dvh" } : null),
+      ...(cheia === "css" ? { position: "fixed", inset: 0, zIndex: 2000 } : null) }}>
       {/* ── área 3D ── */}
       <div ref={caixaRef} onDragOver={e => { if (onArquivoSolto) { e.preventDefault(); setArrastando(true); } }} onDragLeave={() => setArrastando(false)} onDrop={soltar}
-        style={{ position: "relative", height: altura, minHeight: 420, borderRadius: publico ? 0 : 16, overflow: "hidden",
+        style={{ position: "relative", height: alturaEf, minHeight: cheia ? 0 : 420, borderRadius: publico ? 0 : 16, overflow: "hidden",
           background: "radial-gradient(120% 90% at 50% 0%, #ffffff 0%, #eef3fa 55%, #dfe7f2 100%)", border: publico ? "none" : `1px solid ${K.borda}` }}>
         <div ref={montagem} style={{ position: "absolute", inset: 0 }} />
 
@@ -224,7 +246,16 @@ export default function Visualizador3D({ ref, altura = "calc(100vh - 230px)", pa
             <span style={{ width: 1, height: 22, background: K.borda, margin: "0 4px" }} />
             <BotaoFerramenta icone="imagem" titulo="Salvar imagem da vista" onClick={baixarImagem} />
             {!publico && <BotaoFerramenta icone="download" titulo="Isométrico para AutoCAD (DXF)" ativo={isoAberto} onClick={() => setIsoAberto(v => !v)} />}
-            <BotaoFerramenta icone="tela" titulo="Tela cheia" onClick={telaCheia} />
+            <BotaoFerramenta icone="tela" titulo={cheia ? "Sair da tela cheia" : "Tela cheia"} ativo={!!cheia} onClick={telaCheia} />
+          </div>
+        )}
+        {tem && sel && !painelAberto && (
+          <div style={{ position: "absolute", bottom: 72, left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 6, background: "#fff", borderRadius: 12, padding: "6px 8px 6px 12px", boxShadow: "0 8px 28px rgba(10,37,87,.16)", maxWidth: "calc(100% - 24px)", flexWrap: "wrap", justifyContent: "center" }}>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: K.mar, maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={sel.nome || sel.tipo}>{sel.nome || sel.tipo}</span>
+            <button onClick={() => ctl().isolarSelecionado()} style={bAcao}>Isolar</button>
+            <button onClick={() => { ctl().ocultarSelecionado(); setSel(null); setProps(null); }} style={bAcao}>Ocultar</button>
+            <button onClick={() => ctl().mostrarTodos()} style={bAcao}>Mostrar todos</button>
+            <button onClick={() => { setAba("props"); setPainelAberto(true); }} style={{ ...bAcao, background: K.azul, color: "#fff", borderColor: K.azul }}>Propriedades</button>
           </div>
         )}
         {tem && !ferr.caminhar && (
@@ -241,7 +272,7 @@ export default function Visualizador3D({ ref, altura = "calc(100vh - 230px)", pa
 
       {/* ── painel lateral ── */}
       {painelAberto && (
-        <aside className="wm-ifc-painel" style={{ height: altura, minHeight: 420, background: "#fff", border: `1px solid ${K.borda}`, borderRadius: publico ? 0 : 16, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <aside className="wm-ifc-painel" style={{ height: alturaEf, minHeight: cheia ? 0 : 420, background: "#fff", border: `1px solid ${K.borda}`, borderRadius: publico ? 0 : 16, display: "flex", flexDirection: "column", overflow: "hidden" }}>
           <div role="tablist" style={{ display: "flex", borderBottom: `1px solid ${K.borda}`, padding: "0 6px" }}>
             {abasPainel.map(([id, l]) => (
               <button key={id} role="tab" aria-selected={aba === id} onClick={() => setAba(id)}
