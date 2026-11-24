@@ -288,6 +288,13 @@ a.btn{text-decoration:none}
 .signed{list-style:none;padding:0;margin:10px 0;display:flex;flex-direction:column;gap:6px}
 .signed li{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:14px}
 .signed small{color:var(--muted)}
+.aimgs{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;margin:10px 0}
+.aimg{border:1px solid var(--line);border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:6px;background:var(--surface)}
+.aimg .th{aspect-ratio:4/3;background:#f1f4f8;border-radius:6px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.aimg .th img{max-width:100%;max-height:100%;object-fit:contain}
+.aimg .tag{font:600 12px var(--sans);color:var(--muted)}
+.aimg input[type=text]{width:100%}
+.aimg .row{display:flex;gap:6px;flex-wrap:wrap}
 .filebtn.dis{opacity:.5;pointer-events:none}
 /* ajuda */
 .fab{position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom,0px));width:48px;height:48px;border-radius:50%;border:0;background:var(--cad);color:#fff;font:800 22px var(--sans);cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25);z-index:30}
@@ -2053,7 +2060,14 @@ function renderAtas(){
     <label class="field"><span>Pauta</span><textarea id="af-pauta" data-af="pauta" rows="3">${esc(a.pauta)}</textarea></label>
     <label class="field"><span>Assuntos discutidos</span><textarea id="af-disc" data-af="disc" rows="5">${esc(a.disc)}</textarea></label>
     <label class="field"><span>Decisões tomadas</span><textarea id="af-dec" data-af="dec" rows="4">${esc(a.dec)}</textarea></label>
-  </div></div>
+  </div><p class="msg">Para colocar uma imagem no meio do texto, cole um print (Ctrl+V) dentro do campo ou use <b>Inserir no texto</b> abaixo. O marcador <b>[IMAGEM n]</b> mostra onde a figura vai aparecer no PDF.</p></div>
+  <div class="panel"><h2>Imagens</h2>
+    ${(a.imgs||[]).length?`<div class="aimgs">${a.imgs.map(im=>`<div class="aimg" data-iid="${esc(im.id)}"><div class="th"><img alt="" data-ith="${esc(im.id)}"></div><span class="tag">[IMAGEM ${im.n}]${ataUsaImg(a,im.n)?"":" · fora do texto (vai ao final)"}</span>
+      <input type="text" id="ic-${esc(im.id)}" data-icap="${esc(im.id)}" value="${esc(im.cap||"")}" placeholder="Legenda (opcional)" aria-label="Legenda da imagem ${im.n}">
+      <div class="row"><button class="btn" type="button" data-iins="${esc(im.id)}">Inserir no texto</button><button class="btn danger" type="button" data-idel="${esc(im.id)}">Remover</button><span class="inline-confirm" id="idc-${esc(im.id)}" hidden><button class="btn danger" type="button" data-idelyes="${esc(im.id)}">Remover</button><button class="btn" type="button" data-idelno="${esc(im.id)}">Cancelar</button></span></div></div>`).join("")}</div>`:`<p class="msg">Nenhuma imagem. Elas aparecem no PDF onde estiver o marcador; as que não estiverem no texto vão para o final da ata.</p>`}
+    <label class="btn filebtn${folderOK?"":" dis"}" for="imgFile">+ Adicionar imagens<input type="file" id="imgFile" accept="image/png,image/jpeg,image/webp" multiple${folderOK?"":" disabled"}></label>
+    <span class="msg" id="imgMsg" role="status"></span>
+  </div>
   <div class="panel"><h2>Encaminhamentos</h2><div class="tblwrap0"><table class="tbl"><thead><tr><th>Ação</th><th>Responsável</th><th>Prazo</th><th></th></tr></thead><tbody>
     ${a.acts.map(r=>`<tr data-xid="${esc(r.id)}"><td><input type="text" id="xw-${esc(r.id)}" data-xf="what" value="${esc(r.what)}" aria-label="Ação"></td><td><input type="text" id="xo-${esc(r.id)}" data-xf="who" value="${esc(r.who)}" aria-label="Responsável"></td><td><input type="date" id="xd-${esc(r.id)}" data-xf="due" value="${esc(r.due)}" aria-label="Prazo"></td><td><button class="btn danger" type="button" data-xdel="${esc(r.id)}">Remover</button></td></tr>`).join("")}
   </tbody></table></div><div class="addbar"><button class="btn" type="button" id="xAdd">+ Encaminhamento</button></div>
@@ -2067,7 +2081,42 @@ function renderAtas(){
   </div>
   <div class="atabar end"><button class="btn danger" type="button" id="ataDel">Excluir ata</button><span class="inline-confirm" id="ataDelConf" hidden>Excluir esta ata? Os anexos na pasta não são apagados. <button class="btn danger" type="button" id="ataDelYes">Excluir</button><button class="btn" type="button" id="ataDelNo">Cancelar</button></span></div>`;
   $("root").querySelectorAll("textarea[data-af]").forEach(autosize);
+  ataThumbs(a);
 }
+/* ---- imagens no texto da ata ---- */
+const IMG_MAX_ORIG=25*1024*1024,IMG_MAX_ATA=30,IMG_LADO=1800,IMG_CACHE=new Map();
+let ataFoco={id:"af-disc",pos:null};
+function ataUsaImg(a,n){return ["pauta","disc","dec"].some(k=>new RegExp("\\[IMAGEM\\s+"+n+"\\]","i").test(a[k]||""))}
+async function comprimirImg(f){
+  if(!/^image\/(png|jpeg|webp)$/.test(f.type))throw new Error("tipo");if(f.size>IMG_MAX_ORIG)throw new Error("grande");
+  const bmp=await createImageBitmap(f);const k=Math.min(1,IMG_LADO/Math.max(bmp.width,bmp.height)),w=Math.max(1,Math.round(bmp.width*k)),h=Math.max(1,Math.round(bmp.height*k));
+  const c=document.createElement("canvas");c.width=w;c.height=h;const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,w,h);x.drawImage(bmp,0,0,w,h);bmp.close&&bmp.close();
+  const blob=await new Promise(r=>c.toBlob(r,"image/jpeg",.86));if(!blob)throw new Error("falha");return {blob,w,h}}
+function inserirMarcador(n,el){
+  el=el||$(ataFoco.id)||$("af-disc");if(!el)return;const v=el.value,pos=ataFoco.id===el.id&&ataFoco.pos!=null?Math.min(ataFoco.pos,v.length):v.length;
+  const antes=v.slice(0,pos),depois=v.slice(pos),ins=(antes&&!antes.endsWith("\n")?"\n":"")+"[IMAGEM "+n+"]"+(depois.startsWith("\n")?"":"\n");
+  el.value=antes+ins+depois;ataFoco={id:el.id,pos:pos+ins.length};el.dispatchEvent(new Event("input",{bubbles:true}));renderAtas();
+  const e2=$(el.id);if(e2){e2.focus();e2.setSelectionRange(ataFoco.pos,ataFoco.pos)}}
+async function addAtaImgs(files,noTexto,el){
+  const p=cur(),a=curAtaObj(),m=()=>$("imgMsg");if(!a)return;
+  if(!folderOK){if(m())m().textContent="Abra pelo sistema WM para adicionar imagens.";return}
+  a.imgs=a.imgs||[];let ok=0,erro="";
+  for(const f of files){
+    if(a.imgs.length>=IMG_MAX_ATA){erro="Limite de "+IMG_MAX_ATA+" imagens por ata.";break}
+    try{const {blob,w,h}=await comprimirImg(f);a.imgSeq=Math.max(a.imgSeq||0,...a.imgs.map(x=>x.n))+1;const n=a.imgSeq,id=uid(),file=ataBase(a)+"_img_"+id+".jpg";
+      await writeFile("atas_imagens",file,blob);IMG_CACHE.set(file,URL.createObjectURL(blob));
+      a.imgs.push({id,n,file,w,h,cap:""});ok++;if(noTexto)inserirMarcador(n,el)}
+    catch(e){erro=e&&e.message==="tipo"?"Use imagens PNG, JPG ou WEBP.":e&&e.message==="grande"?"Imagem acima de 25 MB.":"Não foi possível enviar uma das imagens."}}
+  touchProject(curId,false);renderAtas();if(m())m().textContent=(ok?ok+" imagem(ns) adicionada(s). ":"")+erro}
+async function blobImgAta(im){if(IMG_CACHE.has(im.file))return IMG_CACHE.get(im.file);const b=await readFileBlob("atas_imagens",im.file);const u=URL.createObjectURL(new Blob([await b.arrayBuffer()],{type:"image/jpeg"}));IMG_CACHE.set(im.file,u);return u}
+function ataThumbs(a){(a.imgs||[]).forEach(async im=>{try{const u=await blobImgAta(im),el=document.querySelector(`img[data-ith="${CSS.escape(im.id)}"]`);if(el)el.src=u}catch(e){}})}
+async function dataUrlImg(u){const b=await (await fetch(u)).blob();return await new Promise((r,j)=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.onerror=j;fr.readAsDataURL(b)})}
+$("root").addEventListener("focusin",e=>{const t=e.target;if(tab==="atas"&&t.matches&&t.matches("textarea[data-af]"))ataFoco={id:t.id,pos:t.selectionStart}});
+$("root").addEventListener("focusout",e=>{const t=e.target;if(tab==="atas"&&t.matches&&t.matches("textarea[data-af]"))ataFoco={id:t.id,pos:t.selectionStart}});
+$("root").addEventListener("paste",e=>{const t=e.target;if(tab!=="atas"||!t.matches||!t.matches("textarea[data-af]"))return;
+  const fs=[...(e.clipboardData&&e.clipboardData.files||[])].filter(f=>/^image\//.test(f.type));if(!fs.length)return;
+  e.preventDefault();ataFoco={id:t.id,pos:t.selectionStart};addAtaImgs(fs,true,t)});
+
 /* ---- importação de ata por TXT ---- */
 const ATA_TXT_MAX=300*1024;
 function ataTxtBtns(rot){return `<label class="btn filebtn" for="ataTxt" title="Arquivo .txt no modelo da WM">${rot}<input type="file" id="ataTxt" accept=".txt,text/plain"></label><button class="btn" type="button" id="ataModelo">Baixar modelo TXT</button><button class="btn" type="button" id="ataPrompt" title="Copia as instruções para colar no Claude junto com a transcrição">Copiar instruções p/ Claude</button>`}
@@ -2189,12 +2238,14 @@ function ataField(t){
   if(t.dataset.adisc){a.discs[t.dataset.adisc]=t.checked;return true}
   if(t.dataset.pf){const r=a.parts.find(x=>x.id===t.closest("tr").dataset.pid);if(r)r[t.dataset.pf]=t.type==="checkbox"?t.checked:t.value;return true}
   if(t.dataset.xf){const r=a.acts.find(x=>x.id===t.closest("tr").dataset.xid);if(r)r[t.dataset.xf]=t.value;return true}
+  if(t.dataset.icap){const r=(a.imgs||[]).find(x=>x.id===t.dataset.icap);if(r)r.cap=t.value.slice(0,200);return true}
   return false;
 }
 $("root").addEventListener("input",e=>{if(tab==="atas"&&ataField(e.target))touchProject(curId,false)});
 $("root").addEventListener("change",async e=>{
   if(tab!=="atas")return;const t=e.target;
   if(t.id==="signFile"){const f=t.files[0];t.value="";if(f)await attachSigned(f);return}
+  if(t.id==="imgFile"){const fs=[...t.files];t.value="";if(fs.length)await addAtaImgs(fs,false);return}
   if(t.id==="ataTxt"){const f=t.files[0];t.value="";if(f)await importarAtaTxt(f);return}
   if(t.type==="checkbox"&&ataField(t))touchProject(curId,false);
 });
@@ -2215,6 +2266,12 @@ $("root").addEventListener("click",async e=>{
   if(t.id==="ataDelNo"){$("ataDelConf").hidden=true;$("ataDel").hidden=false;return}
   if(t.id==="ataDelYes"){p.atas=p.atas.filter(x=>x.id!==a.id);curAta=null;touchProject(curId,false);renderAtas();renderTabs();return}
   if(t.id==="ataPdf"){ataPdf(p,a);return}
+  if(q("[data-iins]")){const im=(a.imgs||[]).find(x=>x.id===q("[data-iins]").dataset.iins);if(im)inserirMarcador(im.n);return}
+  if(q("[data-idel]")){const id=q("[data-idel]").dataset.idel;$("idc-"+id).hidden=false;q("[data-idel]").hidden=true;return}
+  if(q("[data-idelno]")){const id=q("[data-idelno]").dataset.idelno;$("idc-"+id).hidden=true;document.querySelector(`[data-idel="${id}"]`).hidden=false;return}
+  if(q("[data-idelyes]")){const id=q("[data-idelyes]").dataset.idelyes,im=(a.imgs||[]).find(x=>x.id===id);if(im){await removeFile("atas_imagens",im.file);IMG_CACHE.delete(im.file);
+    const re=new RegExp("\\n?\\[IMAGEM\\s+"+im.n+"\\]\\n?","gi");["pauta","disc","dec"].forEach(k=>{a[k]=(a[k]||"").replace(re,"\n")});}
+    a.imgs=(a.imgs||[]).filter(x=>x.id!==id);touchProject(curId,false);renderAtas();return}
   if(q("[data-sopen]")){openSigned(a.signed.find(x=>x.id===q("[data-sopen]").dataset.sopen));return}
   if(q("[data-sdel]")){const id=q("[data-sdel]").dataset.sdel;$("sdc-"+id).hidden=false;q("[data-sdel]").hidden=true;return}
   if(q("[data-sdelno]")){const id=q("[data-sdelno]").dataset.sdelno;$("sdc-"+id).hidden=true;document.querySelector(`[data-sdel="${id}"]`).hidden=false;return}
@@ -2262,7 +2319,16 @@ async function ataPdf(p,a){
   const need=h=>{if(y+h>FIM)nova()};
   const titulo=(t,sub,extra=0)=>{need(14+extra);doc.setFillColor(...AZUL);doc.roundedRect(M,y-3.6,1.1,4.4,.5,.5,"F");fonte("bold",10.5,MAR);doc.text(T(t),M+3.4,y);
     if(sub){const w=doc.getTextWidth(T(t));fonte("normal",8,SUB);doc.text(T(sub),M+3.4+w+2.5,y)}y+=5.5};
-  const para=t=>{fonte("normal",9.5,TX);const ls=doc.splitTextToSize(T((t||"").trim()||"—"),W-2*M);ls.forEach(l=>{need(4.9);doc.text(l,M,y);y+=4.9});y+=4};
+  const IMGS={},usadas=new Set();
+  for(const im of (a.imgs||[])){try{IMGS[im.n]={im,src:await dataUrlImg(await blobImgAta(im))}}catch(e){}}
+  const figura=n=>{const g=IMGS[n];if(!g)return false;usadas.add(+n);const {im}=g,r=im.h/im.w||.75;let w=W-2*M,h=w*r;const mh=118;if(h>mh){h=mh;w=h/r}
+    const cap=T("Figura "+n+(im.cap?" — "+im.cap:""));fonte("normal",8.2,SUB);const cl=doc.splitTextToSize(cap,W-2*M);
+    need(h+6+cl.length*3.8);const x=(W-w)/2;doc.addImage(g.src,"JPEG",x,y,w,h,"ataimg"+n,"FAST");doc.setDrawColor(...BORDA);doc.setLineWidth(.2);doc.rect(x,y,w,h);y+=h+4.2;
+    fonte("normal",8.2,SUB);cl.forEach(l=>{doc.text(l,W/2,y,{align:"center"});y+=3.8});y+=3;return true};
+  const paraTxt=t=>{fonte("normal",9.5,TX);const ls=doc.splitTextToSize(T(t),W-2*M);ls.forEach(l=>{need(4.9);doc.text(l,M,y);y+=4.9})};
+  const para=t=>{t=(t||"").trim();if(!t){paraTxt("—");y+=4;return}
+    const partes=t.split(/\[IMAGEM\s+(\d{1,3})\]/i);
+    partes.forEach((pt,i)=>{if(i%2){if(!figura(pt)){paraTxt("[imagem "+pt+" não encontrada]")}}else{pt=pt.replace(/^\n+|\n+$/g,"");if(pt.trim()){paraTxt(pt);if(i<partes.length-1)y+=2}}});y+=4};
   const tabela=o=>{doc.autoTable(Object.assign({startY:y,margin:{left:M,right:M,top:TOPO,bottom:297-FIM},
     willDrawPage:d=>{if(d.pageNumber>1&&doc.getCurrentPageInfo().pageNumber!==1)fundo()},
     styles:{font:F,fontSize:8.8,cellPadding:{top:1.8,bottom:1.8,left:2.4,right:2.4},textColor:TX,lineColor:BORDA,lineWidth:.15},
@@ -2290,6 +2356,7 @@ async function ataPdf(p,a){
   titulo("Encaminhamentos",a.acts.length?a.acts.length+" ação(ões)":"",24);
   tabela({head:[["Ação","Responsável","Prazo"]],body:a.acts.length?a.acts.map(r=>[T(r.what),T(r.who),fmtD(r.due)||"—"]):[["Nenhum encaminhamento","",""]],columnStyles:{1:{cellWidth:42},2:{cellWidth:24,halign:"center"}}});
   if(a.next){titulo("Próxima reunião");para(a.next)}
+  {const resto=Object.keys(IMGS).map(Number).filter(n=>!usadas.has(n)).sort((x,z)=>x-z);if(resto.length){titulo("Registro fotográfico",resto.length+" imagem(ns)",60);resto.forEach(figura);y+=2}}
   // assinaturas
   const signers=a.parts.filter(r=>r.sign&&r.name);if(a.writer&&!a.parts.some(r=>r.name.trim().toLowerCase()===a.writer.trim().toLowerCase()))signers.push({name:a.writer,role:"Redator da ata"});
   const bh=34,rows=Math.ceil(signers.length/2)||1;
