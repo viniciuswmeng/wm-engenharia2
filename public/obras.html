@@ -2024,7 +2024,8 @@ function renderAtas(){
   const a=curAta&&p.atas.find(x=>x.id===curAta);
   if(!a){curAta=null;
     const list=p.atas.slice().sort((x,y)=>(y.date||"").localeCompare(x.date||"")||(y.num||"").localeCompare(x.num||""));
-    $("root").innerHTML=`<div class="atabar"><h2>Atas de reunião</h2><button class="btn pri" type="button" id="ataNew">+ Nova ata</button></div>
+    $("root").innerHTML=`<div class="atabar"><h2>Atas de reunião</h2><button class="btn pri" type="button" id="ataNew">+ Nova ata</button>${ataTxtBtns("Importar ata de TXT")}</div>
+    <p class="msg" id="ataTxtMsg" role="status"></p>
     ${list.length?`<div class="atalist">${list.map(x=>{const[s,c]=ataStatus(x);return`<button class="atacard" type="button" data-open="${esc(x.id)}"><span class="an">ATA ${esc(x.num)}</span><span class="ad">${fmtD(x.date)}${x.t1?" · "+esc(x.t1):""}</span><span class="as">${esc(x.subject||"Sem assunto")}</span><span class="badge ${c}">${s}${x.signed&&x.signed.length>1?" ("+x.signed.length+")":""}</span></button>`}).join("")}</div>`
     :`<p class="empty">Nenhuma ata ainda. Crie a primeira com <b>+ Nova ata</b>.</p>`}`;
     return;
@@ -2032,7 +2033,8 @@ function renderAtas(){
   const[s,c]=ataStatus(a);
   const dchk=["geral",...DISC.filter(k=>dOn(p,k))].map(k=>`<label class="ck"><input type="checkbox" data-adisc="${k}" ${a.discs[k]?"checked":""}> ${k==="geral"?"Geral":tpl[k].name}</label>`).join("");
   $("root").innerHTML=`<div class="atabar"><button class="btn" type="button" id="ataBack">← Todas as atas</button><h2>ATA ${esc(a.num)}</h2><span class="badge ${c}">${s}</span>
-    <span style="flex:1"></span><button class="btn pri" type="button" id="ataPdf">Gerar PDF da ata</button></div>
+    <span style="flex:1"></span>${ataTxtBtns("Preencher com TXT")}<button class="btn pri" type="button" id="ataPdf">Gerar PDF da ata</button></div>
+  <p class="msg" id="ataTxtMsg" role="status"></p>
   <div class="panel"><div class="agrid">
     <label class="field"><span>Número</span><input type="text" id="af-num" data-af="num" value="${esc(a.num)}"></label>
     <label class="field"><span>Data</span><input type="date" id="af-date" data-af="date" value="${esc(a.date)}"></label>
@@ -2066,6 +2068,120 @@ function renderAtas(){
   <div class="atabar end"><button class="btn danger" type="button" id="ataDel">Excluir ata</button><span class="inline-confirm" id="ataDelConf" hidden>Excluir esta ata? Os anexos na pasta não são apagados. <button class="btn danger" type="button" id="ataDelYes">Excluir</button><button class="btn" type="button" id="ataDelNo">Cancelar</button></span></div>`;
   $("root").querySelectorAll("textarea[data-af]").forEach(autosize);
 }
+/* ---- importação de ata por TXT ---- */
+const ATA_TXT_MAX=300*1024;
+function ataTxtBtns(rot){return `<label class="btn filebtn" for="ataTxt" title="Arquivo .txt no modelo da WM">${rot}<input type="file" id="ataTxt" accept=".txt,text/plain"></label><button class="btn" type="button" id="ataModelo">Baixar modelo TXT</button><button class="btn" type="button" id="ataPrompt" title="Copia as instruções para colar no Claude junto com a transcrição">Copiar instruções p/ Claude</button>`}
+function modeloAtaTxt(){const p=cur(),ds=["Geral",...DISC.filter(k=>dOn(p,k)).map(k=>tpl[k].name)].join(", ");return `DATA: dd/mm/aaaa
+INICIO: hh:mm
+TERMINO: hh:mm
+MODALIDADE: Presencial | Online | Híbrida
+LOCAL: endereço ou link da reunião
+ASSUNTO: objetivo da reunião em uma linha
+REDATOR: nome de quem redigiu a ata
+DISCIPLINAS: ${ds}
+
+[PARTICIPANTES]
+Nome completo | Função / empresa | e-mail | sim
+Nome completo | Cliente | | sim
+
+[PAUTA]
+- item da pauta
+- item da pauta
+
+[ASSUNTOS DISCUTIDOS]
+Resumo do que foi conversado, em tópicos ou parágrafos.
+
+[DECISOES]
+- decisão tomada
+- decisão tomada
+
+[ENCAMINHAMENTOS]
+Ação a fazer | Responsável | dd/mm/aaaa
+Ação a fazer | Responsável |
+
+[PROXIMA REUNIAO]
+Data, horário e pauta prevista
+`}
+function promptAtaTxt(){return `Vou colar abaixo a transcrição de uma reunião. Gere a ata em um arquivo .txt (texto simples, UTF-8) seguindo EXATAMENTE o modelo abaixo, para eu importar no sistema da WM Engenharia.
+
+Regras:
+- Mantenha os rótulos (DATA:, INICIO:, ...) e os títulos entre colchetes exatamente como estão.
+- Datas no formato dd/mm/aaaa e horários hh:mm. Se não souber um dado, deixe o campo vazio, sem inventar.
+- PARTICIPANTES: uma pessoa por linha, campos separados por "|": nome | função ou empresa | e-mail | sim/não (se assina a ata).
+- ENCAMINHAMENTOS: uma ação por linha: ação | responsável | prazo (dd/mm/aaaa ou vazio).
+- DISCIPLINAS: use só as opções listadas, separadas por vírgula.
+- Escreva em português formal, objetivo, em terceira pessoa. Não use markdown (sem **, sem tabelas).
+- Registre decisões e encaminhamentos de forma clara; não inclua conversas paralelas irrelevantes.
+
+MODELO:
+${modeloAtaTxt()}
+TRANSCRIÇÃO:
+(cole aqui)`}
+function baixarArqTxt(nome,txt){const u=URL.createObjectURL(new Blob(["﻿"+txt],{type:"text/plain;charset=utf-8"}));const l=document.createElement("a");l.href=u;l.download=nome;document.body.appendChild(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(u),5000)}
+function baixarModeloAta(){baixarArqTxt("modelo_ata_WM.txt",modeloAtaTxt())}
+async function copiarPromptAta(b){const m=$("ataTxtMsg");try{await navigator.clipboard.writeText(promptAtaTxt());if(m)m.textContent="Instruções copiadas. Cole no Claude e, logo abaixo, a transcrição da reunião."}catch(e){baixarArqTxt("instrucoes_ata_Claude.txt",promptAtaTxt());if(m)m.textContent="Não deu para copiar; baixei as instruções em um arquivo."}}
+function semAcento(s){return String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase().trim()}
+function limpaTxt(s,max){return String(s||"").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F​-‏‪-‮⁦-⁩]/g,"").replace(/\*\*|__/g,"").trim().slice(0,max||4000)}
+function dataTxt(v){v=String(v||"").trim();let m=v.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);if(m)return ok(+m[1],+m[2],+m[3]);
+  m=v.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})$/);if(m){let y=+m[3];if(y<100)y+=2000;return ok(y,+m[2],+m[1])}return "";
+  function ok(y,mo,d){const t=new Date(y,mo-1,d);return t.getFullYear()===y&&t.getMonth()===mo-1&&t.getDate()===d&&y>1999&&y<2100?y+"-"+String(mo).padStart(2,"0")+"-"+String(d).padStart(2,"0"):""}}
+function horaTxt(v){const m=String(v||"").trim().match(/^(\d{1,2})\s*[:hH]\s*(\d{2})?/);if(!m)return "";const h=+m[1],mi=+(m[2]||0);return h<24&&mi<60?String(h).padStart(2,"0")+":"+String(mi).padStart(2,"0"):""}
+const ATA_SEC={"PARTICIPANTES":"parts","PAUTA":"pauta","ASSUNTOS DISCUTIDOS":"disc","ASSUNTOS":"disc","DISCUSSAO":"disc","DISCUSSOES":"disc","DECISOES":"dec","DECISOES TOMADAS":"dec","ENCAMINHAMENTOS":"acts","PROXIMA REUNIAO":"next"};
+const ATA_CAMPO={"NUMERO":"num","DATA":"date","INICIO":"t1","HORA INICIO":"t1","TERMINO":"t2","FIM":"t2","HORA TERMINO":"t2","MODALIDADE":"mode","LOCAL":"place","LINK":"place","LOCAL OU LINK":"place","ASSUNTO":"subject","OBJETIVO":"subject","REDATOR":"writer","REDIGIDA POR":"writer","DISCIPLINAS":"discs","PROXIMA REUNIAO":"next"};
+function lerAtaTxt(txt){
+  const out={campos:{},secs:{}};let sec=null;
+  String(txt).replace(/^﻿/,"").replace(/\r\n?/g,"\n").split("\n").slice(0,3000).forEach(lin=>{
+    const l=lin.replace(/\t/g," ");const k=semAcento(l).replace(/^#+\s*/,"").replace(/\*/g,"");
+    const h=k.match(/^\[?\s*([A-Z ]+?)\s*\]?\s*:?\s*$/);
+    if(h&&ATA_SEC[h[1]]&&(/^\s*(\[|#)/.test(l)||/:\s*$/.test(l)||k===h[1])){sec=ATA_SEC[h[1]];out.secs[sec]=out.secs[sec]||[];return}
+    const c=l.match(/^\s*\**([A-Za-zÀ-ÿ ]{3,20}?)\**\s*:\s*(.*)$/);
+    if(c&&!sec){const nk=ATA_CAMPO[semAcento(c[1])];if(nk){out.campos[nk]=c[2];return}}
+    if(c&&sec&&ATA_CAMPO[semAcento(c[1])]&&ATA_SEC[semAcento(c[1])]){sec=ATA_SEC[semAcento(c[1])];out.secs[sec]=out.secs[sec]||[];if(c[2].trim())out.secs[sec].push(c[2]);return}
+    if(sec)out.secs[sec].push(l);
+  });
+  return out}
+function textoSec(ls){if(!ls)return null;const t=ls.join("\n").replace(/\n{3,}/g,"\n\n").trim();return limpaTxt(t,20000)}
+function linhasSec(ls){return (ls||[]).map(x=>x.replace(/^\s*(?:[-*•–]|\d+[.)])\s+/,"").trim()).filter(x=>x&&!/^[-|\s]+$/.test(x))}
+function aplicarAtaTxt(a,d){
+  const p=cur(),C=d.campos,S=d.secs;let n=0;const set=(k,v)=>{if(v!==null&&v!==undefined&&v!==""){a[k]=v;n++}};
+  if(C.num!==undefined)set("num",limpaTxt(C.num,20));
+  if(C.date!==undefined)set("date",dataTxt(C.date));
+  if(C.t1!==undefined)set("t1",horaTxt(C.t1));
+  if(C.t2!==undefined)set("t2",horaTxt(C.t2));
+  if(C.mode!==undefined){const m=semAcento(C.mode);set("mode",m.startsWith("ONLINE")||m.startsWith("VIRTUAL")?"Online":m.startsWith("HIBRID")?"Híbrida":m.startsWith("PRESENC")?"Presencial":"")}
+  if(C.place!==undefined)set("place",limpaTxt(C.place,300));
+  if(C.subject!==undefined)set("subject",limpaTxt(C.subject,300));
+  if(C.writer!==undefined)set("writer",limpaTxt(C.writer,120));
+  if(C.discs!==undefined){const ws=C.discs.split(/[,;\/]/).map(semAcento).filter(Boolean);if(ws.length){const nd={};
+    ws.forEach(w=>{if(w.startsWith("GERA"))nd.geral=true;DISC.forEach(k=>{if(!dOn(p,k))return;const nm=semAcento(tpl[k].name);if(nm===w||nm.startsWith(w)||w.startsWith(nm)||semAcento(k)===w)nd[k]=true})});
+    if(Object.keys(nd).length){a.discs=nd;n++}}}
+  const next=S.next?textoSec(S.next):C.next!==undefined?limpaTxt(C.next,500):null;if(next!==null)set("next",next.replace(/\n+/g," ").slice(0,500));
+  ["pauta","disc","dec"].forEach(k=>{const t=textoSec(S[k]);if(t!==null)set(k,t)});
+  if(S.parts){const ps=linhasSec(S.parts).slice(0,60).map(x=>{const f=x.split(/\s*[|;]\s*/).map(v=>limpaTxt(v,160));
+      const nm=(f[0]||"").replace(/^\s*nome\s*$/i,"");if(!nm||/^NOME$/.test(semAcento(nm)))return null;
+      const mail=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f[2]||"")?f[2]:"";const sg=semAcento(f[3]||"");
+      return {id:uid(),name:nm,role:f[1]||"",mail,sign:!(sg.startsWith("N")||sg==="0")}}).filter(Boolean);
+    if(ps.length){a.parts=ps;n++}}
+  if(S.acts){const xs=linhasSec(S.acts).slice(0,100).map(x=>{const f=x.split(/\s*\|\s*/);if(!f[0]||/^ACAO\b/.test(semAcento(f[0])))return null;
+      return {id:uid(),what:limpaTxt(f[0],500),who:limpaTxt(f[1],160),due:dataTxt(f[2])}}).filter(x=>x&&x.what);
+    if(xs.length){a.acts=xs;n++}}
+  return n}
+async function importarAtaTxt(f){
+  const p=cur(),m=()=>$("ataTxtMsg");if(!p)return;
+  if(!/\.txt$/i.test(f.name)&&f.type&&f.type!=="text/plain"){if(m())m().textContent="Escolha um arquivo .txt.";return}
+  if(f.size>ATA_TXT_MAX){if(m())m().textContent="Arquivo grande demais (máx. 300 KB).";return}
+  const buf=await f.arrayBuffer();let txt=new TextDecoder("utf-8").decode(buf);
+  if(txt.includes("�"))try{txt=new TextDecoder("windows-1252").decode(buf)}catch(e){}
+  const d=lerAtaTxt(txt);
+  if(!Object.keys(d.campos).length&&!Object.keys(d.secs).length){if(m())m().textContent="Não encontrei os campos do modelo nesse arquivo. Baixe o modelo TXT e confira os títulos.";return}
+  let a=curAtaObj(),nova=false;
+  if(!a){newAta();a=curAtaObj();nova=true;if(!a)return}
+  const n=aplicarAtaTxt(a,d);
+  if(a.writer){try{localStorage.setItem("chk-ata-redator",a.writer)}catch(e){}}
+  p.log.push({id:uid(),date:today(),disc:"geral",type:"Reunião",text:"Ata "+a.num+(nova?" importada de TXT":" preenchida por TXT")});
+  touchProject(curId,false);renderAtas();renderTabs();
+  if(m())m().textContent=n?`${nova?"Ata criada":"Ata preenchida"} a partir de "${f.name}" (${n} campo${n>1?"s":""}). Confira antes de gerar o PDF.`:"Arquivo lido, mas nenhum campo veio preenchido.";
+}
 function curAtaObj(){const p=cur();return p&&curAta?p.atas.find(x=>x.id===curAta):null}
 function ataField(t){
   const a=curAtaObj();if(!a)return false;
@@ -2079,6 +2195,7 @@ $("root").addEventListener("input",e=>{if(tab==="atas"&&ataField(e.target))touch
 $("root").addEventListener("change",async e=>{
   if(tab!=="atas")return;const t=e.target;
   if(t.id==="signFile"){const f=t.files[0];t.value="";if(f)await attachSigned(f);return}
+  if(t.id==="ataTxt"){const f=t.files[0];t.value="";if(f)await importarAtaTxt(f);return}
   if(t.type==="checkbox"&&ataField(t))touchProject(curId,false);
 });
 $("root").addEventListener("click",async e=>{
@@ -2087,6 +2204,8 @@ $("root").addEventListener("click",async e=>{
   if(t.id==="ataNew"){newAta();return}
   if(q("[data-open]")){curAta=q("[data-open]").dataset.open;renderAtas();window.scrollTo({top:$("tabs").offsetTop-8});return}
   if(t.id==="ataBack"){curAta=null;renderAtas();return}
+  if(t.id==="ataModelo"){baixarModeloAta();return}
+  if(t.id==="ataPrompt"){copiarPromptAta(t);return}
   if(!a)return;
   if(t.id==="pAdd"){a.parts.push({id:uid(),name:"",role:"",mail:"",sign:true});touchProject(curId,false);renderAtas();return}
   if(q("[data-pdel]")){a.parts=a.parts.filter(x=>x.id!==q("[data-pdel]").dataset.pdel);touchProject(curId,false);renderAtas();return}
