@@ -47,7 +47,7 @@ export async function apagarRascunho(doc) {
 }
 
 export async function acaoServidor(acao, id, extra = {}) {
-  const r = await fetch("/api/assinatura", { method: "POST", headers: { "Content-Type": "application/json", ...(await cabecalhoAuth()) }, body: JSON.stringify({ acao, id, ...extra }) });
+  const r = await fetch("/api/assinatura", { method: "POST", headers: { "Content-Type": "application/json", ...(await cabecalhoAuth()) }, body: JSON.stringify({ acao, ...(id ? { id } : {}), ...extra }) });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.erro || "Não foi possível concluir.");
   return j;

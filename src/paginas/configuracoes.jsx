@@ -1,4 +1,5 @@
 import PainelSeguranca from "../seguranca/PainelSeguranca.jsx";
+import ConfigAssinatura from "../portal/ConfigAssinatura.jsx";
 import EditorPermissoes from "../seguranca/EditorPermissoes.jsx";
 import CartaoBackup from "../planejamento/CartaoBackup.jsx";
 import { useState, useRef, useEffect } from "react";
@@ -272,6 +273,7 @@ export function Configuracoes({usuarios,onSalvarUsuarios,usuarioAtual,onFoto}){
 
       {["gestor","admin"].includes(usuarioAtual.perfil) && <Card><EditorPermissoes usuarioAtual={usuarioAtual}/></Card>}
       {["gestor","admin"].includes(usuarioAtual.perfil) && <Card><PainelSeguranca/></Card>}
+      {["gestor","admin"].includes(usuarioAtual.perfil) && <Card><ConfigAssinatura/></Card>}
 
       <Card>
         <h2 style={{color:C.marinho,margin:"0 0 16px",fontSize:16,fontWeight:700}}>Informações do Sistema</h2>

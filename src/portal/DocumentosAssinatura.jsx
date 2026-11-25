@@ -3,6 +3,7 @@
 // assinatura, reenvia o e-mail, cancela e baixa o PDF com a folha de assinaturas.
 import { useEffect, useState } from "react";
 import { supabase } from "../supabase.js";
+import { configSistema } from "../planejamento/dados.js";
 import { instrucoesTermoTxt, lerArquivoTxt, lerTermoTxt, modeloTermoTxt } from "./termoTxt.js";
 import { DISCIPLINAS_TERMO, EMAIL_OK, ETAPAS, TIPOS_DOC, acaoServidor, apagarRascunho, baixarBlob, criarELiberar, faltaTabelaAssin, listarDocs, pdfAssinadoDe, vendor } from "./assinaturaDados.js";
 
@@ -37,7 +38,9 @@ export default function DocumentosAssinatura({ projeto, usuarioAtual }) {
 
   const rodar = async (chave, f) => { setOcupado(chave); try { await f(); } catch (e) { avisar(e.message || String(e), false); } finally { setOcupado(""); } };
   const linkDe = d => `${window.location.origin}/assinar/${d.token}`;
-  const gestor = ["gestor", "admin"].includes(usuarioAtual?.perfil);
+  const [exclusao, setExclusao] = useState(false);
+  useEffect(() => { configSistema.ler("assinatura_exclusao", { ativo: false }).then(v => setExclusao(v?.ativo === true)); }, [projeto.id]);
+  const gestor = ["gestor", "admin"].includes(usuarioAtual?.perfil) && exclusao;
 
   return (
     <div style={{ marginTop: 20 }}>

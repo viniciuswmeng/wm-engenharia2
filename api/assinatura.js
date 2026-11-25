@@ -157,7 +157,25 @@ async function avisarConclusao(req, doc) {
 }
 
 // ── equipe ──
+const CFG_EXCLUSAO = "assinatura_exclusao";
+async function gestorAtivo(eu) {
+  const us = await sb(`usuarios?select=id,nome,email,perfil,ativo&email=ilike.${encodeURIComponent(eu.email)}&limit=5`);
+  const u = (us || []).find(x => String(x.email || "").toLowerCase() === eu.email);
+  return u && u.ativo !== false && ["gestor", "admin"].includes(u.perfil) ? u : null;
+}
+async function exclusaoLiberada() {
+  const c = (await sb(`config_sistema?chave=eq.${CFG_EXCLUSAO}&select=valor`).catch(() => []))?.[0];
+  return c?.valor?.ativo === true;
+}
 async function acaoEquipe(req, res, b, eu) {
+  if (b.acao === "config_exclusao") {
+    const u = await gestorAtivo(eu);
+    if (!u) { await registrar(req, "acesso_outro_usuario", { rota: "assinatura-config", por: eu.email }).catch(() => {}); return res.status(403).json({ erro: "Só gestores mudam esta configuração." }); }
+    const valor = { ativo: b.ativo === true, por: u.nome || eu.email, em: new Date().toISOString() };
+    await sb("config_sistema", { method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify({ chave: CFG_EXCLUSAO, valor, atualizado_em: valor.em }) });
+    if (valor.ativo) await registrar(req, "documento_excluido", { acao: "exclusao_ativada", por: eu.email }).catch(() => {});
+    return res.status(200).json({ ok: true, ...valor });
+  }
   if (!UUID_OK.test(String(b.id || ""))) return res.status(400).json({ erro: "Documento inválido." });
   const doc = (await sb(`documentos_assinatura?id=eq.${b.id}&select=*`))?.[0];
   if (!doc) return res.status(404).json({ erro: "Documento não encontrado." });
@@ -195,9 +213,9 @@ async function acaoEquipe(req, res, b, eu) {
   }
   if (b.acao === "excluir") {
     // Só para casos extremos (ex.: teste). Só gestores, com o código do documento digitado como confirmação.
-    const us = await sb(`usuarios?select=id,email,perfil,ativo&email=ilike.${encodeURIComponent(eu.email)}&limit=5`);
-    const u = (us || []).find(x => String(x.email || "").toLowerCase() === eu.email);
-    if (!u || u.ativo === false || !["gestor", "admin"].includes(u.perfil)) { await registrar(req, "acesso_outro_usuario", { rota: "assinatura-excluir", por: eu.email }).catch(() => {}); return res.status(403).json({ erro: "Só gestores podem excluir documentos assinados." }); }
+    if (!(await exclusaoLiberada())) return res.status(403).json({ erro: "A exclusão de documentos assinados está desativada em Configurações." });
+    const u = await gestorAtivo(eu);
+    if (!u) { await registrar(req, "acesso_outro_usuario", { rota: "assinatura-excluir", por: eu.email }).catch(() => {}); return res.status(403).json({ erro: "Só gestores podem excluir documentos assinados." }); }
     const conf = String(b.confirmacao || "").trim().toUpperCase();
     if (!doc.codigo || conf !== String(doc.codigo).toUpperCase()) return res.status(400).json({ erro: "Código de confirmação não confere." });
     const ass = await sb(`documentos_assinaturas?documento_id=eq.${doc.id}&select=nome,assinado_em`);
@@ -225,7 +243,7 @@ export default async function handler(req, res) {
     const b = await corpo(req);
     if (!b || typeof b !== "object" || JSON.stringify(b).length > 4000) { await registrar(req, "dados_invalidos", { rota: "assinatura" }); return res.status(400).json({ erro: "Dados inválidos." }); }
 
-    if (["liberar", "reenviar", "cancelar", "excluir"].includes(b.acao)) {
+    if (["liberar", "reenviar", "cancelar", "excluir", "config_exclusao"].includes(b.acao)) {
       const eu = await membroDaEquipe(req.headers.authorization);
       if (!eu) { await registrar(req, "api_negado", { rota: "assinatura" }); return res.status(401).json({ erro: "Entre no sistema novamente." }); }
       return await acaoEquipe(req, res, b, eu);
