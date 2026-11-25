@@ -18,6 +18,7 @@ export const REGRAS = {
   codigo_invalido:      ["media", 8],  // códigos de assinatura errados (tentativa de adivinhar)
   limite_excedido:      ["media", 3],  // pedidos de código de assinatura em excesso
   documento_alterado:   ["alta", 1],   // PDF de documento em assinatura mudou depois de liberado
+  documento_excluido:   ["alta", 1],   // gestor excluiu um documento já liberado/assinado (fica o registro)
 };
 export const NOMES = {
   cron_negado: "Tentativa de acionar os agendamentos sem autorização",
@@ -30,6 +31,7 @@ export const NOMES = {
   codigo_invalido: "Códigos de assinatura errados repetidos",
   limite_excedido: "Pedidos de código de assinatura em excesso",
   documento_alterado: "Documento em assinatura foi alterado depois de liberado",
+  documento_excluido: "Documento de assinatura eletrônica foi excluído por um gestor",
 };
 
 const hdr = (req, k) => (req && req.headers ? (typeof req.headers.get === "function" ? req.headers.get(k) : req.headers[k]) : "") || "";

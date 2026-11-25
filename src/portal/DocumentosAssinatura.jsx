@@ -37,6 +37,7 @@ export default function DocumentosAssinatura({ projeto, usuarioAtual }) {
 
   const rodar = async (chave, f) => { setOcupado(chave); try { await f(); } catch (e) { avisar(e.message || String(e), false); } finally { setOcupado(""); } };
   const linkDe = d => `${window.location.origin}/assinar/${d.token}`;
+  const gestor = ["gestor", "admin"].includes(usuarioAtual?.perfil);
 
   return (
     <div style={{ marginTop: 20 }}>
@@ -71,6 +72,13 @@ export default function DocumentosAssinatura({ projeto, usuarioAtual }) {
                 {d.status === "rascunho" && <button type="button" disabled={!!ocupado} style={btn("pri")} onClick={() => rodar("l" + d.id, async () => { const r = await acaoServidor("liberar", d.id); await carregar(); avisar(r.erroEmail ? `Liberado, mas o e-mail NÃO foi enviado — ${r.erroEmail}. Copie o link e mande pelo WhatsApp enquanto isso.` : `Enviado para assinatura (${r.emails} e-mail(s)).`, !r.erroEmail); })}>Enviar para assinatura</button>}
                 {d.status === "rascunho" && <button type="button" disabled={!!ocupado} style={btn("sec", { color: K.verm })} onClick={() => { if (window.confirm("Apagar este rascunho?")) rodar("x" + d.id, async () => { await apagarRascunho(d); await carregar(); }); }}>Apagar</button>}
                 {d.status === "aguardando" && <button type="button" disabled={!!ocupado} style={btn("sec", { color: K.verm })} onClick={() => { if (window.confirm(`Cancelar “${d.titulo}”? O link deixa de aceitar assinaturas.`)) rodar("c" + d.id, async () => { await acaoServidor("cancelar", d.id); await carregar(); avisar("Documento cancelado."); }); }}>Cancelar</button>}
+                {gestor && d.status !== "rascunho" && d.codigo && <button type="button" disabled={!!ocupado} title="Só para casos extremos, como um teste" style={{ border: "none", background: "none", color: K.verm, fontSize: 12, textDecoration: "underline", cursor: "pointer", marginLeft: "auto" }}
+                  onClick={() => {
+                    const c = window.prompt(`EXCLUIR DEFINITIVAMENTE “${d.titulo}”?\n\nO documento, o PDF e ${d.assinaturas.length} assinatura(s) serão apagados e não há como desfazer. A exclusão fica registrada no log de segurança e os gestores são avisados.\n\nPara confirmar, digite o código do documento: ${d.codigo}`);
+                    if (c == null) return;
+                    if (c.trim().toUpperCase() !== d.codigo.toUpperCase()) { avisar("Código não confere. Nada foi excluído.", false); return; }
+                    rodar("e" + d.id, async () => { await acaoServidor("excluir", d.id, { confirmacao: c.trim() }); await carregar(); avisar("Documento excluído definitivamente."); });
+                  }}>{ocupado === "e" + d.id ? "Excluindo…" : "Excluir definitivamente"}</button>}
               </div>
             </div>
           );
