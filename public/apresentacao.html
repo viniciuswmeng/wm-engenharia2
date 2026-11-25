@@ -60,7 +60,7 @@ img.foto{display:block;width:100%;height:auto;background:#e9e4dc}
 .comp input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:ew-resize;margin:0}
 .miniaturas{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-top:10px}
 .miniaturas button{width:100%;border:2px solid transparent;border-radius:10px;padding:0;overflow:hidden;cursor:pointer;background:none;opacity:.75;position:relative}
-.miniaturas button.on{border-color:var(--azul);opacity:1}
+.miniaturas button.on{border-color:var(--azul);opacity:1!important}
 .miniaturas button span{position:absolute;left:4px;bottom:4px;font-size:10px;font-weight:800;background:rgba(10,37,87,.85);color:#fff;border-radius:5px;padding:1px 6px}
 .miniaturas img{display:block;width:100%;aspect-ratio:3/2;height:auto;object-fit:cover;background:#e9e4dc}
 .direita{display:flex;flex-direction:column;gap:14px;min-width:0}
@@ -104,14 +104,31 @@ textarea{width:100%;border:1.5px solid var(--borda);border-radius:11px;padding:9
 #impressao{display:none}
 .geral{background:#fff;border:1px solid var(--borda);border-radius:20px;padding:18px 20px;margin-top:26px}
 .geral-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:4px 16px}
-.planta-pg{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
-.tit-planta{font-family:var(--serif);font-weight:600;font-size:34px;color:var(--mar);margin:4px 0 0}
-.planta-box{position:relative;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 18px 50px rgba(22,35,59,.14)}
-.planta-box img{display:block;width:100%;height:auto}
-.area{position:absolute;border:2px solid rgba(21,101,216,.55);background:rgba(21,101,216,.08);border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:background .15s,border-color .15s}
-.area span{background:var(--mar);color:#fff;font-size:12.5px;font-weight:700;border-radius:8px;padding:3px 9px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.2)}
-.area:hover,.area:focus-visible{background:rgba(21,101,216,.22);border-color:var(--azul);outline:none}
-.area.ok{border-color:rgba(21,128,61,.7)}.area.ok span{background:var(--ok)}.area.aj{border-color:rgba(180,83,9,.7)}.area.aj span{background:var(--aj)}
+.planta-pg{max-width:1400px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+.planta-cab{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.tit-planta{font-family:var(--serif);font-weight:600;font-size:clamp(24px,2.4vw,34px);color:var(--mar);margin:4px 0 0}
+.pavs{display:flex;gap:4px;background:#fff;border:1px solid var(--borda);border-radius:12px;padding:3px}
+.pavs button{border:0;background:none;border-radius:9px;padding:7px 14px;font:inherit;font-weight:700;font-size:13px;color:var(--sub);cursor:pointer}.pavs button.on{background:var(--mar);color:#fff}
+.planta-pg .chips{margin-top:0}
+.planta-wrap{display:flex;justify-content:center;overflow:hidden;border-radius:18px;padding:2px}
+.planta-box{position:relative;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 18px 50px rgba(22,35,59,.14);max-width:100%;transform-origin:50% 50%;transition:transform .5s cubic-bezier(.3,.7,.2,1),opacity .5s ease}
+.planta-box>img{display:block;width:100%;height:auto}
+.planta-box svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.zona{fill:rgba(21,101,216,.07);stroke:rgba(21,101,216,.6);stroke-width:2;stroke-linejoin:round;cursor:pointer;transition:fill .2s,stroke .2s;vector-effect:non-scaling-stroke}
+.zona:hover,.zona.quente{fill:rgba(21,101,216,.24);stroke:var(--azul)}
+.zona.ok{stroke:rgba(21,128,61,.75)}.zona.aj{stroke:rgba(180,83,9,.75)}
+.rotz{position:absolute;transform:translate(-50%,-50%);border:0;background:var(--mar);color:#fff;font:inherit;font-size:12.5px;font-weight:700;border-radius:8px;padding:3px 9px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.2);cursor:pointer;transition:transform .2s}
+.rotz:hover,.rotz:focus-visible,.rotz.quente{transform:translate(-50%,-50%) scale(1.08);outline:none}
+.rotz.ok{background:var(--ok)}.rotz.aj{background:var(--aj)}
+.planta-box.zoom{opacity:0}
+/* ao abrir um ambiente pela planta: a imagem principal aparece com zoom suave e as miniaturas/lado entram em sequência */
+.slide.revela .quadro{animation:revFoto .75s cubic-bezier(.2,.7,.2,1) both}
+.slide.revela .miniaturas button{animation:sobe .45s ease both;animation-delay:calc(.25s + var(--k,0) * 60ms)}
+.slide.revela .direita{animation:lado .6s .15s ease both}
+@keyframes revFoto{from{opacity:0;transform:scale(1.08);filter:blur(6px)}to{opacity:1;transform:none;filter:none}}
+@keyframes sobe{from{opacity:0;transform:translateY(12px)}to{opacity:.75;transform:none}}
+@keyframes lado{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.planta-box{transition:none}.slide.revela .quadro,.slide.revela .miniaturas button,.slide.revela .direita{animation:none}}
 .chip{background:#fff;border:1px solid var(--borda);border-radius:99px;padding:6px 13px;font-size:13px;font-weight:600;cursor:pointer;color:var(--tinta)}
 .chip:hover{border-color:var(--azul);color:var(--azul)}
 @media (max-width:860px){.capa,.amb{grid-template-columns:1fr}.capa{min-height:0}.lado h2{font-size:28px}.linha-r{grid-template-columns:84px minmax(0,1fr)}.linha-r img{width:84px;height:58px}.linha-r .tag{grid-column:2;justify-self:start}.topo .pontos{display:none}}
@@ -185,7 +202,7 @@ document.addEventListener("error", e => { const t = e.target; if (t.tagName === 
 const partes = location.pathname.split("/"), token = partes[partes.indexOf("apresentacao") + 1] || "";
 const previa = new URLSearchParams(location.search).get("previa") || "";
 let D = null;
-const st = { slide: 0, img: {}, aba: {}, comentando: null, pino: null, salvando: false };
+const st = { slide: 0, img: {}, aba: {}, comentando: null, pino: null, salvando: false, pl: 0, revela: false };
 
 function sessao() { try { const v = localStorage.getItem("wm-auth") || sessionStorage.getItem("wm-auth"); return v ? JSON.parse(v).access_token : ""; } catch { return ""; } }
 async function api(metodo, corpo) {
@@ -199,7 +216,11 @@ async function api(metodo, corpo) {
 function erro(t) { document.getElementById("palco").innerHTML = `<div class="erro"><div style="font-size:42px">🛋️</div><h2 style="color:var(--mar);margin:8px 0">Apresentação indisponível</h2><p style="color:var(--sub)">${esc(t)}</p><p style="color:var(--sub);font-size:13px">Fale com a WM Engenharia: projeto@wmengenhariaintegrada.com.br · (33) 98416-1081</p></div>`; document.getElementById("tTopo").textContent = "WM Engenharia"; }
 
 const resp = id => (D.respostas || {})[id];
-const base = () => (D.planta ? 2 : 1);            // índice do 1º ambiente
+const base = () => (D.plantas.length ? 2 : 1);   // índice do 1º ambiente
+// plantas: áreas em % da imagem; retângulos antigos viram 4 pontos
+const ptsDe = z => (Array.isArray(z.pts) && z.pts.length >= 3 ? z.pts : [[z.x, z.y], [z.x + z.w, z.y], [z.x + z.w, z.y + z.h], [z.x, z.y + z.h]]);
+const centroZ = z => { const p = ptsDe(z), xs = p.map(q => q[0]), ys = p.map(q => q[1]); return [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2]; };
+const zonaDe = id => { for (let k = 0; k < D.plantas.length; k++) { const z = D.plantas[k].areas.find(x => x.amb === id); if (z) return { k, p: D.plantas[k], z }; } return null; };
 const total = () => D.ambientes.length + base() + 1;
 const ambDoSlide = i => (i >= base() && i < base() + D.ambientes.length ? D.ambientes[i - base()] : null);
 
@@ -220,14 +241,16 @@ function htmlGeral() {
   return `<div class="geral"><div class="rot">Padrão de acabamentos da casa</div><div class="geral-grid">${l([...g.materiais, ...g.moveis])}</div></div>`;
 }
 function htmlPlanta() {
-  const p = D.planta;
+  const k = Math.min(st.pl, D.plantas.length - 1), p = D.plantas[k];
+  const nos = p.areas.map(z => ({ z, i: D.ambientes.findIndex(a => a.id === z.amb) })).filter(x => x.i >= 0);
   return `<section class="slide" data-i="1"><div class="planta-pg">
-    <div><div class="kick">Planta do projeto</div><h2 class="tit-planta">Toque num ambiente para ver as imagens</h2></div>
-    <div class="planta-box">${tag(p.img, 2000)}
-      ${p.areas.map(z => { const i = D.ambientes.findIndex(a => a.id === z.amb); if (i < 0) return ""; const r = resp(z.amb)?.decisao;
-        return `<button type="button" class="area ${r || ""}" data-ir="${base() + i}" style="left:${z.x}%;top:${z.y}%;width:${z.w}%;height:${z.h}%" aria-label="Abrir ${esc(D.ambientes[i].nome)}"><span>${esc(D.ambientes[i].nome)}${r === "ok" ? " ✓" : ""}</span></button>`; }).join("")}
-    </div>
-    <div class="chips">${D.ambientes.map((a, i) => `<button type="button" class="chip" data-ir="${base() + i}">${esc(a.nome)}</button>`).join("")}</div>
+    <div class="planta-cab"><div><div class="kick">Planta do projeto${D.plantas.length > 1 ? ` · ${D.plantas.length} pavimentos` : ""}</div><h2 class="tit-planta">Toque num ambiente para ver as imagens</h2></div>
+      ${D.plantas.length > 1 ? `<div class="pavs" role="tablist">${D.plantas.map((x, j) => `<button type="button" role="tab" class="${j === k ? "on" : ""}" aria-selected="${j === k}" data-pl="${j}">${esc(x.nome || "Planta " + (j + 1))}</button>`).join("")}</div>` : ""}</div>
+    <div class="chips">${D.ambientes.map((a, i) => `<button type="button" class="chip" data-zona="${base() + i}" data-amb="${esc(a.id)}">${esc(a.nome)}</button>`).join("")}</div>
+    <div class="planta-wrap"><div class="planta-box" data-pbox>${tag(p.img, 2000, "", 'loading="eager"')}
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${nos.map(({ z, i }) => `<polygon class="zona ${resp(z.amb)?.decisao || ""}" data-zona="${base() + i}" data-amb="${esc(z.amb)}" points="${ptsDe(z).map(q => q.join(",")).join(" ")}"></polygon>`).join("")}</svg>
+      ${nos.map(({ z, i }) => { const [cx, cy] = centroZ(z), r = resp(z.amb)?.decisao; return `<button type="button" class="rotz ${r || ""}" data-zona="${base() + i}" data-amb="${esc(z.amb)}" style="left:${cx}%;top:${cy}%" aria-label="Abrir ${esc(D.ambientes[i].nome)}">${esc(D.ambientes[i].nome)}${r === "ok" ? " ✓" : ""}</button>`; }).join("")}
+    </div></div>
   </div></section>`;
 }
 function vistas(a) {
@@ -251,11 +274,11 @@ function htmlAmb(a, i) {
   const ant = (D.anterior || {})[String(a.nome).toLowerCase()];
   return `<section class="slide" data-i="${base() + i - 1}"><div class="amb">
     <div>${htmlQuadro(a)}
-      ${vs.filter(v => v.rot !== "Planta").length > 1 ? `<div class="miniaturas">${vs.map((v, k) => v.rot === "Planta" ? "" : `<button type="button" class="${(st.img[a.id] || 0) === k ? "on" : ""}" data-vista="${esc(a.id)}:${k}" aria-label="${esc(v.rot || "Imagem " + (k + 1))}">${tag(v.id, 300, "")}${v.rot && isNaN(v.rot) ? `<span>${esc(v.rot)}</span>` : ""}</button>`).join("")}</div>` : ""}
+      ${vs.filter(v => v.rot !== "Planta").length > 1 ? `<div class="miniaturas">${vs.map((v, k) => v.rot === "Planta" ? "" : `<button type="button" class="${(st.img[a.id] || 0) === k ? "on" : ""}" style="--k:${k}" data-vista="${esc(a.id)}:${k}" aria-label="${esc(v.rot || "Imagem " + (k + 1))}">${tag(v.id, 300, "")}${v.rot && isNaN(v.rot) ? `<span>${esc(v.rot)}</span>` : ""}</button>`).join("")}</div>` : ""}
     </div>
     <div class="direita">${htmlPlantaAmb(a, vs)}
     <aside class="lado">
-      <div><div class="kick">Ambiente ${i} de ${D.ambientes.length}${D.planta ? ` · <button type="button" class="link-mini" data-ir="1" style="text-transform:none;letter-spacing:0">ver na planta</button>` : ""}</div><h2>${esc(a.nome)}</h2></div>
+      <div><div class="kick">Ambiente ${i} de ${D.ambientes.length}${D.plantas.length ? ` · <button type="button" class="link-mini" data-verpl="${esc(a.id)}" style="text-transform:none;letter-spacing:0">ver na planta</button>` : ""}</div><h2>${esc(a.nome)}</h2></div>
       ${a.conceito ? `<p class="conceito">${esc(a.conceito)}</p>` : ""}
       ${ant && ant.comentarios.length ? `<div class="antes-pedido"><b>Na versão anterior você pediu:</b> ${ant.comentarios.map(esc).join(" · ")}</div>` : ""}
       ${a.paleta.length ? `<div><div class="rot">Paleta</div><div class="paleta">${a.paleta.map(c => `<div class="cor"><i style="background:${corOk(c.cor)}"></i><span>${esc(c.nome)}</span></div>`).join("")}</div></div>` : ""}
@@ -269,8 +292,8 @@ function htmlAmb(a, i) {
 function htmlPlantaAmb(a, vs) {
   const k = vs.findIndex(v => v.rot === "Planta");
   if (k >= 0) return `<div class="planta-amb"><div class="cab"><div class="rot" style="margin:0">Planta baixa</div><span style="font-size:12px;color:var(--sub)">toque para ampliar</span></div><button type="button" class="ver" data-vista="${esc(a.id)}:${k}" aria-label="Ampliar a planta">${tag(a.planta, 1400, "")}</button></div>`;
-  const z = D.planta && D.planta.areas.find(x => x.amb === a.id);
-  if (z && z.w > 0 && z.h > 0) return `<div class="planta-amb"><div class="cab"><div class="rot" style="margin:0">Planta baixa</div><button type="button" class="link-mini" data-ir="1">ver a planta inteira</button></div><button type="button" class="ver" data-ir="1" aria-label="Ver na planta"><span class="crop" data-crop="${z.x},${z.y},${z.w},${z.h}">${tag(D.planta.img, 2000, "")}</span></button></div>`;
+  const zp = zonaDe(a.id), z = zp && zp.z;
+  if (z && z.w > 0 && z.h > 0) return `<div class="planta-amb"><div class="cab"><div class="rot" style="margin:0">Planta baixa${D.plantas.length > 1 ? " · " + esc(zp.p.nome) : ""}</div><button type="button" class="link-mini" data-verpl="${esc(a.id)}">ver a planta inteira</button></div><button type="button" class="ver" data-verpl="${esc(a.id)}" aria-label="Ver na planta"><span class="crop" data-crop="${z.x},${z.y},${z.w},${z.h}">${tag(zp.p.img, 2000, "")}</span></button></div>`;
   return "";
 }
 function ajustarRecortes() {
@@ -300,8 +323,9 @@ function htmlResumo() {
 }
 function desenhar() {
   const palco = document.getElementById("palco");
-  palco.innerHTML = htmlCapa() + (D.planta ? htmlPlanta() : "") + D.ambientes.map((a, i) => htmlAmb(a, i + 1)).join("") + htmlResumo();
-  palco.querySelectorAll(".slide").forEach(s => s.classList.toggle("on", +s.dataset.i === st.slide));
+  palco.innerHTML = htmlCapa() + (D.plantas.length ? htmlPlanta() : "") + D.ambientes.map((a, i) => htmlAmb(a, i + 1)).join("") + htmlResumo();
+  palco.querySelectorAll(".slide").forEach(s => { s.classList.toggle("on", +s.dataset.i === st.slide); s.classList.toggle("revela", st.revela && +s.dataset.i === st.slide); });
+  st.revela = false;
   const nomeSlide = i => (i === 0 ? "Capa" : i === total() - 1 ? "Resumo" : ambDoSlide(i) ? ambDoSlide(i).nome : "Planta");
   document.getElementById("pontos").innerHTML = Array.from({ length: total() }, (_, i) => { const a = ambDoSlide(i), d = a && resp(a.id)?.decisao; return `<button type="button" class="${i === st.slide ? "on" : ""} ${d || ""}" data-ir="${i}" aria-label="${esc(nomeSlide(i))}"></button>`; }).join("");
   const am = ambDoSlide(st.slide);
@@ -309,7 +333,7 @@ function desenhar() {
   const ant = document.getElementById("ant"); ant.disabled = st.slide === 0;
   document.getElementById("prox").textContent = st.slide === total() - 1 ? "Voltar ao início" : st.slide === total() - 2 ? "Ver resumo ›" : "Próximo ›";
   const t = document.getElementById("txtCom"); if (t) t.focus();
-  ajustarRecortes(); medir();
+  ajustarRecortes(); medir(); ajustarPlanta();
   const comp = palco.querySelector(".slide.on [data-comp]");
   if (comp) { const r = comp.querySelector("input"), dep = comp.querySelector(".depois"), bar = comp.querySelector(".barra"), di = dep.querySelector("img");
     const aj = () => { dep.style.width = r.value + "%"; bar.style.left = r.value + "%"; di.style.width = comp.clientWidth + "px"; };
@@ -326,7 +350,29 @@ function medir() {
   const sl = palco.querySelector(".slide.on"), mini = sl && sl.querySelector(".miniaturas");
   if (sl) sl.style.setProperty("--hq", alt - (mini ? mini.offsetHeight + 10 : 0) + "px");
 }
-addEventListener("resize", () => { if (D) medir(); });
+// Planta: cabe inteira na tela (largura e altura), sem ficar gigante em monitores grandes
+function ajustarPlanta() {
+  const box = document.querySelector(".slide.on [data-pbox]"); if (!box) return;
+  const im = box.querySelector("img"), ok = () => {
+    if (!im.naturalWidth) return;
+    const wrap = box.parentElement, nav = document.getElementById("nav"), navH = nav.hidden ? 0 : nav.offsetHeight;
+    const livreH = innerHeight - wrap.getBoundingClientRect().top - navH - 28, livreW = wrap.clientWidth, r = im.naturalWidth / im.naturalHeight;
+    const w = innerWidth < 700 ? livreW : Math.min(livreW, Math.max(280, livreH) * r);
+    box.style.width = Math.round(w) + "px";
+  };
+  if (im.complete) ok(); else im.addEventListener("load", ok, { once: true });
+}
+// Clique num ambiente da planta: aproxima a área clicada e abre o ambiente com as imagens entrando em sequência
+function abrirZona(alvo, amb) {
+  const box = document.querySelector(".slide.on [data-pbox]"), zp = zonaDe(amb), reduz = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!box || !zp || reduz || zp.p !== D.plantas[Math.min(st.pl, D.plantas.length - 1)]) { st.revela = !reduz; return ir(alvo); }
+  const [cx, cy] = centroZ(zp.z), esc2 = Math.min(3, 70 / Math.max(zp.z.w, zp.z.h, 8));
+  box.querySelectorAll(`[data-amb="${CSS.escape(amb)}"]`).forEach(e => e.classList.add("quente"));
+  box.style.transformOrigin = `${cx}% ${cy}%`;
+  requestAnimationFrame(() => { box.style.transform = `scale(${esc2})`; box.classList.add("zoom"); });
+  setTimeout(() => { st.revela = true; ir(alvo); }, 480);
+}
+addEventListener("resize", () => { if (D) { medir(); ajustarPlanta(); } });
 function ir(i) { st.slide = Math.max(0, Math.min(total() - 1, i)); st.comentando = null; st.pino = null; desenhar(); window.scrollTo({ top: 0, behavior: "smooth" }); }
 async function decidir(id, decisao, comentarios) {
   st.salvando = true; desenhar();
@@ -336,8 +382,11 @@ async function decidir(id, decisao, comentarios) {
 }
 
 document.addEventListener("click", async e => {
-  const b = e.target.closest("button, [data-quadro]"); if (!b || !D) return;
+  const b = e.target.closest("button, [data-quadro], [data-zona]"); if (!b || !D) return;
   const d = b.dataset;
+  if (d.zona) return abrirZona(+d.zona, d.amb);
+  if (d.pl) { st.pl = +d.pl; return desenhar(); }
+  if (d.verpl) { const zp = zonaDe(d.verpl); st.pl = zp ? zp.k : 0; return ir(1); }
   if (d.ir) return ir(+d.ir);
   if (d.vista) { const [id, k] = d.vista.split(":"); st.img[id] = +k; st.pino = null; return desenhar(); }
   if (d.aba) { const [id, k] = d.aba.split(":"); st.aba[id] = k; return desenhar(); }
@@ -365,6 +414,7 @@ document.addEventListener("click", async e => {
     st.comentando = d.quadro + ":txt"; desenhar();
   }
 });
+document.addEventListener("mouseover", e => { const t = e.target.closest && e.target.closest("[data-pbox] [data-amb]"); document.querySelectorAll("[data-pbox] .quente").forEach(x => { if (!t || x.dataset.amb !== t.dataset.amb) x.classList.remove("quente"); }); if (t) document.querySelectorAll(`[data-pbox] [data-amb="${CSS.escape(t.dataset.amb)}"]`).forEach(x => x.classList.add("quente")); });
 document.getElementById("ant").onclick = () => ir(st.slide - 1);
 document.getElementById("prox").onclick = () => ir(st.slide === total() - 1 ? 0 : st.slide + 1);
 document.addEventListener("keydown", e => { if (!D || /TEXTAREA|INPUT/.test(e.target.tagName)) return; if (e.key === "ArrowRight") ir(st.slide + 1); if (e.key === "ArrowLeft") ir(st.slide - 1); });
@@ -385,7 +435,7 @@ function montarImpressao() {
       `<div class="pg foto">${cab(`${esc(a.nome)} · ${r}imagem ${k + 1} de ${t.length}`)}${tag(id, 2000, "")}</div>`).join("");
   document.getElementById("impressao").innerHTML =
     `<div class="pg"><div class="cab"><span>WM Engenharia Integrada</span><span>${rotV(D.versao)}</span></div><div>${tag((D.capa || {}).imagem || D.ambientes[0]?.imagens[0], 1800, "")}</div><div><div class="kick">Projeto de interiores</div><h2 style="font-size:40px">${esc((D.capa || {}).titulo || D.projeto.cliente)}</h2><p>${esc((D.capa || {}).texto || "")}</p><p style="font-size:12px;color:#666">${D.ambientes.map(a => esc(a.nome)).join(" · ")}</p>${D.geral ? `<b style="font-size:12px">Padrão de acabamentos da casa</b><div class="lista">${[...D.geral.materiais, ...D.geral.moveis].map(m => `<div>■ ${esc(m.nome)} — ${esc(m.desc)}</div>`).join("")}</div>` : ""}</div></div>` +
-    (D.planta ? `<div class="pg" style="display:block"><div class="cab"><span>${esc(D.projeto.codigo)} · ${esc(D.projeto.cliente)}</span><span>Planta</span></div><div style="position:relative">${tag(D.planta.img, 2000, "")}${D.planta.areas.map(z => { const i = D.ambientes.findIndex(a => a.id === z.amb); return i < 0 ? "" : `<span style="position:absolute;left:${z.x}%;top:${z.y}%;width:${z.w}%;height:${z.h}%;border:2px solid #1565d8;display:flex;align-items:center;justify-content:center"><b style="background:#1565d8;color:#fff;font-size:10px;padding:1px 6px;border-radius:5px">${esc(D.ambientes[i].nome)}</b></span>`; }).join("")}</div></div>` : "") +
+    D.plantas.map(p => `<div class="pg" style="display:block"><div class="cab"><span>${esc(D.projeto.codigo)} · ${esc(D.projeto.cliente)}</span><span>${esc(p.nome || "Planta")}</span></div><div style="position:relative">${tag(p.img, 2000, "")}<svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%">${p.areas.map(z => `<polygon points="${ptsDe(z).map(q => q.join(",")).join(" ")}" style="fill:none;stroke:#1565d8;stroke-width:2;vector-effect:non-scaling-stroke"></polygon>`).join("")}</svg>${p.areas.map(z => { const i = D.ambientes.findIndex(a => a.id === z.amb), [cx, cy] = centroZ(z); return i < 0 ? "" : `<b style="position:absolute;left:${cx}%;top:${cy}%;transform:translate(-50%,-50%);background:#1565d8;color:#fff;font-size:10px;padding:1px 6px;border-radius:5px">${esc(D.ambientes[i].nome)}</b>`; }).join("")}</div></div>`).join("") +
     D.ambientes.map((a, i) => pg(a, i + 1)).join("");
 }
 // PDF: o mesmo gerador da equipe (public/vendor/apresentacao-pdf.js), com as imagens entregues pela API.
@@ -415,7 +465,11 @@ document.getElementById("pdf").onclick = async () => {
   D.ambientes = (D.ambientes || []).map(a => ({ ...a, imagens: (a.imagens || []).filter(x => ID_OK.test(x)), antes: (a.antes || []).filter(x => ID_OK.test(x)), planta: ID_OK.test(a.planta || "") ? a.planta : "", paleta: a.paleta || [], materiais: a.materiais || [], moveis: a.moveis || [] }));
   if (!D.ambientes.length) return erro("Esta apresentação ainda não tem ambientes.");
   D.geral = D.geral ? { materiais: D.geral.materiais || [], moveis: D.geral.moveis || [] } : null;
-  D.planta = D.planta && ID_OK.test(D.planta.img || "") ? { img: D.planta.img, areas: (D.planta.areas || []).filter(z => [z.x, z.y, z.w, z.h].every(v => typeof v === "number" && v >= 0 && v <= 100)) } : null;
+  const nOk = v => typeof v === "number" && v >= 0 && v <= 100;
+  const pls = Array.isArray(D.plantas) ? D.plantas : D.planta ? [{ nome: "Planta", ...D.planta }] : [];
+  D.plantas = pls.filter(p => p && ID_OK.test(p.img || "")).map(p => ({ nome: String(p.nome || "Planta"), img: p.img,
+    areas: (p.areas || []).filter(z => [z.x, z.y, z.w, z.h].every(nOk)).map(z => ({ ...z, pts: Array.isArray(z.pts) ? z.pts.filter(q => Array.isArray(q) && nOk(q[0]) && nOk(q[1])) : undefined })) }));
+  delete D.planta;
   D.pdf = D.pdf && ID_OK.test(D.pdf.id || "") ? D.pdf : null;
   document.title = `${D.capa?.titulo || D.projeto.cliente} — Interiores ${rotV(D.versao)} · WM Engenharia`;
   document.getElementById("tTopo").textContent = D.capa?.titulo || D.projeto.cliente;

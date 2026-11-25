@@ -4,7 +4,7 @@
 // Fontes Playfair Display + Inter (mesmas da página do cliente), com fallback para as padrão.
 // Módulo único, sem dependências: usado pela equipe (src/portal/apresentacaoPDF.js) e pela página do cliente
 // (public/apresentacao.html). Quem chama passa "baixar(id) → Promise<Blob>" para buscar cada imagem.
-export const MODELO_PDF = 2;
+export const MODELO_PDF = 3;
 const rotVersao = n => "R" + String(n).padStart(2, "0");
 
 const W = 297, H = 210, M = 14;
@@ -54,6 +54,15 @@ async function imagem(baixar, id, max, cache) {
   const chave = id + ":" + max;
   if (!cache.has(chave)) cache.set(chave, bitmap(baixar, id, cache).then(b => (b ? paraJPEG(b, 0, 0, b.width, b.height, max) : null)).catch(() => null));
   return cache.get(chave);
+}
+// Plantas (pavimentos): formato novo dados.plantas[] ou antigo dados.planta; áreas em % (retângulo ou polígono)
+function plantasDe(d) {
+  if (Array.isArray(d?.plantas)) return d.plantas.filter(p => p?.img);
+  return d?.planta?.img ? [{ nome: "Planta", img: d.planta.img, areas: d.planta.areas || [] }] : [];
+}
+function ptsDe(z) {
+  if (Array.isArray(z?.pts) && z.pts.length >= 3) return z.pts;
+  return [[z.x, z.y], [z.x + z.w, z.y], [z.x + z.w, z.y + z.h], [z.x, z.y + z.h]];
 }
 // Recorte de uma área da planta geral (x, y, w, h em %), com uma folga em volta
 async function recorte(baixar, id, z, cache) {
@@ -133,20 +142,24 @@ export async function gerarPDFApresentacao({ baixar, projeto, versao, dados, aoP
   fonte(F.sans, "normal", 7.5, CLARO); doc.text("projeto@wmengenhariaintegrada.com.br  ·  (33) 98416-1081", xd, H - 12);
 
   // ── planta geral ──
-  let pagPlanta = 0, legenda = null;
-  if (dados.planta?.img) {
-    aoProgresso("Planta…");
-    nova(); pagPlanta = pag;
-    kicker("Visão geral", M, M + 4); fonte(F.serif, "bold", 24, MAR); doc.text("Planta do projeto", M, M + 15);
-    const im = await imagem(baixar, dados.planta.img, 2600, cache);
+  const plantas = plantasDe(dados), folhasPlanta = [];
+  for (const pl of plantas) {
+    aoProgresso(`Planta${plantas.length > 1 ? " · " + pl.nome : ""}…`);
+    nova();
+    kicker(plantas.length > 1 ? `Visão geral · ${pl.nome || "Planta"}` : "Visão geral", M, M + 4); fonte(F.serif, "bold", 24, MAR); doc.text(plantas.length > 1 ? String(pl.nome || "Planta") : "Planta do projeto", M, M + 15);
+    const im = await imagem(baixar, pl.img, 2600, cache);
     const lw = 64, area = desenhar(doc, im, M, M + 22, W - 2 * M - lw - 10, H - M - 22 - 16, false, null);
-    legenda = { x: W - M - lw, w: lw };
-    if (area) (dados.planta.areas || []).forEach(z => {
-      const i = amb.findIndex(a => a.id === z.amb); if (i < 0) return;
-      const x = area.x + area.w * z.x / 100, yy = area.y + area.h * z.y / 100, w = area.w * z.w / 100, h = area.h * z.h / 100;
-      doc.setDrawColor(...AZUL); doc.setLineWidth(0.45); doc.setLineDashPattern([1.2, 0.8], 0); doc.rect(x, yy, w, h, "S"); doc.setLineDashPattern([], 0);
-      doc.setFillColor(...MAR); doc.circle(x + w / 2, yy + h / 2, 3.6, "F");
-      fonte(F.sans, "bold", 7.5, [255, 255, 255]); doc.text(n2(i + 1), x + w / 2, yy + h / 2 + 1.1, { align: "center" });
+    const zonas = (pl.areas || []).filter(z => amb.some(a => a.id === z.amb));
+    folhasPlanta.push({ pag, legenda: { x: W - M - lw, w: lw }, ambs: zonas.length ? zonas.map(z => z.amb) : null });
+    if (area) zonas.forEach(z => {
+      const i = amb.findIndex(a => a.id === z.amb);
+      const pts = ptsDe(z).map(([px, py]) => [area.x + area.w * px / 100, area.y + area.h * py / 100]);
+      doc.setDrawColor(...AZUL); doc.setLineWidth(0.45); doc.setLineDashPattern([1.2, 0.8], 0);
+      doc.lines(pts.slice(1).map((q, j) => [q[0] - pts[j][0], q[1] - pts[j][1]]), pts[0][0], pts[0][1], [1, 1], "S", true);
+      doc.setLineDashPattern([], 0);
+      const xs = pts.map(q => q[0]), ys = pts.map(q => q[1]), cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+      doc.setFillColor(...MAR); doc.circle(cx, cy, 3.6, "F");
+      fonte(F.sans, "bold", 7.5, [255, 255, 255]); doc.text(n2(i + 1), cx, cy + 1.1, { align: "center" });
     });
     rodape();
   }
@@ -230,8 +243,8 @@ export async function gerarPDFApresentacao({ baixar, projeto, versao, dados, aoP
     const rx = pw + 12, rw = W - M - rx;
     let topoListas = M + 4;
     const itensQtd = (a.materiais?.length || 0) + (a.moveis?.length || 0);
-    const zona = (dados.planta?.areas || []).find(z => z.amb === a.id);
-    const plantaAmb = a.planta ? await imagem(baixar, a.planta, 1600, cache) : (zona && dados.planta?.img ? await recorte(baixar, dados.planta.img, zona, cache) : null);
+    const plZona = plantas.find(p => (p.areas || []).some(z => z.amb === a.id)), zona = plZona && plZona.areas.find(z => z.amb === a.id);
+    const plantaAmb = a.planta ? await imagem(baixar, a.planta, 1600, cache) : (zona ? await recorte(baixar, plZona.img, zona, cache) : null);
     if (plantaAmb) {
       kicker("Planta do ambiente", rx, M + 4, SUB);
       const r = desenhar(doc, plantaAmb, rx, M + 8, rw, itensQtd > 8 ? 60 : 78, false, null);
@@ -260,13 +273,14 @@ export async function gerarPDFApresentacao({ baixar, projeto, versao, dados, aoP
     }
   }
 
-  // legenda da planta (agora que os números das folhas são conhecidos)
-  if (pagPlanta && legenda) {
-    doc.setPage(pagPlanta);
+  // legenda de cada planta (agora que os números das folhas são conhecidos)
+  for (const fp of folhasPlanta) {
+    const legenda = fp.legenda;
+    doc.setPage(fp.pag);
     kicker("Ambientes", legenda.x, M + 26, SUB);
     let ly = M + 34;
     amb.forEach((a, i) => {
-      if (ly > H - 20) return;
+      if (ly > H - 20 || (fp.ambs && !fp.ambs.includes(a.id))) return;
       doc.setFillColor(...MAR); doc.circle(legenda.x + 3.2, ly - 1.3, 3.2, "F");
       fonte(F.sans, "bold", 6.8, [255, 255, 255]); doc.text(n2(i + 1), legenda.x + 3.2, ly - 0.1, { align: "center" });
       fonte(F.sans, "normal", 9, TX); doc.text(doc.splitTextToSize(a.nome, legenda.w - 22)[0], legenda.x + 9, ly);
@@ -274,8 +288,8 @@ export async function gerarPDFApresentacao({ baixar, projeto, versao, dados, aoP
       doc.setDrawColor(...LINHA); doc.setLineWidth(0.2); doc.line(legenda.x, ly + 3.2, legenda.x + legenda.w, ly + 3.2);
       ly += 9;
     });
-    doc.setPage(pag);
   }
+  if (folhasPlanta.length) doc.setPage(pag);
   const nome = `Interiores ${rotV} - ${String(projeto.codigo || "")} ${String(titulo)}`.replace(/[\\/:*?"<>|]+/g, "_").slice(0, 120).trim() + ".pdf";
   return { blob: doc.output("blob"), nome, paginas: pag };
 }

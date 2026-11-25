@@ -44,10 +44,10 @@ export async function lerPasta(token, pastaId, anteriores = []) {
   const arquivos = (await drive.listarArvore(token, pastaId, { limite: 600 })).filter(ehImagem);
   const grupos = new Map();
   let capa = "", plantaGeral = "";
-  const raiz = [];
+  const raiz = [], plantasGerais = [];
   for (const f of arquivos) {
     const sub = String(f.pasta || "").split(" / ")[0].trim();
-    if (!sub) { if (raiz.length < 40) raiz.push(f.id); if (/planta/i.test(f.nome)) { if (!plantaGeral) plantaGeral = f.id; } else if (!capa) capa = f.id; continue; }
+    if (!sub) { if (raiz.length < 40) raiz.push(f.id); if (/planta/i.test(f.nome)) { if (!plantaGeral) plantaGeral = f.id; if (plantasGerais.length < 10) plantasGerais.push({ id: f.id, nome: nomePlanta(f.nome) }); } else if (!capa) capa = f.id; continue; }
     if (!grupos.has(sub)) grupos.set(sub, []);
     grupos.get(sub).push(f);
   }
@@ -67,8 +67,34 @@ export async function lerPasta(token, pastaId, anteriores = []) {
   const ordem = new Map(anteriores.map((a, i) => [a.id, i]));
   ambientes.sort((a, b) => (ordem.get(a.id) ?? 999) - (ordem.get(b.id) ?? 999));
   if (!capa) capa = ambientes[0]?.imagens[0] || "";
-  return { pasta: { id: pastaId, nome: info.name, link: info.webViewLink || `https://drive.google.com/drive/folders/${pastaId}` }, capa, plantaGeral, raiz, ambientes, total: arquivos.length };
+  return { pasta: { id: pastaId, nome: info.name, link: info.webViewLink || `https://drive.google.com/drive/folders/${pastaId}` }, capa, plantaGeral, plantasGerais: plantasGerais.sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR", { numeric: true })), raiz, ambientes, total: arquivos.length };
 }
+
+// "Planta - Pavimento Superior.jpg" → "Pavimento Superior"; só "planta.png" → "Planta"
+function nomePlanta(arq) {
+  const n = String(arq || "").replace(/\.[a-z0-9]{2,5}$/i, "").replace(/planta(\s+(baixa|humanizada|geral))?/ig, " ").replace(/^[\s\d_.-]+|[\s_.-]+$/g, "").replace(/[_]+/g, " ").replace(/\s+/g, " ").trim();
+  return (n ? n.charAt(0).toUpperCase() + n.slice(1) : "Planta").slice(0, 60);
+}
+
+// ── Plantas gerais (pavimentos) com áreas clicáveis ──
+// Formato atual: dados.plantas = [{ id, nome, img, areas: [{ amb, pts: [[x,y]…], x, y, w, h }] }] (em % da imagem).
+// Versões antigas têm dados.planta = { img, areas: [{ amb, x, y, w, h }] } (retângulos).
+export function plantasDe(d) {
+  if (Array.isArray(d?.plantas)) return d.plantas;
+  return d?.planta?.img ? [{ id: "p1", nome: "Planta", img: d.planta.img, areas: d.planta.areas || [] }] : [];
+}
+export function ptsDe(z) {
+  if (Array.isArray(z?.pts) && z.pts.length >= 3) return z.pts;
+  const { x = 0, y = 0, w = 0, h = 0 } = z || {};
+  return [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
+}
+const r1 = v => Math.round(Math.max(0, Math.min(100, v)) * 10) / 10;
+export function areaDe(amb, pts) {
+  const p = pts.map(([x, y]) => [r1(x), r1(y)]);
+  const xs = p.map(q => q[0]), ys = p.map(q => q[1]), x = Math.min(...xs), y = Math.min(...ys);
+  return { amb, pts: p, x, y, w: r1(Math.max(...xs) - x), h: r1(Math.max(...ys) - y) };
+}
+export const uidPlanta = () => "pl" + Math.random().toString(36).slice(2, 8);
 
 // ── paleta automática (k-médias nas cores da imagem) ──
 const nomeCor = ([r, g, b]) => {
@@ -103,4 +129,12 @@ export async function paletaDaImagem(token, fileId, k = 5) {
     c = soma.map((s, j) => (s[3] ? [s[0] / s[3], s[1] / s[3], s[2] / s[3]] : c[j]));
   }
   return c.sort((a, b) => (b[0] + b[1] + b[2]) - (a[0] + a[1] + a[2])).map(q => ({ cor: hex(q), nome: nomeCor(q) }));
+}
+
+// adiciona uma imagem como nova planta (pavimento)
+export function adicionarPlanta(d, img) {
+  const l = plantasDe(d);
+  if (l.some(x => x.img === img)) return null;
+  const nome = l.length ? `Pavimento ${l.length + 1}` : "Planta";
+  return { ...d, plantas: [...l, { id: uidPlanta(), nome, img, areas: [] }], planta: null, plantaGeralFixa: "m" };
 }

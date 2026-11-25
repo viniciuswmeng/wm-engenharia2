@@ -28,6 +28,20 @@ async function projetoDoToken(token) {
   return l?.[0] || null;
 }
 
+// Plantas (pavimentos) com as áreas clicáveis; aceita o formato antigo (dados.planta com retângulos)
+const num = v => Math.max(0, Math.min(100, Math.round((Number(v) || 0) * 10) / 10));
+function plantasPublicas(d) {
+  const l = Array.isArray(d.plantas) ? d.plantas : d.planta ? [{ nome: "Planta", ...d.planta }] : [];
+  const ambs = new Set((d.ambientes || []).map(a => a.id));
+  return l.filter(p => p && ID_ARQ.test(p.img || "")).slice(0, 10).map(p => ({
+    nome: String(p.nome || "Planta").slice(0, 60), img: p.img,
+    areas: (Array.isArray(p.areas) ? p.areas : []).filter(z => z && ambs.has(z.amb)).slice(0, 80).map(z => {
+      const pts = Array.isArray(z.pts) ? z.pts.slice(0, 80).filter(q => Array.isArray(q) && q.length === 2).map(q => [num(q[0]), num(q[1])]) : [];
+      return { amb: z.amb, x: num(z.x), y: num(z.y), w: num(z.w), h: num(z.h), ...(pts.length >= 3 ? { pts } : {}) };
+    }),
+  }));
+}
+
 // Só o que o cliente precisa ver (sem ids internos de pasta, sem quem criou)
 function publico(v) {
   const d = v.dados || {};
@@ -39,7 +53,7 @@ function publico(v) {
       paleta: a.paleta || [], materiais: a.materiais || [], moveis: a.moveis || [], link360: /^https:\/\//.test(a.link360 || "") ? a.link360 : "",
     })),
     respostas: v.respostas || {},
-    planta: d.planta && ID_ARQ.test(d.planta.img || "") ? { img: d.planta.img, areas: (d.planta.areas || []).filter(z => (d.ambientes || []).some(x => x.id === z.amb)).map(z => ({ amb: z.amb, x: +z.x || 0, y: +z.y || 0, w: +z.w || 0, h: +z.h || 0 })) } : null,
+    plantas: plantasPublicas(d),
     pdf: d.pdf && ID_ARQ.test(d.pdf.id || "") ? { id: d.pdf.id, em: d.pdf.em || "", modelo: Number(d.pdf.modelo) || 1 } : null,
     geral: d.geral ? { materiais: (d.geral.materiais || []).slice(0, 40), moveis: (d.geral.moveis || []).slice(0, 40) } : null,
   };
@@ -76,7 +90,7 @@ async function avisarEquipe(projeto, versao, respostas) {
 
 // Imagens que a versão usa (capa, planta geral, renders, fotos do antes e plantas dos ambientes)
 function idsDaVersao(v) {
-  const d = v.dados || {}, ids = new Set([d.capa?.imagem, d.planta?.img]);
+  const d = v.dados || {}, ids = new Set([d.capa?.imagem, d.planta?.img, ...(Array.isArray(d.plantas) ? d.plantas.map(p => p?.img) : [])]);
   (d.ambientes || []).forEach(a => [...(a.imagens || []), ...(a.antes || []), a.planta].forEach(x => ids.add(x)));
   ids.delete(undefined); ids.delete(""); return ids;
 }

@@ -6,7 +6,8 @@ import Icone from "../ui/Icone.jsx";
 import { DRIVE_ROOT_ID } from "../nucleo.jsx";
 import { ESCOPO_DRIVE, drive, idDoLinkDrive, obterToken } from "../google/googleApi.js";
 import { interpretar, lerTexto, sugerirAmbientes } from "./importarMateriais.js";
-import { atualizarPublicada, faltaTabela, lerPasta, listarVersoes, paletaDaImagem, rotVersao, salvarVersao, temAprovacao, urlImagem } from "./apresentacaoDados.js";
+import { adicionarPlanta, atualizarPublicada, faltaTabela, lerPasta, listarVersoes, paletaDaImagem, plantasDe, rotVersao, salvarVersao, temAprovacao, uidPlanta, urlImagem } from "./apresentacaoDados.js";
+import EditorPlantas from "./EditorPlantas.jsx";
 
 const K = { mar: "#0a2557", azul: "#1565d8", tx: "#0f1f3d", sub: "#6b7a90", borda: "#e6ecf4", fundo: "#f3f6fb", verde: "#16a34a", ambar: "#b45309" };
 const btn = (tipo = "pri", extra = {}) => ({ display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 9, padding: "7px 12px", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
@@ -100,80 +101,35 @@ function EditorAmbiente({ a, i, total, onChange, onMover, onRemover, gerarPaleta
 function ImagensPrincipais({ d, mudar }) {
   const [aberto, setAberto] = useState(false);
   const extras = d.ambientes.flatMap(a => [a.planta, ...a.imagens]).filter(Boolean);
-  const lista = [...new Set([...(d.raiz || []), d.planta?.img, d.capa?.imagem, ...(aberto ? extras : [])].filter(Boolean))];
-  const usarPlanta = id => {
-    if (d.planta?.img === id) return;
-    if (d.planta?.areas?.length && !window.confirm("As áreas marcadas na planta atual serão apagadas (a nova imagem tem outra posição). Continuar?")) return;
-    mudar({ ...d, planta: { img: id, areas: [] }, plantaGeralFixa: id });
-  };
+  const plantas = plantasDe(d);
+  const lista = [...new Set([...(d.raiz || []), ...plantas.map(x => x.img), d.capa?.imagem, ...(aberto ? extras : [])].filter(Boolean))];
+  const usarPlanta = id => { const nd = adicionarPlanta(d, id); if (nd) mudar(nd); };
   return (
     <div style={{ border: `1px solid ${K.borda}`, borderRadius: 12, background: "#fff", padding: "8px 12px 12px", minWidth: 0 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-        <b style={{ fontSize: 13.5, color: K.tx, flex: 1 }}>Planta geral e capa</b>
-        {d.planta?.img && <button type="button" onClick={() => { if (window.confirm("Tirar a planta geral da apresentação?")) mudar({ ...d, planta: null, plantaGeralFixa: "-" }); }} style={btn("sec", { color: "#be123c", padding: "3px 9px" })}>Sem planta geral</button>}
+        <b style={{ fontSize: 13.5, color: K.tx, flex: 1 }}>Plantas e capa <span style={{ fontWeight: 400, fontSize: 12, color: K.sub }}>· clique em + Planta na planta de cada pavimento</span></b>
         <button type="button" onClick={() => setAberto(v => !v)} style={btn("sec", { padding: "3px 9px" })}>{aberto ? "Só a pasta principal" : "Ver também as imagens dos ambientes"}</button>
       </div>
       {!(d.raiz || []).length && <div style={{ fontSize: 11.5, color: K.sub, marginTop: 4 }}>Clique em Reler pasta para listar todas as imagens soltas na pasta principal.</div>}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, paddingTop: 8, paddingBottom: 4, maxWidth: "100%", minWidth: 0 }}>
         {lista.map(id => {
-          const ePlanta = d.planta?.img === id, eCapa = d.capa?.imagem === id;
+          const pl = plantas.find(x => x.img === id), ePlanta = !!pl, eCapa = d.capa?.imagem === id;
           return (
             <span key={id} style={{ flex: "none", display: "grid", gap: 3, width: 120 }}>
               <span style={{ position: "relative" }}>
                 <img src={urlImagem(id, 260)} alt="" style={{ width: 120, height: 80, objectFit: "cover", borderRadius: 7, background: K.fundo, display: "block", outline: ePlanta || eCapa ? `2px solid ${ePlanta ? K.azul : K.verde}` : "none" }} />
                 <span style={{ position: "absolute", left: 4, bottom: 4, display: "flex", gap: 3 }}>
-                  {ePlanta && <span style={{ fontSize: 10, fontWeight: 700, background: K.azul, color: "#fff", borderRadius: 5, padding: "1px 5px" }}>Planta</span>}
+                  {ePlanta && <span style={{ fontSize: 10, fontWeight: 700, background: K.azul, color: "#fff", borderRadius: 5, padding: "1px 5px", maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pl.nome || "Planta"}</span>}
                   {eCapa && <span style={{ fontSize: 10, fontWeight: 700, background: K.verde, color: "#fff", borderRadius: 5, padding: "1px 5px" }}>Capa</span>}
                 </span>
               </span>
               <div style={{ display: "flex", gap: 3 }}>
-                <button type="button" disabled={ePlanta} onClick={() => usarPlanta(id)} style={btn("sec", { padding: "2px 5px", fontSize: 11, flex: 1, opacity: ePlanta ? .5 : 1 })}>Planta</button>
+                <button type="button" disabled={ePlanta} onClick={() => usarPlanta(id)} style={btn("sec", { padding: "2px 5px", fontSize: 11, flex: 1, opacity: ePlanta ? .5 : 1 })}>{ePlanta ? "Planta ✓" : "+ Planta"}</button>
                 <button type="button" disabled={eCapa} onClick={() => mudar({ ...d, capa: { ...d.capa, imagem: id }, capaFixa: id })} style={btn("sec", { padding: "2px 5px", fontSize: 11, flex: 1, opacity: eCapa ? .5 : 1 })}>Capa</button>
               </div>
             </span>
           );
         })}
-      </div>
-    </div>
-  );
-}
-
-// Planta geral: a equipe desenha um retângulo sobre cada ambiente; o cliente clica nele para abrir as fotos
-function EditorPlanta({ planta, ambientes, onChange }) {
-  const [sel, setSel] = useState(ambientes[0]?.id || "");
-  const [ini, setIni] = useState(null), [atual, setAtual] = useState(null);
-  const areas = planta.areas || [];
-  const pos = e => { const r = e.currentTarget.getBoundingClientRect(); return { x: Math.max(0, Math.min(100, ((e.clientX - r.left) / r.width) * 100)), y: Math.max(0, Math.min(100, ((e.clientY - r.top) / r.height) * 100)) }; };
-  const ret = (a, b) => ({ x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), w: Math.abs(a.x - b.x), h: Math.abs(a.y - b.y) });
-  const r2 = v => Math.round(v * 10) / 10;
-  const soltar = e => {
-    if (!ini) return;
-    const z = ret(ini, pos(e)); setIni(null); setAtual(null);
-    if (z.w < 1.5 || z.h < 1.5 || !sel) return;
-    onChange({ ...planta, areas: [...areas.filter(a => a.amb !== sel), { amb: sel, x: r2(z.x), y: r2(z.y), w: r2(z.w), h: r2(z.h) }] });
-    const prox = ambientes.find(a => a.id !== sel && !areas.some(z2 => z2.amb === a.id)); if (prox) setSel(prox.id);
-  };
-  const nome = id => ambientes.find(a => a.id === id)?.nome || "?";
-  return (
-    <div style={{ border: `1px solid ${K.borda}`, borderRadius: 12, background: "#fff", padding: 10 }}>
-      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 8 }}>
-        <b style={{ fontSize: 13.5, color: K.tx }}>Planta clicável</b>
-        <span style={{ fontSize: 12, color: K.sub, flex: 1 }}>Escolha o ambiente e arraste sobre a planta para marcar a área ({areas.length} de {ambientes.length} marcados).</span>
-        <select value={sel} onChange={e => setSel(e.target.value)} style={inp} aria-label="Ambiente a marcar">
-          {ambientes.map(a => <option key={a.id} value={a.id}>{a.nome}{areas.some(z => z.amb === a.id) ? " ✓" : ""}</option>)}
-        </select>
-        {areas.some(z => z.amb === sel) && <button type="button" onClick={() => onChange({ ...planta, areas: areas.filter(z => z.amb !== sel) })} style={btn("sec", { color: "#be123c" })}>Apagar área</button>}
-      </div>
-      <div onPointerDown={e => { e.preventDefault(); e.currentTarget.setPointerCapture?.(e.pointerId); const p = pos(e); setIni(p); setAtual(p); }}
-        onPointerMove={e => { if (ini) setAtual(pos(e)); }} onPointerUp={soltar}
-        style={{ position: "relative", cursor: "crosshair", userSelect: "none", touchAction: "none", borderRadius: 8, overflow: "hidden", background: K.fundo }}>
-        <img src={urlImagem(planta.img, 1600)} alt="Planta geral" draggable={false} style={{ width: "100%", display: "block", pointerEvents: "none" }} />
-        {areas.map(z => (
-          <span key={z.amb} style={{ position: "absolute", left: `${z.x}%`, top: `${z.y}%`, width: `${z.w}%`, height: `${z.h}%`, border: `2px solid ${z.amb === sel ? K.ambar : K.azul}`, background: z.amb === sel ? "rgba(180,83,9,.15)" : "rgba(21,101,216,.12)", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
-            <span style={{ background: z.amb === sel ? K.ambar : K.azul, color: "#fff", fontSize: 11, fontWeight: 700, borderRadius: 6, padding: "1px 6px", whiteSpace: "nowrap" }}>{nome(z.amb)}</span>
-          </span>
-        ))}
-        {ini && atual && (() => { const z = ret(ini, atual); return <span style={{ position: "absolute", left: `${z.x}%`, top: `${z.y}%`, width: `${z.w}%`, height: `${z.h}%`, border: `2px dashed ${K.ambar}`, background: "rgba(180,83,9,.12)", pointerEvents: "none" }} />; })()}
       </div>
     </div>
   );
@@ -274,14 +230,16 @@ export default function ApresentacaoInteriores({ projeto, usuarioAtual }) {
       const r = await lerPasta(t, id, base?.dados?.ambientes || []);
       if (!r.ambientes.length) { avisar("Não achei ambientes: crie uma subpasta para cada ambiente (ex.: 01 Sala, 02 Cozinha) com as imagens dentro.", false); return; }
       const ids = new Set(r.ambientes.map(a => a.id));
-      const plantaAnt = base?.dados?.planta, bd = base?.dados || {};
+      const bd = base?.dados || {};
       // escolhas feitas à mão (planta geral e capa) continuam valendo se a imagem ainda estiver na pasta
       const todas = new Set([...r.raiz, ...r.ambientes.flatMap(a => [...a.imagens, ...a.antes, a.planta])]);
-      const fixaG = bd.plantaGeralFixa, imgG = fixaG === "-" ? "" : fixaG && todas.has(fixaG) ? fixaG : r.plantaGeral;
-      const planta = imgG ? { img: imgG, areas: (plantaAnt?.img === imgG ? plantaAnt.areas || [] : []).filter(z => ids.has(z.amb)) } : null;
+      // plantas (pavimentos): as que a equipe já tinha continuam se a imagem ainda estiver na pasta; sem escolha manual,
+      // cada imagem com "planta" no nome na pasta principal vira um pavimento
+      const antigas = plantasDe(bd).filter(x => todas.has(x.img)).map(x => ({ ...x, areas: (x.areas || []).filter(z => ids.has(z.amb)) }));
+      const plantas = bd.plantaGeralFixa || antigas.length ? antigas : (r.plantasGerais || []).map(x => ({ id: uidPlanta(), nome: x.nome, img: x.id, areas: [] }));
       const capaImg = bd.capaFixa && todas.has(bd.capaFixa) ? bd.capaFixa : r.capa;
-      const dados = { ...(base ? { geral: bd.geral || null } : {}), capa: { titulo: bd.capa?.titulo || projeto.cliente || "", texto: bd.capa?.texto || "", imagem: capaImg }, pasta: r.pasta, raiz: r.raiz, ambientes: r.ambientes, planta, pdf: null,
-        ...(fixaG && (fixaG === "-" || imgG === fixaG) ? { plantaGeralFixa: fixaG } : {}), ...(capaImg === bd.capaFixa ? { capaFixa: bd.capaFixa } : {}) };
+      const dados = { ...(base ? { geral: bd.geral || null } : {}), capa: { titulo: bd.capa?.titulo || projeto.cliente || "", texto: bd.capa?.texto || "", imagem: capaImg }, pasta: r.pasta, raiz: r.raiz, ambientes: r.ambientes, plantas, planta: null, pdf: null,
+        ...(bd.plantaGeralFixa ? { plantaGeralFixa: bd.plantaGeralFixa } : {}), ...(capaImg === bd.capaFixa ? { capaFixa: bd.capaFixa } : {}) };
       if (base && base.id === rasc?.id) {
         mudar(dados); setTrocaPasta(null);
         avisar(linkNovo ? `Pasta trocada para “${r.pasta.nome}”: ${r.ambientes.length} ambiente(s), ${r.total} imagem(ns). Textos de ambientes com o mesmo nome foram mantidos. Clique em Salvar.`
@@ -461,8 +419,7 @@ export default function ApresentacaoInteriores({ projeto, usuarioAtual }) {
               <Linhas rotulo="Itens (toda a casa)" itens={d.geral.moveis || []} onChange={v => mudar({ ...d, geral: { ...d.geral, moveis: v } })} placeholderNome="Ex.: Cortinas" placeholderDesc="Material, cor" />
             </div>) : null}
           <ImagensPrincipais d={d} mudar={mudar} />
-          {d.planta?.img ? <EditorPlanta planta={d.planta} ambientes={d.ambientes} onChange={planta => mudar({ ...d, planta })} />
-            : <div style={{ fontSize: 12, color: K.sub }}>Sem planta geral: escolha acima qual imagem é a planta (ou coloque na pasta principal uma imagem com <b>planta</b> no nome e clique em Reler pasta).</div>}
+          <EditorPlantas d={d} mudar={mudar} />
           {d.ambientes.map((a, i) => <EditorAmbiente key={a.id} a={a} i={i} total={d.ambientes.length} onChange={x => setAmb(i, x)} onMover={dir => mover(i, dir)} gerarPaleta={gerarPaleta}
             onRemover={() => { if (window.confirm(`Tirar “${a.nome}” da apresentação? (As imagens continuam no Drive.)`)) mudar({ ...d, ambientes: d.ambientes.filter((_, j) => j !== i) }); }} />)}
         </div>
