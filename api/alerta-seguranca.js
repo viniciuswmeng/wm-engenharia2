@@ -3,13 +3,14 @@
 // POST {acao:"auditoria"}         (só com CRON_SECRET) → procura contas novas no login que não são da equipe
 // POST {acao:"login_negado"}      (com a sessão Google de quem foi barrado) → registra a tentativa
 import { cronAutorizado, emailDaEquipe, tokenDe } from "./_auth.js";
+import { remetente } from "./_remetente.js";
 import { registrar, NOMES } from "./_seguranca.js";
 import { enviarParaUsuario } from "./_push.js";
 import { cabecalhosSb, temChaveServico } from "./_sb.js";
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 const ANON = process.env.VITE_SUPABASE_ANON_KEY;
-const FROM = "WM Engenharia <noreply@engenhariaWM.com.br>";
+const FROM = remetente();
 const GESTORES_FIXOS = ["direcao@engenhariaWM.com.br", "jonathanmartins.eng@gmail.com", "vinicius.wilk13@gmail.com"];
 const esc = v => String(v == null ? "" : v).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 

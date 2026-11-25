@@ -2122,7 +2122,7 @@ async function enviarAtaAssinatura(p,a,bt){
     if(!a.pdfAt)a.pdfAt=today();
     p.log.push({id:uid(),date:today(),disc:"geral",type:"Reunião",text:"Ata "+a.num+" enviada para assinatura eletrônica"});
     touchProject(curId,false);renderAtas();renderTabs();
-    const m2=$("assMsg");if(m2)m2.textContent=`Enviada: ${j.emails} e-mail(s) com o link de assinatura.`;
+    const m2=$("assMsg");if(m2)m2.textContent=j.erroEmail?`Liberada, mas o e-mail NÃO foi enviado — ${j.erroEmail}. Envie o link da página de assinatura pelo WhatsApp.`:`Enviada: ${j.emails} e-mail(s) com o link de assinatura.`;
   }catch(e){
     if(docId&&!a.assinatura){try{await SB.from("documentos_assinatura").delete().eq("id",docId).eq("status","rascunho");await SB.storage.from(BUCKET).remove([arquivo])}catch(x){}}
     m.textContent=/documentos_assinatura|does not exist|schema cache/i.test(e.message||"")?"Rode no Supabase o arquivo supabase/assinaturas.sql para ativar.":"Não foi possível enviar: "+(e.message||e);bt.disabled=false}

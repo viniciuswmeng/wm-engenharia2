@@ -6,6 +6,7 @@
 // POST { token, versao, acao:"enviar" }                                  → marca como enviada e avisa a equipe
 // O cliente nunca grava direto no banco: tudo passa por aqui, validado, com a chave do servidor.
 import { cabecalhosSb } from "./_sb.js";
+import { remetente } from "./_remetente.js";
 import { registrar } from "./_seguranca.js";
 import { membroDaEquipe } from "./_auth.js";
 import { enviarParaUsuario } from "./_push.js";
@@ -14,7 +15,7 @@ const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 const TOKEN_OK = /^[A-Za-z0-9_-]{16,64}$/;
 const ID_OK = /^[A-Za-z0-9_-]{6,80}$/;
 const ID_ARQ = /^[A-Za-z0-9_-]{10,120}$/;
-const FROM = "WM Engenharia <noreply@engenhariaWM.com.br>";
+const FROM = remetente();
 const esc = v => String(v == null ? "" : v).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 async function sb(caminho, opcoes = {}) {

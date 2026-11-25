@@ -5,10 +5,11 @@
 export const config = { runtime: 'edge' };
 
 const RESEND_API = 'https://api.resend.com/emails';
-const FROM       = 'WM Engenharia <noreply@engenhariaWM.com.br>';
+const FROM       = remetente();
 const GESTOR     = 'direcao@engenhariaWM.com.br';
 
 import { registrar } from "./_seguranca.js";
+import { remetente } from "./_remetente.js";
 import { autorizar, emailDaEquipe } from './_auth.js';
 
 // Escapa texto vindo do banco/requisição antes de entrar no HTML do e-mail

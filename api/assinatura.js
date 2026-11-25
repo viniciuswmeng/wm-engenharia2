@@ -11,6 +11,7 @@
 //
 // O navegador nunca grava assinaturas: tudo passa por aqui, validado, com a chave de serviço do Supabase.
 import crypto from "node:crypto";
+import { remetente } from "./_remetente.js";
 import { cabecalhosSb, temChaveServico } from "./_sb.js";
 import { registrar, ipDe } from "./_seguranca.js";
 import { membroDaEquipe } from "./_auth.js";
@@ -18,7 +19,7 @@ import { enviarParaUsuario } from "./_push.js";
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 const BUCKET = "obras-arquivos";
-const FROM = "WM Engenharia <noreply@engenhariaWM.com.br>";
+const FROM = remetente();
 const TOKEN_OK = /^[A-Za-z0-9_-]{24,64}$/;
 const UUID_OK = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SID_OK = /^[A-Za-z0-9_-]{1,40}$/;
@@ -81,12 +82,19 @@ async function corpo(req) {
   if (req.body && typeof req.body === "object") return req.body;
   try { return JSON.parse(typeof req.body === "string" ? req.body : ""); } catch { return null; }
 }
+// Envia pelo Resend. Guarda o motivo da última falha (domínio não verificado, chave ausente…) para mostrar à equipe.
+let ultimoErroEmail = "";
 async function enviarEmail(para, assunto, html) {
   const key = process.env.RESEND_API_KEY;
-  if (!key) return false;
+  if (!key) { ultimoErroEmail = "RESEND_API_KEY não está configurada na Vercel."; return false; }
   const r = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: FROM, to: [para], subject: assunto, html }) }).catch(() => null);
-  return !!r?.ok;
+    body: JSON.stringify({ from: FROM, to: [para], subject: assunto, html }) }).catch(e => ({ ok: false, erroRede: e.message }));
+  if (r?.ok) return true;
+  let motivo = r?.erroRede || "";
+  if (!motivo) { try { const j = await r.json(); motivo = j?.message || j?.error || ""; } catch { /* sem corpo */ } }
+  ultimoErroEmail = `Resend recusou o envio (${r?.status || "sem resposta"}): ${String(motivo || "motivo não informado").slice(0, 200)} · remetente: ${FROM}`;
+  console.error("assinatura e-mail:", ultimoErroEmail);
+  return false;
 }
 const moldura = (titulo, miolo) => `<div style="font-family:Segoe UI,Arial,sans-serif;max-width:560px;margin:0 auto;color:#0f1f3d">
   <div style="background:#0a2557;color:#fff;padding:18px 22px;border-radius:12px 12px 0 0"><b style="font-size:17px">WM Engenharia Integrada</b><div style="font-size:12px;color:#9cc2ff;margin-top:3px">${esc(titulo)}</div></div>
@@ -168,14 +176,16 @@ async function acaoEquipe(req, res, b, eu) {
     const upd = { status: "aguardando", hash: sha256(buf), token, codigo, liberado_em: new Date().toISOString(), updated_at: new Date().toISOString() };
     const r = await sb(`documentos_assinatura?id=eq.${doc.id}&status=eq.rascunho`, { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify(upd) });
     if (!r?.length) return res.status(409).json({ erro: "O documento mudou enquanto era liberado. Atualize a página." });
+    ultimoErroEmail = "";
     const enviados = await avisarSignatarios(req, r[0]);
     await registrar(req, "assinatura_liberada", { doc: doc.id, por: eu.email }).catch(() => {});
-    return res.status(200).json({ ok: true, token, codigo, hash: upd.hash, emails: enviados, link: `${site(req)}/assinar/${token}` });
+    return res.status(200).json({ ok: true, token, codigo, hash: upd.hash, emails: enviados, erroEmail: enviados < sigs.length ? ultimoErroEmail : "", link: `${site(req)}/assinar/${token}` });
   }
   if (b.acao === "reenviar") {
     if (doc.status !== "aguardando") return res.status(409).json({ erro: "Só documentos aguardando assinatura." });
+    ultimoErroEmail = "";
     const n = await avisarSignatarios(req, doc, SID_OK.test(String(b.sid || "")) ? b.sid : null);
-    return res.status(200).json({ ok: true, emails: n });
+    return res.status(200).json({ ok: true, emails: n, erroEmail: ultimoErroEmail });
   }
   if (b.acao === "cancelar") {
     if (!["rascunho", "aguardando"].includes(doc.status)) return res.status(409).json({ erro: "Documento já assinado por todos não pode ser cancelado." });
@@ -226,7 +236,7 @@ export default async function handler(req, res) {
         `<p>Use o código abaixo para assinar <b>${esc(doc.titulo)}</b> (código do documento ${esc(doc.codigo)}):</p>
          <p style="font-size:30px;font-weight:800;letter-spacing:8px;color:#0a2557;margin:10px 0">${codigo}</p>
          <p style="color:#64748b">Vale por ${VALIDADE_MIN} minutos. Não compartilhe este código: ele confirma que é você quem está assinando.</p>`));
-      if (!ok) return res.status(502).json({ erro: "Não foi possível enviar o e-mail agora. Tente de novo em instantes." });
+      if (!ok) { await sb(`assinatura_codigos?documento_id=eq.${doc.id}&signatario_id=eq.${encodeURIComponent(sid)}&usado=eq.false`, { method: "PATCH", body: JSON.stringify({ usado: true }) }).catch(() => {}); return res.status(502).json({ erro: "Não foi possível enviar o e-mail agora. Avise a WM Engenharia (o envio de e-mails está com problema)." }); }
       return res.status(200).json({ ok: true, email: mascaraEmail(sig.email), validadeMin: VALIDADE_MIN });
     }
 

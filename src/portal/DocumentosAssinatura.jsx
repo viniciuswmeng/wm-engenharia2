@@ -27,7 +27,7 @@ export default function DocumentosAssinatura({ projeto, usuarioAtual }) {
   const [msg, setMsg] = useState(null);
   const [novo, setNovo] = useState(false);
   const [ocupado, setOcupado] = useState("");
-  const avisar = (t, ok = true) => { setMsg({ t, ok }); setTimeout(() => setMsg(null), 9000); };
+  const avisar = (t, ok = true) => { setMsg({ t, ok }); setTimeout(() => setMsg(null), ok ? 9000 : 30000); };
   const carregar = async () => {
     try { setDocs(await listarDocs(projeto.id)); }
     catch (e) { if (faltaTabelaAssin(e)) setSemTabela(true); else avisar(e.message, false); setDocs([]); }
@@ -47,7 +47,7 @@ export default function DocumentosAssinatura({ projeto, usuarioAtual }) {
       <p style={{ color: K.sub, fontSize: 12.5, margin: "0 0 10px" }}>O cliente assina pelo link enviado por e-mail (ou pelo portal), confirmando com um código de verificação. Atas: em Obras → Atas → <b>Enviar para assinatura</b>. Contrato: em Contratos → <b>Emitir para assinatura</b>.</p>
       {semTabela && <div style={{ fontSize: 12.5, color: "#92400e", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10, padding: "8px 12px" }}>Para ativar, rode no Supabase o arquivo <b>supabase/assinaturas.sql</b>.</div>}
       {msg && <div role="status" style={{ fontSize: 13, fontWeight: 600, borderRadius: 10, padding: "8px 12px", marginBottom: 10, color: msg.ok ? "#166534" : "#9f1239", background: msg.ok ? "#f0fdf4" : "#fff1f2", border: `1px solid ${msg.ok ? "#bbf7d0" : "#fecdd3"}` }}>{msg.t}</div>}
-      {novo && <NovoTermo projeto={projeto} usuarioAtual={usuarioAtual} docs={docs || []} onFeito={async r => { setNovo(false); await carregar(); avisar(`Termo enviado para assinatura (${r.emails} e-mail(s) enviado(s)).`); }} onErro={(t) => avisar(t, false)} />}
+      {novo && <NovoTermo projeto={projeto} usuarioAtual={usuarioAtual} docs={docs || []} onFeito={async r => { setNovo(false); await carregar(); avisar(r.erroEmail ? `Termo liberado, mas o e-mail NÃO foi enviado — ${r.erroEmail}. Copie o link e mande pelo WhatsApp enquanto isso.` : `Termo enviado para assinatura (${r.emails} e-mail(s) enviado(s)).`, !r.erroEmail); }} onErro={(t) => avisar(t, false)} />}
       {docs && !docs.length && !semTabela && !novo && <div style={{ fontSize: 13, color: K.sub, background: K.fundo, borderRadius: 10, padding: "12px 14px" }}>Nenhum documento enviado para assinatura ainda.</div>}
       <div style={{ display: "grid", gap: 8 }}>
         {(docs || []).map(d => {
@@ -66,9 +66,9 @@ export default function DocumentosAssinatura({ projeto, usuarioAtual }) {
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {d.token && d.status !== "cancelado" && <a href={linkDe(d)} target="_blank" rel="noreferrer" style={btn()}>Abrir página de assinatura</a>}
                 {d.token && d.status === "aguardando" && <button type="button" style={btn()} onClick={async () => { try { await navigator.clipboard.writeText(linkDe(d)); avisar("Link copiado."); } catch { avisar(linkDe(d)); } }}>Copiar link</button>}
-                {d.status === "aguardando" && <button type="button" disabled={!!ocupado} style={btn()} onClick={() => rodar("r" + d.id, async () => { const r = await acaoServidor("reenviar", d.id); avisar(`E-mail reenviado (${r.emails}).`); })}>{ocupado === "r" + d.id ? "Enviando…" : "Reenviar e-mail"}</button>}
+                {d.status === "aguardando" && <button type="button" disabled={!!ocupado} style={btn()} onClick={() => rodar("r" + d.id, async () => { const r = await acaoServidor("reenviar", d.id); avisar(r.erroEmail ? `E-mail NÃO enviado — ${r.erroEmail}` : `E-mail reenviado (${r.emails}).`, !r.erroEmail); })}>{ocupado === "r" + d.id ? "Enviando…" : "Reenviar e-mail"}</button>}
                 {d.token && d.status !== "cancelado" && <button type="button" disabled={!!ocupado} style={btn(d.status === "assinado" ? "ok" : "sec")} onClick={() => rodar("b" + d.id, async () => { const r = await pdfAssinadoDe(d.token); baixarBlob(r.blob, r.nome); })}>{ocupado === "b" + d.id ? "Preparando…" : d.status === "assinado" ? "Baixar PDF assinado" : "Baixar PDF (parcial)"}</button>}
-                {d.status === "rascunho" && <button type="button" disabled={!!ocupado} style={btn("pri")} onClick={() => rodar("l" + d.id, async () => { const r = await acaoServidor("liberar", d.id); await carregar(); avisar(`Enviado para assinatura (${r.emails} e-mail(s)).`); })}>Enviar para assinatura</button>}
+                {d.status === "rascunho" && <button type="button" disabled={!!ocupado} style={btn("pri")} onClick={() => rodar("l" + d.id, async () => { const r = await acaoServidor("liberar", d.id); await carregar(); avisar(r.erroEmail ? `Liberado, mas o e-mail NÃO foi enviado — ${r.erroEmail}. Copie o link e mande pelo WhatsApp enquanto isso.` : `Enviado para assinatura (${r.emails} e-mail(s)).`, !r.erroEmail); })}>Enviar para assinatura</button>}
                 {d.status === "rascunho" && <button type="button" disabled={!!ocupado} style={btn("sec", { color: K.verm })} onClick={() => { if (window.confirm("Apagar este rascunho?")) rodar("x" + d.id, async () => { await apagarRascunho(d); await carregar(); }); }}>Apagar</button>}
                 {d.status === "aguardando" && <button type="button" disabled={!!ocupado} style={btn("sec", { color: K.verm })} onClick={() => { if (window.confirm(`Cancelar “${d.titulo}”? O link deixa de aceitar assinaturas.`)) rodar("c" + d.id, async () => { await acaoServidor("cancelar", d.id); await carregar(); avisar("Documento cancelado."); }); }}>Cancelar</button>}
               </div>

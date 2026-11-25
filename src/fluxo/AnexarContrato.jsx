@@ -139,9 +139,10 @@ export default function AnexarContrato({ contrato, drive, driveRaizId, projetos,
           const doc = await criarELiberar({ projetoId:r.projetoId, tipo:"contrato", titulo:`Contrato de prestação de serviços — ${cliente.trim()}`.slice(0, 200),
             descricao:(form.servicos || []).join(", "), dados:{ contratoId:String(contrato.id), valor:Number(form.valorTotal) || 0 }, pdf,
             signatarios:[{ id:"c1", nome:cliente.trim(), email:emailCli.trim(), papel:"Contratante" }, { id:"w1", nome:socio.nome, email:socio.email, papel:"Contratada — WM Engenharia" }] });
-          r.assinatura = { docId:doc.id, token:doc.token, codigo:doc.codigo, emails:doc.emails };
+          r.assinatura = { docId:doc.id, token:doc.token, codigo:doc.codigo, emails:doc.emails, erroEmail:doc.erroEmail || "" };
         }
-        marca(3, "ok", "Contrato no portal aguardando assinatura", `${r.assinatura.emails ?? 2} e-mail(s) enviado(s) · código ${r.assinatura.codigo || ""}`);
+        if (r.assinatura.erroEmail) marca(3, "aviso", "Contrato no portal aguardando assinatura, mas o e-mail NÃO foi enviado", `${r.assinatura.erroEmail} — envie o link da página de assinatura pelo WhatsApp.`);
+        else marca(3, "ok", "Contrato no portal aguardando assinatura", `${r.assinatura.emails ?? 2} e-mail(s) enviado(s) · código ${r.assinatura.codigo || ""}`);
       } else marca(3, "aviso", "Portal e assinatura não ativados (desmarcado)");
       // 5. Situação do contrato
       marca(4, "rodando", "Atualizando o contrato");
