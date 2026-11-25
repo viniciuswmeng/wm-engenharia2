@@ -3,6 +3,7 @@
 // assinatura, reenvia o e-mail, cancela e baixa o PDF com a folha de assinaturas.
 import { useEffect, useState } from "react";
 import { supabase } from "../supabase.js";
+import { instrucoesTermoTxt, lerArquivoTxt, lerTermoTxt, modeloTermoTxt } from "./termoTxt.js";
 import { DISCIPLINAS_TERMO, EMAIL_OK, ETAPAS, TIPOS_DOC, acaoServidor, apagarRascunho, baixarBlob, criarELiberar, faltaTabelaAssin, listarDocs, pdfAssinadoDe, vendor } from "./assinaturaDados.js";
 
 const K = { mar: "#0a2557", azul: "#1565d8", tx: "#0f1f3d", sub: "#6b7a90", borda: "#e6ecf4", fundo: "#f3f6fb", verde: "#16a34a", ambar: "#b45309", verm: "#be123c" };
@@ -87,6 +88,7 @@ function NovoTermo({ projeto, usuarioAtual, docs, onFeito, onErro }) {
   const [socios, setSocios] = useState([]);
   const [wm, setWm] = useState("");
   const [estado, setEstado] = useState("");
+  const [avisoTxt, setAvisoTxt] = useState("");
   useEffect(() => {
     let vivo = true;
     supabase.from("usuarios").select("id,nome,email,perfil,ativo").then(({ data }) => { if (vivo) setSocios((data || []).filter(u => u.ativo !== false && ["gestor", "admin"].includes(u.perfil) && u.email)); });
@@ -104,6 +106,26 @@ function NovoTermo({ projeto, usuarioAtual, docs, onFeito, onErro }) {
   const problema = !etapa ? "Informe a etapa." : f.descricao.trim().length < 10 ? "Descreva o que foi aprovado." : todos.find(s => s.nome.trim().length < 2) ? "Informe o nome de cada signatário." : todos.find(s => !EMAIL_OK.test(s.email.trim())) ? "Confira o e-mail de cada signatário." : "";
   const dadosPdf = () => ({ projeto: { codigo: projeto.codigo, cliente: projeto.cliente, endereco: projeto.endereco || "" }, disciplina, etapa, descricao: f.descricao, itens: f.itens.split("\n"), observacoes: f.obs,
     emissao: new Date().toISOString().slice(0, 10), emitidoPor: usuarioAtual?.nome || "", signatarios: todos.map(s => ({ nome: s.nome, papel: s.papel })) });
+  const cli = sigs[0] || {};
+  const baixarTxt = (nome, txt) => baixarBlob(new Blob(["\ufeff" + txt], { type: "text/plain;charset=utf-8" }), nome);
+  const copiarInstrucoes = async () => {
+    const txt = instrucoesTermoTxt({ disc: f.disc, disciplina, etapa: etapa || "Preliminar", projeto, cliente: cli.nome, email: cli.email });
+    try { await navigator.clipboard.writeText(txt); setAvisoTxt(`Instruções de ${disciplina} — ${etapa || "Preliminar"} copiadas. Cole no Claude e, logo abaixo, suas anotações ou a transcrição.`); }
+    catch { baixarTxt(`instrucoes_termo_${f.disc}.txt`, txt); setAvisoTxt("Não deu para copiar; baixei as instruções em um arquivo."); }
+  };
+  const importarTxt = async arq => {
+    if (!arq) return;
+    try {
+      const r = lerTermoTxt(await lerArquivoTxt(arq), discs);
+      const n = Object.keys(r).length;
+      if (!n) { setAvisoTxt("Não encontrei os campos do modelo nesse arquivo. Baixe o modelo TXT e confira os títulos."); return; }
+      setF(x => ({ ...x, ...(r.disc ? { disc: r.disc } : {}), ...(r.etapa ? { etapa: r.etapa, outraEtapa: r.outraEtapa || x.outraEtapa } : {}),
+        ...(r.descricao != null ? { descricao: r.descricao } : {}), ...(r.itens != null ? { itens: r.itens } : {}), ...(r.obs != null ? { obs: r.obs } : {}) }));
+      if (r.sigs) setSigs(r.sigs);
+      const confirmar = /\[CONFIRMAR\]/i.test([r.descricao, r.itens, r.obs].join(" "));
+      setAvisoTxt(`Termo preenchido a partir de “${arq.name}”. Confira tudo antes de enviar${confirmar ? " — há trechos marcados com [CONFIRMAR]" : ""}.`);
+    } catch (e) { setAvisoTxt(e.message); }
+  };
   const previa = async () => {
     setEstado("Gerando prévia…");
     try { const m = await vendor(); const pdf = await m.termoPdf(dadosPdf()); const u = URL.createObjectURL(new Blob([pdf], { type: "application/pdf" })); window.open(u, "_blank", "noopener"); setTimeout(() => URL.revokeObjectURL(u), 60000); }
@@ -111,6 +133,7 @@ function NovoTermo({ projeto, usuarioAtual, docs, onFeito, onErro }) {
   };
   const enviar = async () => {
     if (problema) return onErro(problema);
+    if (/\[CONFIRMAR\]/i.test([f.descricao, f.itens, f.obs].join(" "))) return onErro("Ainda há trechos marcados com [CONFIRMAR] no termo. Complete antes de enviar.");
     if (!window.confirm(`Enviar o termo “${disciplina} — ${etapa}” para assinatura de ${todos.map(s => s.nome).join(", ")}?`)) return;
     setEstado("Gerando o PDF…");
     try {
@@ -124,7 +147,14 @@ function NovoTermo({ projeto, usuarioAtual, docs, onFeito, onErro }) {
   };
   return (
     <div style={{ border: "1px solid #bcd3f5", background: "#f7faff", borderRadius: 14, padding: 14, display: "grid", gap: 10, marginBottom: 12 }}>
-      <b style={{ color: K.mar }}>Novo termo de finalização de etapa</b>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <b style={{ color: K.mar, flex: 1 }}>Novo termo de finalização de etapa</b>
+        <button type="button" onClick={copiarInstrucoes} style={btn()} title="Instruções para o Claude montar o TXT do termo desta disciplina e etapa">Copiar instruções p/ Claude</button>
+        <button type="button" onClick={() => baixarTxt(`modelo_termo_${f.disc}.txt`, modeloTermoTxt({ disciplina, etapa: etapa || "Preliminar", cliente: cli.nome, email: cli.email }))} style={btn()}>Baixar modelo TXT</button>
+        <label style={{ ...btn("pri"), position: "relative", overflow: "hidden" }}>Importar TXT<input type="file" accept=".txt,text/plain" onChange={e => { importarTxt(e.target.files?.[0]); e.target.value = ""; }} style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer" }} /></label>
+      </div>
+      <div style={{ fontSize: 12, color: K.sub }}>Escolha a disciplina e a etapa, copie as instruções (mudam conforme a disciplina), cole no Claude com suas anotações ou a transcrição e importe o .txt que ele gerar.</div>
+      {avisoTxt && <div role="status" style={{ fontSize: 12.5, fontWeight: 600, color: "#1e40af", background: "#eff6ff", borderRadius: 8, padding: "7px 10px" }}>{avisoTxt}</div>}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 10 }}>
         <label><span style={rot}>Disciplina</span><select value={f.disc} onChange={e => set("disc", e.target.value)} style={inp}>{discs.map(([id, n]) => <option key={id} value={id}>{n}</option>)}</select></label>
         <label><span style={rot}>Etapa</span><select value={f.etapa} onChange={e => set("etapa", e.target.value)} style={inp}>{ETAPAS.map(x => <option key={x}>{x}</option>)}<option value="outra">Outra…</option></select></label>
