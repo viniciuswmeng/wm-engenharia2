@@ -3,7 +3,7 @@
 // POST {acao:"auditoria"}         (só com CRON_SECRET) → procura contas novas no login que não são da equipe
 // POST {acao:"login_negado"}      (com a sessão Google de quem foi barrado) → registra a tentativa
 import { cronAutorizado, emailDaEquipe, tokenDe } from "./_auth.js";
-import { remetente } from "./_remetente.js";
+import { remetente, responderPara } from "./_remetente.js";
 import { registrar, NOMES } from "./_seguranca.js";
 import { enviarParaUsuario } from "./_push.js";
 import { cabecalhosSb, temChaveServico } from "./_sb.js";
@@ -43,7 +43,7 @@ async function alertar(a) {
   const key = process.env.RESEND_API_KEY;
   if (key) {
     await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from: FROM, to: emails, subject: `🚨 Alerta de segurança — ${nome}`, html }) }).catch(e => console.error("alerta e-mail:", e));
+      body: JSON.stringify({ from: FROM, reply_to: responderPara(), to: emails, subject: `🚨 Alerta de segurança — ${nome}`, html }) }).catch(e => console.error("alerta e-mail:", e));
   }
   for (const g of gs) {
     await enviarParaUsuario(g.id, { title: "🚨 Alerta de segurança", body: `${nome} (IP ${a.ip})`, url: "/", tag: "wm-seguranca-" + a.tipo }).catch(() => {});

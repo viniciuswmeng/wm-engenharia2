@@ -6,7 +6,7 @@
 // POST { token, versao, acao:"enviar" }                                  → marca como enviada e avisa a equipe
 // O cliente nunca grava direto no banco: tudo passa por aqui, validado, com a chave do servidor.
 import { cabecalhosSb } from "./_sb.js";
-import { remetente } from "./_remetente.js";
+import { remetente, responderPara } from "./_remetente.js";
 import { registrar } from "./_seguranca.js";
 import { membroDaEquipe } from "./_auth.js";
 import { enviarParaUsuario } from "./_push.js";
@@ -85,7 +85,7 @@ async function avisarEquipe(projeto, versao, respostas) {
   if (key && emails.length) {
     const linhas = amb.map(([, r]) => `<tr><td style="padding:4px 10px 4px 0">${esc(r.nome || "")}</td><td style="color:${r.decisao === "ok" ? "#15803d" : "#b45309"}">${r.decisao === "ok" ? "Aprovado" : "Ajuste pedido"}</td><td style="color:#555">${esc((r.comentarios || []).map(c => c.txt).join(" · "))}</td></tr>`).join("");
     await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from: FROM, to: emails, subject: `O cliente respondeu: ${titulo}`, html: `<div style="font-family:Segoe UI,Arial,sans-serif"><h2 style="color:#0a2557">${esc(titulo)}</h2><p>${esc(resumo)}</p><table style="font-size:14px">${linhas}</table><p style="color:#666">Veja os detalhes em Projetos → Portal do cliente → Apresentação de interiores.</p></div>` }) }).catch(() => {});
+      body: JSON.stringify({ from: FROM, reply_to: responderPara(), to: emails, subject: `O cliente respondeu: ${titulo}`, html: `<div style="font-family:Segoe UI,Arial,sans-serif"><h2 style="color:#0a2557">${esc(titulo)}</h2><p>${esc(resumo)}</p><table style="font-size:14px">${linhas}</table><p style="color:#666">Veja os detalhes em Projetos → Portal do cliente → Apresentação de interiores.</p></div>` }) }).catch(() => {});
   }
 }
 

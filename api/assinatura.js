@@ -11,7 +11,7 @@
 //
 // O navegador nunca grava assinaturas: tudo passa por aqui, validado, com a chave de serviço do Supabase.
 import crypto from "node:crypto";
-import { remetente } from "./_remetente.js";
+import { remetente, responderPara } from "./_remetente.js";
 import { cabecalhosSb, temChaveServico } from "./_sb.js";
 import { registrar, ipDe } from "./_seguranca.js";
 import { membroDaEquipe } from "./_auth.js";
@@ -88,7 +88,7 @@ async function enviarEmail(para, assunto, html) {
   const key = process.env.RESEND_API_KEY;
   if (!key) { ultimoErroEmail = "RESEND_API_KEY não está configurada na Vercel."; return false; }
   const r = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: FROM, to: [para], subject: assunto, html }) }).catch(e => ({ ok: false, erroRede: e.message }));
+    body: JSON.stringify({ from: FROM, reply_to: responderPara(), to: [para], subject: assunto, html }) }).catch(e => ({ ok: false, erroRede: e.message }));
   if (r?.ok) return true;
   let motivo = r?.erroRede || "";
   if (!motivo) { try { const j = await r.json(); motivo = j?.message || j?.error || ""; } catch { /* sem corpo */ } }

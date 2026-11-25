@@ -9,7 +9,7 @@ const FROM       = remetente();
 const GESTOR     = 'direcao@engenhariaWM.com.br';
 
 import { registrar } from "./_seguranca.js";
-import { remetente } from "./_remetente.js";
+import { remetente, responderPara } from "./_remetente.js";
 import { autorizar, emailDaEquipe } from './_auth.js';
 
 // Escapa texto vindo do banco/requisição antes de entrar no HTML do e-mail
@@ -274,7 +274,7 @@ export default async function handler(req) {
     const res = await fetch(RESEND_API, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: FROM, to: para, subject: assunto, html }),
+      body: JSON.stringify({ from: FROM, reply_to: responderPara(), to: para, subject: assunto, html }),
     });
 
     const resultado = await res.json().catch(() => ({}));
