@@ -2014,7 +2014,7 @@ $("btnPdf").onclick=async()=>{
 /* ============ ATAS DE REUNIÃO ============ */
 let curAta=null;
 function ataNum(p){const y=new Date().getFullYear();const n=p.atas.filter(a=>(a.num||"").endsWith("/"+y)).length+1;return String(n).padStart(3,"0")+"/"+y}
-function ataStatus(a){return a.signed&&a.signed.length?["Assinada","ok"]:a.pdfAt?["PDF gerado","pdf"]:["Rascunho","draft"]}
+function ataStatus(a){const e=a.assinatura;return a.signed&&a.signed.length?["Assinada","ok"]:e&&e.status==="assinado"?["Assinada (portal)","ok"]:e&&e.status==="aguardando"?["Em assinatura","pdf"]:a.pdfAt?["PDF gerado","pdf"]:["Rascunho","draft"]}
 function lastWriter(){try{return localStorage.getItem("chk-ata-redator")||""}catch(e){return""}}
 function newAta(){
   const p=cur();if(!p)return;
@@ -2072,6 +2072,10 @@ function renderAtas(){
     ${a.acts.map(r=>`<tr data-xid="${esc(r.id)}"><td><input type="text" id="xw-${esc(r.id)}" data-xf="what" value="${esc(r.what)}" aria-label="Ação"></td><td><input type="text" id="xo-${esc(r.id)}" data-xf="who" value="${esc(r.who)}" aria-label="Responsável"></td><td><input type="date" id="xd-${esc(r.id)}" data-xf="due" value="${esc(r.due)}" aria-label="Prazo"></td><td><button class="btn danger" type="button" data-xdel="${esc(r.id)}">Remover</button></td></tr>`).join("")}
   </tbody></table></div><div class="addbar"><button class="btn" type="button" id="xAdd">+ Encaminhamento</button></div>
   <label class="field" style="margin-top:12px"><span>Próxima reunião</span><input type="text" id="af-next" data-af="next" value="${esc(a.next)}" placeholder="Data, horário e pauta prevista"></label></div>
+  <div class="panel"><h2>Assinatura eletrônica pelo portal</h2>
+    <div id="assBody">${ataAssinHtml(p,a)}</div>
+    <span class="msg" id="assMsg" role="status"></span>
+  </div>
   <div class="panel"><h2>Ata assinada (gov.br)</h2>
     <p class="msg">Gere o PDF, envie para cada participante assinar no Assinador gov.br (assinador.iti.br) e anexe aqui o arquivo final assinado. O PDF traz um quadro de assinatura para cada participante marcado em "Assina".</p>
     <ul class="signed">${(a.signed||[]).map(f=>`<li><span>${esc(f.orig||f.file)}</span><small>anexado em ${fmtD(f.date)}</small><button class="btn" type="button" data-sopen="${esc(f.id)}">Abrir</button><button class="btn danger" type="button" data-sdel="${esc(f.id)}">Remover</button><span class="inline-confirm" id="sdc-${esc(f.id)}" hidden>Remover o anexo? <button class="btn danger" type="button" data-sdelyes="${esc(f.id)}">Remover</button><button class="btn" type="button" data-sdelno="${esc(f.id)}">Cancelar</button></span></li>`).join("")||`<li class="msg">Nenhuma ata assinada anexada.</li>`}</ul>
@@ -2083,6 +2087,53 @@ function renderAtas(){
   $("root").querySelectorAll("textarea[data-af]").forEach(autosize);
   ataThumbs(a);
 }
+/* ---- assinatura eletrônica pelo portal ---- */
+const EMAIL_ATA=/^[^\s@<>"']{1,64}@[^\s@<>"']{1,190}\.[^\s@<>"']{2,24}$/;
+function ataAssinHtml(p,a){
+  const e=a.assinatura,proj=wmLinks(p);
+  if(!SB)return `<p class="msg err">Abra pelo sistema WM para enviar para assinatura.</p>`;
+  if(e&&e.status!=="cancelado")return `<p class="msg">Enviada em ${fmtD((e.em||"").slice(0,10))} · situação: <b>${e.status==="assinado"?"assinada por todos":"aguardando assinaturas"}</b>${e.codigo?` · código ${esc(e.codigo)}`:""}.</p>
+    <div class="addbar"><a class="btn" href="/assinar/${esc(e.token)}" target="_blank" rel="noreferrer">Abrir página de assinatura</a><button class="btn" type="button" id="ataAssinAtual">Atualizar situação</button></div>
+    <p class="msg">Depois de enviar, alterações nesta ata não mudam o documento em assinatura. Para corrigir, cancele em Projetos → Portal do cliente → Documentos para assinatura e envie de novo.</p>`;
+  const sig=a.parts.filter(r=>r.sign&&r.name.trim()),sem=sig.filter(r=>!EMAIL_ATA.test((r.mail||"").trim()));
+  return `<p class="msg">Gera o PDF desta ata e envia um link para cada participante marcado em "Assina" assinar com código de verificação no e-mail (sem precisar do gov.br). A ata aparece no portal do cliente${proj.length?"":" — <b>vincule a obra a um projeto WM primeiro</b>"}.</p>
+    ${sem.length?`<p class="msg err">Falta o e-mail de: ${sem.map(r=>esc(r.name)).join(", ")}.</p>`:""}
+    <div class="addbar"><button class="btn pri" type="button" id="ataAssinar"${!proj.length||!sig.length||sem.length?" disabled":""}>Enviar para assinatura</button><span class="msg">${sig.length} signatário(s)</span></div>`;
+}
+async function cabecalhoSessao(){try{const {data}=await SB.auth.getSession();const t=data&&data.session&&data.session.access_token;return t?{Authorization:"Bearer "+t}:{}}catch(e){return{}}}
+async function enviarAtaAssinatura(p,a,bt){
+  const m=$("assMsg"),proj=wmLinks(p)[0];
+  const sig=a.parts.filter(r=>r.sign&&r.name.trim()).map((r,i)=>({id:"p"+(i+1),nome:r.name.trim().slice(0,120),email:r.mail.trim().toLowerCase(),papel:(r.role||"").slice(0,60)}));
+  if(!proj||!sig.length)return;
+  if(!confirm(`Enviar a ATA ${a.num} para assinatura de ${sig.map(s=>s.nome).join(", ")}?`))return;
+  bt.disabled=true;m.textContent="Gerando o PDF…";
+  let docId="",arquivo="";
+  try{
+    const bytes=await ataPdf(p,a,{bytes:true});if(!bytes)throw new Error("Não foi possível gerar o PDF.");
+    docId=crypto.randomUUID();arquivo="assinaturas/"+docId+".pdf";
+    m.textContent="Enviando…";
+    const up=await SB.storage.from(BUCKET).upload(arquivo,new Blob([bytes],{type:"application/pdf"}),{contentType:"application/pdf",upsert:false});if(up.error)throw up.error;
+    const ins=await SB.from("documentos_assinatura").insert({id:docId,projeto_id:proj,tipo:"ata",status:"rascunho",titulo:("Ata de reunião nº "+a.num+(a.subject?" — "+a.subject:"")).slice(0,200),descricao:(a.subject||"").slice(0,4000),
+      dados:{obra:p.name||"",ata:a.id,numero:a.num,data:a.date},arquivo,signatarios:sig,criado_por:quem()||""});
+    if(ins.error)throw ins.error;
+    const r=await fetch("/api/assinatura",{method:"POST",headers:{"Content-Type":"application/json",...await cabecalhoSessao()},body:JSON.stringify({acao:"liberar",id:docId})});
+    const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.erro||"Não foi possível liberar para assinatura.");
+    a.assinatura={docId,token:j.token,codigo:j.codigo,status:"aguardando",em:new Date().toISOString()};
+    if(!a.pdfAt)a.pdfAt=today();
+    p.log.push({id:uid(),date:today(),disc:"geral",type:"Reunião",text:"Ata "+a.num+" enviada para assinatura eletrônica"});
+    touchProject(curId,false);renderAtas();renderTabs();
+    const m2=$("assMsg");if(m2)m2.textContent=`Enviada: ${j.emails} e-mail(s) com o link de assinatura.`;
+  }catch(e){
+    if(docId&&!a.assinatura){try{await SB.from("documentos_assinatura").delete().eq("id",docId).eq("status","rascunho");await SB.storage.from(BUCKET).remove([arquivo])}catch(x){}}
+    m.textContent=/documentos_assinatura|does not exist|schema cache/i.test(e.message||"")?"Rode no Supabase o arquivo supabase/assinaturas.sql para ativar.":"Não foi possível enviar: "+(e.message||e);bt.disabled=false}
+}
+async function atualizarAssinAta(a){
+  const e=a.assinatura;if(!e||!SB)return;
+  const {data}=await SB.from("documentos_assinatura").select("status,codigo").eq("id",e.docId).maybeSingle();
+  if(data&&(data.status!==e.status)){e.status=data.status;touchProject(curId,false)}
+  renderAtas();renderTabs();
+}
+
 /* ---- imagens no texto da ata ---- */
 const IMG_MAX_ORIG=25*1024*1024,IMG_MAX_ATA=30,IMG_LADO=1800,IMG_CACHE=new Map();
 let ataFoco={id:"af-disc",pos:null};
@@ -2241,13 +2292,13 @@ function ataField(t){
   if(t.dataset.icap){const r=(a.imgs||[]).find(x=>x.id===t.dataset.icap);if(r)r.cap=t.value.slice(0,200);return true}
   return false;
 }
-$("root").addEventListener("input",e=>{if(tab==="atas"&&ataField(e.target))touchProject(curId,false)});
+$("root").addEventListener("input",e=>{if(tab==="atas"&&ataField(e.target)){touchProject(curId,false);if(e.target.dataset.pf&&$("assBody")){const p=cur(),a=curAtaObj();if(p&&a)$("assBody").innerHTML=ataAssinHtml(p,a)}}});
 $("root").addEventListener("change",async e=>{
   if(tab!=="atas")return;const t=e.target;
   if(t.id==="signFile"){const f=t.files[0];t.value="";if(f)await attachSigned(f);return}
   if(t.id==="imgFile"){const fs=[...t.files];t.value="";if(fs.length)await addAtaImgs(fs,false);return}
   if(t.id==="ataTxt"){const f=t.files[0];t.value="";if(f)await importarAtaTxt(f);return}
-  if(t.type==="checkbox"&&ataField(t))touchProject(curId,false);
+  if(t.type==="checkbox"&&ataField(t)){touchProject(curId,false);if(t.dataset.pf&&$("assBody")){const p=cur(),a=curAtaObj();if(p&&a)$("assBody").innerHTML=ataAssinHtml(p,a)}}
 });
 $("root").addEventListener("click",async e=>{
   if(tab!=="atas")return;const p=cur();if(!p)return;const t=e.target,a=curAtaObj();
@@ -2266,6 +2317,8 @@ $("root").addEventListener("click",async e=>{
   if(t.id==="ataDelNo"){$("ataDelConf").hidden=true;$("ataDel").hidden=false;return}
   if(t.id==="ataDelYes"){p.atas=p.atas.filter(x=>x.id!==a.id);curAta=null;touchProject(curId,false);renderAtas();renderTabs();return}
   if(t.id==="ataPdf"){ataPdf(p,a);return}
+  if(t.id==="ataAssinar"){enviarAtaAssinatura(p,a,t);return}
+  if(t.id==="ataAssinAtual"){atualizarAssinAta(a);return}
   if(q("[data-iins]")){const im=(a.imgs||[]).find(x=>x.id===q("[data-iins]").dataset.iins);if(im)inserirMarcador(im.n);return}
   if(q("[data-idel]")){const id=q("[data-idel]").dataset.idel;$("idc-"+id).hidden=false;q("[data-idel]").hidden=true;return}
   if(q("[data-idelno]")){const id=q("[data-idelno]").dataset.idelno;$("idc-"+id).hidden=true;document.querySelector(`[data-idel="${id}"]`).hidden=false;return}
@@ -2303,7 +2356,7 @@ async function recursosTimbrado(){
   const fontes=await Promise.all(["Inter_400Regular.ttf","Inter_600SemiBold.ttf"].map(f=>b64("/vendor/fonts/"+f).then(d=>d.split(",")[1]))).catch(()=>null);
   timbradoCache={fundo,fontes};return timbradoCache;
 }
-async function ataPdf(p,a){
+async function ataPdf(p,a,opc){
   if(!window.jspdf){expMsg("Gerador de PDF indisponível.",true);return}
   const R=await recursosTimbrado();
   const {jsPDF}=window.jspdf,doc=new jsPDF({unit:"mm",format:"a4",compress:true}),W=210,M=16,TOPO=42,FIM=262;
@@ -2382,6 +2435,7 @@ async function ataPdf(p,a){
     fonte("normal",7.5,SUB);doc.text(T(p.name||""),M,FIM+8);
     fonte("normal",7.5,[255,255,255]);doc.text(T("Emitido em "+emi),W-12,290,{align:"right"});
   }
+  if(opc&&opc.bytes)return doc.output("arraybuffer");
   if(!a.pdfAt)p.log.push({id:uid(),date:today(),disc:"geral",type:"Reunião",text:"Ata "+a.num+" gerada"+(a.subject?": "+a.subject:"")});
   a.pdfAt=today();touchProject(curId,false);
   save(ataBase(a)+".pdf",doc.output("arraybuffer"),"atas").then(()=>{if(tab==="atas")renderAtas()});

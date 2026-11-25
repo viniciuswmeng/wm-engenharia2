@@ -1,9 +1,13 @@
 // Anexar o contrato assinado: marca como assinado, cria/usa a pasta do projeto no Drive,
 // salva o PDF nela, cria o projeto "Em andamento", a obra com o checklist das disciplinas
 // contratadas (prazos do Anexo II) e fecha o orçamento de origem.
+// modo="emitir": antes da assinatura — gera o PDF do contrato e, conforme as opções marcadas, cria a pasta no Drive,
+// o projeto (aguardando assinatura) e o portal do cliente com o contrato esperando a assinatura do cliente e de um sócio.
 import { CabecalhoModal } from "../ui/ds.jsx";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { listarPastas, criarPasta, enviarArquivo, criarObraAutomatica } from "./drive.js";
+import { portal } from "../supabase.js";
+import { EMAIL_OK, criarELiberar } from "../portal/assinaturaDados.js";
 import {
   tipoDoProjeto, discsDaObra, prazosDaObra, pastaDoAno, pastaDoCliente, proximoCodigo,
   nomePasta, lerPasta, montarProjeto, hojeISO, somarDias,
@@ -19,15 +23,21 @@ const Linha = ({ estado, texto, detalhe }) => (
   </div>
 );
 
-export default function AnexarContrato({ contrato, drive, driveRaizId, projetos, usuarios, tipos, supabase, onSalvarProjeto, onConcluido, onFechar }) {
+export default function AnexarContrato({ contrato, drive, driveRaizId, projetos, usuarios, tipos, supabase, onSalvarProjeto, onConcluido, onFechar, modo = "anexar", gerarPdf, arquivoInicial }) {
   const form = contrato.dados || {};
   const fluxoAnt = form._fluxo || {};
-  const [arquivo, setArquivo] = useState(null);
+  const emitir = modo === "emitir";
+  const [arquivo, setArquivo] = useState(arquivoInicial || null);
+  const socios = (usuarios || []).filter(u => u.ativo !== false && ["gestor", "admin"].includes(u.perfil) && u.email);
+  const [op, setOp] = useState({ pasta: true, projeto: true, portal: true });
+  const [emailCli, setEmailCli] = useState(form.email || "");
+  const [socioId, setSocioId] = useState(socios[0]?.id || "");
   const [cliente, setCliente] = useState(form.nomeCompleto || "");
   const [tipo, setTipo] = useState(tipoDoProjeto(form));
   const [inicio, setInicio] = useState(form.dataContrato || hojeISO());
-  const [codigo, setCodigo] = useState("");
-  const [codigoEditado, setCodigoEditado] = useState(false);
+  // contrato já emitido pelo portal: usa o mesmo código de projeto criado na emissão
+  const [codigo, setCodigo] = useState(fluxoAnt.projetoId || "");
+  const [codigoEditado, setCodigoEditado] = useState(!!fluxoAnt.projetoId);
   const [conectado, setConectado] = useState(() => drive.podeGravar?.() || false);
   const [drv, setDrv] = useState({ carregando:false, erro:"", raiz:[], anoPasta:null, pastasAno:[], existente:null });
   const [usarExistente, setUsarExistente] = useState(true);
@@ -73,9 +83,84 @@ export default function AnexarContrato({ contrato, drive, driveRaizId, projetos,
     catch (e) { setDrv(d => ({ ...d, erro:e.message })); }
   };
 
-  const pronto = arquivo && cliente.trim() && /^\d{2,3}\.[A-Z]{2}\.\d{4}$/.test(codigo) && conectado && !drv.carregando && !drv.erro;
+  const socio = socios.find(u => u.id === socioId);
+  const driveOk = conectado && !drv.carregando && !drv.erro;
+  const pronto = emitir
+    ? cliente.trim() && /^\d{2,3}\.[A-Z]{2}\.\d{4}$/.test(codigo) && (!op.pasta || driveOk) && (op.projeto || !op.portal) && (!op.portal || (EMAIL_OK.test(emailCli.trim()) && socio)) && (op.pasta || op.projeto || op.portal)
+    : arquivo && cliente.trim() && /^\d{2,3}\.[A-Z]{2}\.\d{4}$/.test(codigo) && driveOk;
+
+  const executarEmitir = async () => {
+    if (!pronto || rodando) return;
+    setRodando(true);
+    const lista = [];
+    const marca = (i, estado, texto, detalhe) => { lista[i] = { estado, texto, detalhe }; setPassos([...lista]); };
+    const r = resRef.current;
+    try {
+      // 1. PDF do contrato (o mesmo layout da impressão)
+      marca(0, "rodando", "Gerando o PDF do contrato");
+      let pdf = arquivo ? await arquivo.arrayBuffer() : null;
+      if (!pdf) pdf = await gerarPdf(socio, t => marca(0, "rodando", "Gerando o PDF do contrato", t));
+      marca(0, "ok", "PDF do contrato gerado", `${(pdf.byteLength / 1024).toFixed(0)} KB`);
+      // 2. Pasta no Drive (+ cópia do contrato para assinatura)
+      if (op.pasta) {
+        marca(1, "rodando", "Pasta do projeto no Google Drive");
+        if (!r.pasta) {
+          let anoP = drv.anoPasta;
+          if (!anoP) anoP = await criarPasta(String(ano), driveRaizId);
+          let pasta = usandoExistente ? existente : (drv.pastasAno.find(p => p.name.trim() === nomeNova.trim()) || null);
+          if (!pasta) pasta = await criarPasta(nomeNova.trim(), anoP.id);
+          r.pasta = { id:pasta.id, nome:pasta.name, url:pasta.webViewLink || `https://drive.google.com/drive/folders/${pasta.id}` };
+        }
+        if (!r.minuta) {
+          const nomeArq = `CONTRATO PARA ASSINATURA - ${cliente.trim()}.pdf`.replace(/[\\/:*?"<>|]/g, "");
+          const arq = await enviarArquivo(new File([pdf], nomeArq, { type:"application/pdf" }), nomeArq, r.pasta.id);
+          r.minuta = { id:arq.id, nome:arq.name };
+        }
+        marca(1, "ok", "Pasta no Google Drive com o contrato para assinatura", r.pasta.nome);
+      } else marca(1, "aviso", "Pasta no Drive não criada (desmarcado)");
+      // 3. Projeto aguardando assinatura
+      let proj = null;
+      if (op.projeto) {
+        marca(2, "rodando", "Criando o projeto");
+        const novo = montarProjeto({ codigo, cliente, form, inicioISO:inicio, driveUrl:r.pasta?.url || "", usuarios });
+        novo.tipo = tipo;
+        proj = projetoExistente ? { ...projetoExistente, driveUrl:projetoExistente.driveUrl || r.pasta?.url || "" }
+          : { ...novo, status:"Novo/Definir", statusAuto:false, temContrato:false, obs:"Aguardando a assinatura do contrato pelo portal do cliente." + (form.servicos?.length ? ` Serviços: ${form.servicos.join(", ")}.` : "") };
+        if (!r.projetoId) await onSalvarProjeto(proj, !projetoExistente);
+        r.projetoId = proj.id;
+        marca(2, "ok", projetoExistente ? `Projeto ${proj.codigo} vinculado` : `Projeto ${proj.codigo} criado (aguardando assinatura)`, "Ao concluir a assinatura, ele passa para Em andamento");
+      } else marca(2, "aviso", "Projeto não criado (desmarcado)");
+      // 4. Portal do cliente + contrato aguardando assinatura
+      if (op.portal && r.projetoId) {
+        marca(3, "rodando", "Portal do cliente e assinatura eletrônica");
+        if (!r.assinatura) {
+          const tok = proj?.tokenCliente || proj?.token_cliente || await portal.gerarToken(r.projetoId);
+          r.portal = `${window.location.origin}/cliente/${tok}`;
+          const doc = await criarELiberar({ projetoId:r.projetoId, tipo:"contrato", titulo:`Contrato de prestação de serviços — ${cliente.trim()}`.slice(0, 200),
+            descricao:(form.servicos || []).join(", "), dados:{ contratoId:String(contrato.id), valor:Number(form.valorTotal) || 0 }, pdf,
+            signatarios:[{ id:"c1", nome:cliente.trim(), email:emailCli.trim(), papel:"Contratante" }, { id:"w1", nome:socio.nome, email:socio.email, papel:"Contratada — WM Engenharia" }] });
+          r.assinatura = { docId:doc.id, token:doc.token, codigo:doc.codigo, emails:doc.emails };
+        }
+        marca(3, "ok", "Contrato no portal aguardando assinatura", `${r.assinatura.emails ?? 2} e-mail(s) enviado(s) · código ${r.assinatura.codigo || ""}`);
+      } else marca(3, "aviso", "Portal e assinatura não ativados (desmarcado)");
+      // 5. Situação do contrato
+      marca(4, "rodando", "Atualizando o contrato");
+      const fluxo = { ...fluxoAnt, status:r.assinatura ? "em_assinatura" : (fluxoAnt.status || ""), emitidoEm:new Date().toISOString(), assinatura:r.assinatura || null, projetoId:r.projetoId || null, resultado:{ ...(fluxoAnt.resultado || {}), pasta:r.pasta, projetoId:r.projetoId } };
+      const dados = { ...form, email:emailCli.trim() || form.email || "", _fluxo:fluxo };
+      const { error } = await supabase.from("contratos").update({ dados, updated_at:new Date().toISOString() }).eq("id", contrato.id);
+      if (error) throw error;
+      marca(4, "ok", r.assinatura ? "Contrato marcado como em assinatura" : "Contrato atualizado");
+      setFeito({ ...r, dados, projeto:proj, arquivo:null });
+      onConcluido?.({ ...r, dados, projeto:proj });
+    } catch (e) {
+      const i = lista.findIndex(x => x?.estado === "rodando");
+      marca(i < 0 ? lista.length : i, "erro", lista[i]?.texto || "Erro", e.message || String(e));
+      try { await supabase.from("contratos").update({ dados:{ ...form, _fluxo:{ ...fluxoAnt, resultado:{ ...(fluxoAnt.resultado || {}), pasta:r.pasta, projetoId:r.projetoId } } } }).eq("id", contrato.id); } catch { /* ignora */ }
+    } finally { setRodando(false); }
+  };
 
   const executar = async () => {
+    if (emitir) return executarEmitir();
     if (!pronto || rodando) return;
     setRodando(true);
     const lista = [];
@@ -158,25 +243,42 @@ export default function AnexarContrato({ contrato, drive, driveRaizId, projetos,
   return (
     <div onClick={e => { if (e.target === e.currentTarget && !rodando) onFechar(); }}
       style={{ position:"fixed", inset:0, background:"rgba(10,25,55,.5)", zIndex:1000, display:"flex", alignItems:"flex-start", justifyContent:"center", overflowY:"auto", padding:"32px 16px" }}>
-      <div role="dialog" aria-label="Anexar contrato assinado" style={{ background:K.fundo, borderRadius:14, width:"100%", maxWidth:640, boxShadow:"0 20px 60px rgba(0,0,0,.3)", overflow:"hidden" }}>
-        <CabecalhoModal titulo="Anexar contrato assinado" subtitulo={contrato.titulo} icone="documento" desabilitarFechar={rodando} onFechar={() => onFechar()} />
+      <div role="dialog" aria-label={emitir ? "Emitir contrato para assinatura" : "Anexar contrato assinado"} style={{ background:K.fundo, borderRadius:14, width:"100%", maxWidth:640, boxShadow:"0 20px 60px rgba(0,0,0,.3)", overflow:"hidden" }}>
+        <CabecalhoModal titulo={emitir ? "Emitir contrato para assinatura" : "Anexar contrato assinado"} subtitulo={contrato.titulo} icone="documento" desabilitarFechar={rodando} onFechar={() => onFechar()} />
 
         {feito ? (
           <div style={{ padding:20, display:"flex", flexDirection:"column", gap:14 }}>
             <div style={bloco}>{passos.map((p, i) => p && <Linha key={i} {...p} />)}</div>
             <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-              <a href={feito.pasta?.url} target="_blank" rel="noreferrer" style={{ ...btn(K.azulM), textDecoration:"none" }}>📁 Abrir pasta no Drive</a>
-              <a href={feito.arquivo?.url} target="_blank" rel="noreferrer" style={{ ...btn("#fff", K.azulM), textDecoration:"none" }}>📄 Ver contrato assinado</a>
-              <button onClick={() => onFechar(feito.projeto)} style={btn(K.verde)}>Abrir o projeto</button>
+              {feito.pasta?.url && <a href={feito.pasta.url} target="_blank" rel="noreferrer" style={{ ...btn(K.azulM), textDecoration:"none" }}>📁 Abrir pasta no Drive</a>}
+              {feito.arquivo?.url && <a href={feito.arquivo.url} target="_blank" rel="noreferrer" style={{ ...btn("#fff", K.azulM), textDecoration:"none" }}>📄 Ver contrato assinado</a>}
+              {feito.assinatura?.token && <a href={`/assinar/${feito.assinatura.token}`} target="_blank" rel="noreferrer" style={{ ...btn("#fff", K.azulM), textDecoration:"none" }}>✍️ Página de assinatura</a>}
+              {feito.projeto && <button onClick={() => onFechar(feito.projeto)} style={btn(K.verde)}>Abrir o projeto</button>}
             </div>
           </div>
         ) : (
           <div style={{ padding:20, display:"flex", flexDirection:"column", gap:14 }}>
+            {emitir ? (
+            <div style={bloco}>
+              <label style={rot}>1. O que o sistema deve fazer agora</label>
+              {[["pasta", "Criar a pasta do projeto no Google Drive (com o contrato para assinatura)"], ["projeto", "Criar o projeto no sistema (fica em Novo/Definir até a assinatura)"], ["portal", "Ativar o portal do cliente com o contrato aguardando assinatura"]].map(([k, t]) => (
+                <label key={k} style={{ display:"flex", gap:8, alignItems:"flex-start", fontSize:13, color:K.azul, padding:"3px 0", cursor:"pointer" }}>
+                  <input type="checkbox" checked={op[k]} onChange={e => setOp(o => ({ ...o, [k]:e.target.checked, ...(k === "projeto" && !e.target.checked ? { portal:false } : {}), ...(k === "portal" && e.target.checked ? { projeto:true } : {}) }))} /> {t}
+                </label>))}
+              {op.portal && (
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))", gap:10, marginTop:10 }}>
+                  <div><span style={{ ...rot, fontWeight:600 }}>E-mail do cliente (recebe o link e o código) *</span><input type="email" style={campo} value={emailCli} onChange={e => setEmailCli(e.target.value)} placeholder="cliente@email.com" /></div>
+                  <div><span style={{ ...rot, fontWeight:600 }}>Assina pela WM *</span>
+                    <select style={campo} value={socioId} onChange={e => setSocioId(e.target.value)}>{socios.map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}</select></div>
+                </div>)}
+              <div style={{ fontSize:12, color:K.sub, marginTop:8 }}>O PDF é gerado com o mesmo layout da impressão, já preparado para assinatura eletrônica. Se preferir, envie um PDF: <input type="file" accept="application/pdf,.pdf" onChange={e => setArquivo(e.target.files?.[0] || null)} style={{ fontSize:12 }} /></div>
+            </div>
+            ) : (
             <div style={bloco}>
               <label style={rot}>1. Contrato assinado (PDF) *</label>
               <input type="file" accept="application/pdf,.pdf" onChange={e => setArquivo(e.target.files?.[0] || null)} style={{ fontSize:13 }} />
               {arquivo && <div style={{ fontSize:12, color:K.sub, marginTop:6 }}>{arquivo.name} · {(arquivo.size / 1024).toFixed(0)} KB</div>}
-            </div>
+            </div>)}
 
             <div style={bloco}>
               <label style={rot}>2. Projeto</label>
@@ -195,7 +297,7 @@ export default function AnexarContrato({ contrato, drive, driveRaizId, projetos,
               </div>
             </div>
 
-            <div style={bloco}>
+            {(!emitir || op.pasta) && <div style={bloco}>
               <label style={rot}>3. Pasta no Google Drive</label>
               {!conectado ? (
                 <div style={{ display:"flex", gap:10, alignItems:"center", flexWrap:"wrap" }}>
@@ -221,22 +323,27 @@ export default function AnexarContrato({ contrato, drive, driveRaizId, projetos,
                     </label>
                   </div>
                 )}
-            </div>
+            </div>}
 
+            {emitir ? (
+            <div style={{ ...bloco, background:"#f0f7ff", borderColor:"#cfe0f5", fontSize:13, color:K.azul, lineHeight:1.6 }}>
+              <b>Depois que o cliente e {socio?.nome || "o sócio"} assinarem</b>, volte a este contrato e clique em <b>Concluir assinatura</b>: o sistema salva o PDF assinado na pasta, passa o projeto para <b>Em andamento</b> e monta o checklist.
+            </div>
+            ) : (
             <div style={{ ...bloco, background:"#f0f7ff", borderColor:"#cfe0f5", fontSize:13, color:K.azul, lineHeight:1.6 }}>
               <b>Ao confirmar, o sistema vai:</b>
               <div>• salvar o PDF na pasta do projeto e marcar o contrato como <b>assinado</b>;</div>
               <div>• {projetoExistente ? "atualizar" : "criar"} o projeto <b>{codigo || "—"}</b> em <b>Em andamento</b>, com valor, parcelas, prazo e equipe;</div>
               <div>• montar o checklist de: <b>{discs.length ? discs.map(d => ({ est:"estrutural", hid:"hidráulico", san:"sanitário", ele:"elétrico", arq:"arquitetônico", pis:"piscina" }[d] || d)).join(", ") : "—"}</b>, com os prazos do Anexo II;</div>
               {fluxoAnt.orcamentoId && <div>• marcar o orçamento de origem como <b>fechado</b>.</div>}
-            </div>
+            </div>)}
 
             {passos.length > 0 && <div style={bloco}>{passos.map((p, i) => p && <Linha key={i} {...p} />)}</div>}
 
             <div style={{ display:"flex", justifyContent:"flex-end", gap:8 }}>
               <button onClick={() => onFechar()} disabled={rodando} style={btn("#fff", K.sub)}>Cancelar</button>
               <button onClick={executar} disabled={!pronto || rodando} style={{ ...btn(K.verde), opacity:(!pronto || rodando) ? .5 : 1, cursor:(!pronto || rodando) ? "not-allowed" : "pointer" }}>
-                {rodando ? "⏳ Processando…" : passos.some(p => p?.estado === "erro") ? "Tentar de novo" : "✔ Anexar e iniciar projeto"}
+                {rodando ? "⏳ Processando…" : passos.some(p => p?.estado === "erro") ? "Tentar de novo" : emitir ? "✍️ Emitir para assinatura" : "✔ Anexar e iniciar projeto"}
               </button>
             </div>
           </div>

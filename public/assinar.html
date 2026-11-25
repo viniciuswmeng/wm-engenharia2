@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<script>if(location.hostname==="wm-engenharia2.vercel.app")location.replace("https://sistema.wmengenhariaintegrada.com.br"+location.pathname+location.search+location.hash)</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Assinatura de documento — WM Engenharia</title>
+<link rel="icon" href="/favicon.svg">
+<style>
+:root{--mar:#0a2557;--azul:#1565d8;--tx:#0f1f3d;--sub:#6b7a90;--borda:#e6ecf4;--fundo:#f3f6fb;--verde:#16a34a;--ambar:#b45309;--verm:#be123c}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Inter,"Segoe UI",system-ui,-apple-system,sans-serif;background:var(--fundo);color:var(--tx);font-size:15px;line-height:1.5;overflow-wrap:anywhere}
+.topo{background:linear-gradient(160deg,#0c2b62 0%,#0a2252 55%,#081c45 100%);color:#fff;padding:16px}
+.topo .in{max-width:900px;margin:0 auto;display:flex;align-items:center;gap:12px}
+.topo img{height:36px}.topo span{margin-left:auto;font-size:12px;font-weight:700;letter-spacing:1.4px;color:#a9c8f5;text-transform:uppercase}
+main{max-width:900px;margin:0 auto;padding:20px 16px 60px;display:flex;flex-direction:column;gap:16px}
+.card{background:#fff;border:1px solid var(--borda);border-radius:16px;padding:18px 20px;box-shadow:0 6px 20px rgba(15,31,61,.05)}
+.kick{font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--azul);font-weight:800}
+h1{font-size:clamp(20px,3.4vw,26px);color:var(--mar);line-height:1.2;margin:6px 0 4px}
+.meta{color:var(--sub);font-size:13.5px}
+.estado{display:inline-flex;align-items:center;gap:6px;border-radius:99px;padding:4px 12px;font-size:12.5px;font-weight:800;margin-top:10px}
+.estado.ok{background:#f0fdf4;color:var(--verde)}.estado.pend{background:#fffbeb;color:var(--ambar)}.estado.canc{background:#fff1f2;color:var(--verm)}
+.desc{white-space:pre-line;margin-top:12px;color:#334155}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:11px;padding:11px 18px;font:inherit;font-weight:700;font-size:14px;cursor:pointer;border:1.5px solid var(--mar);background:var(--mar);color:#fff;text-decoration:none}
+.btn.sec{background:#fff;color:var(--mar);border-color:var(--borda)}.btn.ok{background:var(--verde);border-color:var(--verde)}
+.btn:disabled{opacity:.55;cursor:default}
+.btn:focus-visible,input:focus-visible{outline:3px solid #9cc2ff;outline-offset:2px}
+.bts{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.visor{width:100%;height:min(78vh,900px);border:1px solid var(--borda);border-radius:12px;background:#eef2f7;display:block}
+.sig{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--borda)}
+.sig:first-of-type{border-top:0}
+.sig .b{width:34px;height:34px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff}
+.sig .b.ok{background:var(--verde)}.sig .b.pend{background:#cbd5e1}
+.sig .n{flex:1;min-width:0}.sig .n b{display:block}.sig .n small{color:var(--sub);font-size:12.5px}
+.painel{border:1.5px solid #bcd3f5;background:#f7faff;border-radius:14px;padding:16px;margin-top:10px;display:flex;flex-direction:column;gap:10px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:700;color:var(--mar)}
+label.f input{border:1.5px solid var(--borda);border-radius:10px;padding:10px 12px;font:inherit;font-size:15px;font-weight:400;color:var(--tx);background:#fff}
+input.cod{letter-spacing:8px;font-size:22px!important;font-weight:800!important;text-align:center;max-width:220px}
+.ck{display:flex;gap:10px;align-items:flex-start;font-size:13.5px}
+.ck input{margin-top:3px;width:18px;height:18px;flex:none}
+.msg{border-radius:10px;padding:9px 12px;font-size:13.5px;font-weight:600}
+.msg.ok{background:#f0fdf4;color:#166534}.msg.erro{background:#fff1f2;color:#9f1239}.msg.info{background:#eff6ff;color:#1e40af}
+.prova{font-size:12px;color:var(--sub);margin-top:8px}
+.erroPg{text-align:center;padding:60px 16px;color:var(--sub)}
+@media (max-width:600px){.visor{height:60vh}}
+</style>
+</head>
+<body>
+<header class="topo"><div class="in"><img src="/Logo_Branco.png" alt="WM Engenharia Integrada"><span>Assinatura eletrônica</span></div></header>
+<main id="app"><div class="erroPg">Carregando o documento…</div></main>
+<script>
+"use strict";
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const partes = location.pathname.split("/"), T = partes[partes.indexOf("assinar") + 1] || "";
+const fmtHora = iso => iso ? new Date(iso).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+let D = null;
+const st = { sid: "", fase: "", email: "", msg: null, ocupado: false, baixando: false };
+
+async function api(metodo, corpo) {
+  const r = await fetch("/api/assinatura" + (metodo === "GET" ? "?t=" + encodeURIComponent(T) : ""), { method: metodo, headers: { "Content-Type": "application/json" }, body: corpo ? JSON.stringify({ t: T, ...corpo }) : undefined, cache: "no-store" });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.erro || "Não foi possível concluir agora.");
+  return j;
+}
+const cpfMasc = v => { const d = v.replace(/\D/g, "").slice(0, 11); return d.replace(/^(\d{3})(\d)/, "$1.$2").replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3").replace(/\.(\d{3})(\d{1,2})$/, ".$1-$2"); };
+
+function desenhar() {
+  const app = document.getElementById("app");
+  if (!D) return;
+  const pend = D.signatarios.filter(s => !s.assinatura).length, canc = D.status === "cancelado";
+  const estado = canc ? `<span class="estado canc">Cancelado pela WM Engenharia</span>` : D.status === "assinado" ? `<span class="estado ok">✓ Assinado por todos em ${esc(fmtHora(D.concluidoEm))}</span>` : `<span class="estado pend">Aguardando ${pend} assinatura(s)</span>`;
+  const info = [D.dados.disciplina, D.dados.etapa].filter(Boolean).join(" · ");
+  app.innerHTML = `
+  <section class="card">
+    <div class="kick">${esc(D.tipoNome)}</div>
+    <h1>${esc(D.titulo)}</h1>
+    <div class="meta">${esc(D.projeto.codigo)} · ${esc(D.projeto.cliente)}${info ? " · " + esc(info) : ""} · código ${esc(D.codigo)}</div>
+    ${estado}
+    ${D.descricao ? `<div class="desc">${esc(D.descricao)}</div>` : ""}
+    <div class="bts">${D.pdf ? `<a class="btn sec" href="${esc(D.pdf)}" target="_blank" rel="noopener noreferrer">Abrir o documento (PDF)</a>` : ""}
+      ${!canc ? `<button class="btn ${D.status === "assinado" ? "ok" : "sec"}" type="button" data-baixar="1" ${st.baixando ? "disabled" : ""}>${st.baixando ? "Preparando…" : D.status === "assinado" ? "Baixar PDF assinado" : "Baixar PDF com as assinaturas até agora"}</button>` : ""}</div>
+  </section>
+  ${D.pdf ? `<section class="card" style="padding:10px"><iframe class="visor" src="${esc(D.pdf)}#view=FitH" title="Documento"></iframe></section>` : ""}
+  <section class="card">
+    <div class="kick" style="margin-bottom:6px">Signatários</div>
+    ${D.signatarios.map(s => `<div class="sig"><span class="b ${s.assinatura ? "ok" : "pend"}">${s.assinatura ? "✓" : esc((s.nome || "?").trim()[0] || "?")}</span>
+      <span class="n"><b>${esc(s.nome)}${s.papel ? ` <span style="font-weight:500;color:var(--sub)">— ${esc(s.papel)}</span>` : ""}</b>
+      <small>${s.assinatura ? `Assinou em ${esc(fmtHora(s.assinatura.em))} · CPF ${esc(s.assinatura.cpf)} · e-mail verificado ${esc(s.assinatura.email)}` : `Pendente · e-mail ${esc(s.email)}`}</small></span>
+      ${!s.assinatura && !canc && D.status !== "assinado" && st.sid !== s.id ? `<button class="btn" type="button" data-sou="${esc(s.id)}">Assinar</button>` : ""}</div>
+      ${st.sid === s.id ? painel(s) : ""}`).join("")}
+    ${st.msg && !st.sid ? `<div class="msg ${st.msg.tipo}" role="status" style="margin-top:10px">${esc(st.msg.t)}</div>` : ""}
+  </section>
+  <p class="prova">Assinatura eletrônica: cada signatário confirma a identidade com um código de uso único enviado ao seu e-mail. Registramos nome, CPF, data/hora, IP e navegador, e o código SHA-256 do arquivo, que garante que o documento assinado é o mesmo que foi enviado. Dúvidas: projeto@wmengenhariaintegrada.com.br · (33) 98416-1081.</p>`;
+  const c = document.getElementById("fCodigo"); if (c && st.fase === "codigo" && !document.activeElement?.matches("input")) document.getElementById("fNome")?.focus();
+}
+function painel(s) {
+  const m = st.msg ? `<div class="msg ${st.msg.tipo}" role="status">${esc(st.msg.t)}</div>` : "";
+  if (st.fase !== "codigo") return `<div class="painel">
+    <b>Assinar como ${esc(s.nome)}</b>
+    <span style="font-size:13.5px">Para confirmar que é você, enviaremos um código de 6 dígitos para <b>${esc(s.email)}</b>. Antes, abra e leia o documento acima.</span>
+    ${m}<div class="bts" style="margin-top:0"><button class="btn" type="button" data-enviar="${esc(s.id)}" ${st.ocupado ? "disabled" : ""}>${st.ocupado ? "Enviando…" : "Enviar código para o meu e-mail"}</button><button class="btn sec" type="button" data-fechar="1">Cancelar</button></div></div>`;
+  return `<form class="painel" id="fAss" autocomplete="on">
+    <b>Assinar como ${esc(s.nome)}</b>
+    <span style="font-size:13.5px">Enviamos o código para <b>${esc(st.email || s.email)}</b> (vale por 10 minutos; confira também o spam).</span>
+    <label class="f">Nome completo<input id="fNome" name="name" autocomplete="name" maxlength="120" required value="${esc(s.nome)}"></label>
+    <label class="f">CPF<input id="fCpf" inputmode="numeric" maxlength="14" required placeholder="000.000.000-00"></label>
+    <label class="f">Código recebido por e-mail<input id="fCodigo" class="cod" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required placeholder="••••••"></label>
+    <label class="ck"><input type="checkbox" id="fOk" required><span>Li o documento <b>${esc(D.titulo)}</b> e concordo em assiná-lo eletronicamente, reconhecendo esta assinatura como válida, nos termos do art. 10, § 2º, da MP nº 2.200-2/2001.</span></label>
+    ${m}<div class="bts" style="margin-top:0"><button class="btn ok" type="submit" ${st.ocupado ? "disabled" : ""}>${st.ocupado ? "Assinando…" : "✍️ Assinar documento"}</button>
+      <button class="btn sec" type="button" data-enviar="${esc(s.id)}" ${st.ocupado ? "disabled" : ""}>Reenviar código</button><button class="btn sec" type="button" data-fechar="1">Cancelar</button></div></form>`;
+}
+
+document.addEventListener("input", e => { if (e.target.id === "fCpf") e.target.value = cpfMasc(e.target.value); if (e.target.id === "fCodigo") e.target.value = e.target.value.replace(/\D/g, "").slice(0, 6); });
+document.addEventListener("click", async e => {
+  const b = e.target.closest("button"); if (!b || !D) return;
+  const d = b.dataset;
+  if (d.sou) { st.sid = d.sou; st.fase = ""; st.msg = null; return desenhar(); }
+  if (d.fechar) { st.sid = ""; st.fase = ""; st.msg = null; return desenhar(); }
+  if (d.enviar) {
+    st.ocupado = true; st.msg = null; desenhar();
+    try { const r = await api("POST", { acao: "codigo", sid: d.enviar }); st.fase = "codigo"; st.email = r.email; st.msg = { tipo: "info", t: "Código enviado. Digite-o abaixo com seu nome e CPF." }; }
+    catch (er) { st.msg = { tipo: "erro", t: er.message }; }
+    st.ocupado = false; return desenhar();
+  }
+  if (d.baixar) return baixar();
+});
+document.addEventListener("submit", async e => {
+  if (e.target.id !== "fAss") return; e.preventDefault();
+  const nome = document.getElementById("fNome").value, cpf = document.getElementById("fCpf").value, codigo = document.getElementById("fCodigo").value, ok = document.getElementById("fOk").checked;
+  st.ocupado = true; st.msg = null; desenhar();
+  document.getElementById("fNome").value = nome; document.getElementById("fCpf").value = cpf; document.getElementById("fCodigo").value = codigo; document.getElementById("fOk").checked = ok;
+  try {
+    const r = await api("POST", { acao: "assinar", sid: st.sid, nome, cpf, codigo, concordo: ok });
+    D = r.documento; st.sid = ""; st.fase = ""; st.msg = { tipo: "ok", t: r.concluido ? "Assinatura registrada. O documento foi assinado por todos — você já pode baixar o PDF assinado." : "Assinatura registrada. Obrigado!" };
+  } catch (er) {
+    st.msg = { tipo: "erro", t: er.message }; st.ocupado = false; desenhar();
+    document.getElementById("fNome").value = nome; document.getElementById("fCpf").value = cpf; document.getElementById("fCodigo").value = ""; document.getElementById("fOk").checked = ok;
+    return;
+  }
+  st.ocupado = false; desenhar();
+});
+
+async function baixar() {
+  st.baixando = true; desenhar();
+  try {
+    const m = await import("/vendor/assinatura-pdf.js");
+    const r = await fetch(D.pdf); if (!r.ok) throw new Error("Não consegui baixar o documento original.");
+    const orig = await r.arrayBuffer();
+    if ((await m.sha256Hex(orig)) !== D.hash) throw new Error("O arquivo baixado não confere com o código do documento. Fale com a WM Engenharia.");
+    const bytes = await m.pdfAssinado(orig, D);
+    const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" })), a = document.createElement("a");
+    a.href = url; a.download = `${D.titulo.replace(/[\\/:*?"<>|]+/g, "_").slice(0, 90)} - ${D.status === "assinado" ? "assinado" : "em assinatura"}.pdf`;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 8000);
+  } catch (er) { st.msg = { tipo: "erro", t: er.message }; }
+  st.baixando = false; desenhar();
+}
+
+(async () => {
+  if (!/^[A-Za-z0-9_-]{24,64}$/.test(T)) { document.getElementById("app").innerHTML = `<div class="erroPg">Link incompleto. Confira se copiou o endereço inteiro.</div>`; return; }
+  try { D = await api("GET"); desenhar(); }
+  catch (e) { document.getElementById("app").innerHTML = `<div class="erroPg"><h2 style="color:var(--mar);margin-bottom:8px">Documento indisponível</h2>${esc(e.message)}<br><br>Fale com a WM Engenharia: projeto@wmengenhariaintegrada.com.br · (33) 98416-1081</div>`; }
+})();
+</script>
+</body>
+</html>

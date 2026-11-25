@@ -316,6 +316,20 @@ function render(d){
     secoes.push(["interiores","Interiores"]);
   }
 
+  // ── Documentos para assinatura eletrônica (termos de etapa, atas e contrato)
+  var docs=d.documentos||[];
+  if(docs.length){
+    var TIPO={termo:"Termo de etapa",ata:"Ata de reunião",contrato:"Contrato"},pend=docs.filter(function(x){return x.situacao==="aguardando"}).length;
+    var cd='<p class="sub" style="margin:-6px 0 12px">Documentos enviados pela WM para você assinar eletronicamente. Ao assinar, você confirma com um código enviado ao seu e-mail. Depois de assinado por todos, baixe o PDF com a folha de assinaturas.</p><div class="lista">';
+    docs.forEach(function(x){
+      cd+='<div class="form"><div class="t"><b>'+esc(x.titulo)+'</b><span class="sub">'+esc(TIPO[x.tipo]||"Documento")+(x.enviadoEm?' · enviado em '+data(x.enviadoEm):'')+(x.codigo?' · código '+esc(x.codigo):'')+'</span></div>'+
+        (x.situacao==="assinado"?'<span class="tag t-ok">✓ Assinado'+(x.concluidoEm?' em '+data(x.concluidoEm):'')+'</span><a class="btn" href="'+url(x.link)+'" target="_blank" rel="noopener">Ver e baixar</a>':'<span class="tag t-pau">Aguardando assinatura</span><a class="btn pri" href="'+url(x.link)+'" target="_blank" rel="noopener">✍️ Abrir e assinar</a>')+'</div>';
+    });
+    cd+='</div>';
+    h+=sec("documentos","✍️","Documentos para assinar",cd,pend?'<span class="tag t-pau">'+pend+' pendente'+(pend>1?'s':'')+'</span>':'');
+    secoes.push(["documentos","Assinaturas"]);
+  }
+
   // ── Atas de reunião (assinadas para baixar; as demais aguardando assinatura)
   var atas=d.atas||[];
   if(atas.length){

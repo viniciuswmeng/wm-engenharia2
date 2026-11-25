@@ -15,6 +15,9 @@ export const REGRAS = {
   api_negado:           ["media", 5],  // rota da API sem login válido da equipe
   token_invalido:       ["media", 15], // varredura de links do portal/briefing/IFC
   dados_invalidos:      ["baixa", 10], // requisições malformadas ou grandes demais
+  codigo_invalido:      ["media", 8],  // códigos de assinatura errados (tentativa de adivinhar)
+  limite_excedido:      ["media", 3],  // pedidos de código de assinatura em excesso
+  documento_alterado:   ["alta", 1],   // PDF de documento em assinatura mudou depois de liberado
 };
 export const NOMES = {
   cron_negado: "Tentativa de acionar os agendamentos sem autorização",
@@ -24,6 +27,9 @@ export const NOMES = {
   api_negado: "Acessos repetidos à API sem login da equipe",
   token_invalido: "Varredura de links (portal do cliente, briefing ou IFC)",
   dados_invalidos: "Muitas requisições malformadas",
+  codigo_invalido: "Códigos de assinatura errados repetidos",
+  limite_excedido: "Pedidos de código de assinatura em excesso",
+  documento_alterado: "Documento em assinatura foi alterado depois de liberado",
 };
 
 const hdr = (req, k) => (req && req.headers ? (typeof req.headers.get === "function" ? req.headers.get(k) : req.headers[k]) : "") || "";

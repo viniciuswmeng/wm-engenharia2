@@ -139,6 +139,14 @@ export default async function handler(req) {
       }
     } catch (e) { console.error('briefing:', e.message); }
 
+    // Documentos para assinatura eletrônica (termos de etapa, atas, contrato) — tabela opcional
+    const documentos = (await supabaseGet('documentos_assinatura',
+      `projeto_id=eq.${encodeURIComponent(projeto.id)}&status=in.(aguardando,assinado)&order=created_at.desc&select=tipo,titulo,status,token,codigo,liberado_em,concluido_em,signatarios`
+    ).catch(() => [])).filter(d => /^[A-Za-z0-9_-]{24,64}$/.test(d.token || '')).map(d => ({
+      tipo: d.tipo, titulo: d.titulo, situacao: d.status, codigo: d.codigo || '', enviadoEm: d.liberado_em, concluidoEm: d.concluido_em,
+      signatarios: (Array.isArray(d.signatarios) ? d.signatarios : []).length, link: `/assinar/${d.token}`,
+    }));
+
     // Entregas publicadas (pastas do Drive) — coluna opcional
     const entregas = (Array.isArray(projeto.entregas_portal) ? projeto.entregas_portal : []).map(p => ({
       id: p.id, tipo: p.tipo === 'final' ? 'final' : 'parcial', titulo: p.titulo || '', nota: p.nota || '', data: p.data || null,
@@ -192,6 +200,7 @@ export default async function handler(req) {
       formularios,
       apresentacao,
       atas,
+      documentos,
       entregas,
       // Portal
       progresso:            projeto.progresso || 0,
