@@ -249,6 +249,7 @@ export default function ApresentacaoInteriores({ projeto, usuarioAtual }) {
   const [estado, setEstado] = useState("");
   const [msg, setMsg] = useState(null);
   const [verHist, setVerHist] = useState(null);
+  const [trocaPasta, setTrocaPasta] = useState(null); // link digitado ao trocar a pasta do rascunho
   const avisar = (t, ok = true) => { setMsg({ t, ok }); setTimeout(() => setMsg(null), 7000); };
   const token = projeto.tokenCliente || projeto.token_cliente;
 
@@ -263,8 +264,8 @@ export default function ApresentacaoInteriores({ projeto, usuarioAtual }) {
   const mudar = dados => { setRasc(r => ({ ...r, dados })); setSujo(true); };
   const d = rasc?.dados;
 
-  async function lerECriar(base) {
-    const id = idDoLinkDrive(base?.dados?.pasta?.link || pasta);
+  async function lerECriar(base, linkNovo) {
+    const id = idDoLinkDrive(linkNovo || base?.dados?.pasta?.link || pasta);
     if (!id) { avisar("Cole o link da pasta do Drive da apresentação.", false); return; }
     if (id === DRIVE_ROOT_ID) { avisar("Escolha a pasta da apresentação deste projeto, não a pasta geral da WM.", false); return; }
     setEstado("Lendo a pasta do Drive…");
@@ -281,7 +282,11 @@ export default function ApresentacaoInteriores({ projeto, usuarioAtual }) {
       const capaImg = bd.capaFixa && todas.has(bd.capaFixa) ? bd.capaFixa : r.capa;
       const dados = { ...(base ? { geral: bd.geral || null } : {}), capa: { titulo: bd.capa?.titulo || projeto.cliente || "", texto: bd.capa?.texto || "", imagem: capaImg }, pasta: r.pasta, raiz: r.raiz, ambientes: r.ambientes, planta, pdf: null,
         ...(fixaG && (fixaG === "-" || imgG === fixaG) ? { plantaGeralFixa: fixaG } : {}), ...(capaImg === bd.capaFixa ? { capaFixa: bd.capaFixa } : {}) };
-      if (base && base.id === rasc?.id) { mudar(dados); avisar(`Pasta relida: ${r.ambientes.length} ambiente(s), ${r.total} imagem(ns). Os textos foram mantidos.`); }
+      if (base && base.id === rasc?.id) {
+        mudar(dados); setTrocaPasta(null);
+        avisar(linkNovo ? `Pasta trocada para “${r.pasta.nome}”: ${r.ambientes.length} ambiente(s), ${r.total} imagem(ns). Textos de ambientes com o mesmo nome foram mantidos. Clique em Salvar.`
+          : `Pasta relida: ${r.ambientes.length} ambiente(s), ${r.total} imagem(ns). Os textos foram mantidos.`);
+      }
       else {
         const versao = versoes?.length ? Math.max(...versoes.map(v => v.versao)) + 1 : 0;
         const nova = await salvarVersao({ id: undefined, projeto_id: projeto.id, versao, status: "rascunho", dados: base ? { ...dados, ambientes: dados.ambientes } : dados, criado_por: usuarioAtual?.nome || "" });
@@ -312,7 +317,10 @@ export default function ApresentacaoInteriores({ projeto, usuarioAtual }) {
       // PDF antigo ficaria desatualizado: só mantém se foi gerado de novo durante a edição
       const pdfVelho = d.pdf?.id && d.pdf.id === editPub?.pdfId;
       const ambientes = d.ambientes.map(a => ({ ...a, link360: /^https:\/\//.test(a.link360 || "") ? a.link360 : "" }));
-      await atualizarPublicada({ ...rasc, dados: { ...d, ambientes, pdf: pdfVelho ? null : d.pdf || null } });
+      // pasta trocada ou relida durante a edição: libera por link para as imagens aparecerem ao cliente
+      let pastaPub = d.pasta;
+      if (pastaPub?.id && !pastaPub.publico) pastaPub = { ...pastaPub, publico: await drive.compartilharComLink(await tokenDrive(), pastaPub.id) };
+      await atualizarPublicada({ ...rasc, dados: { ...d, ambientes, pasta: pastaPub, pdf: pdfVelho ? null : d.pdf || null } });
       await carregar();
       avisar(`${rotVersao(rasc.versao)} atualizada. O cliente já vê as alterações.${pdfVelho ? " O PDF anterior foi retirado do portal: gere o PDF de novo." : ""}`);
     } catch (e) { avisar(e.message || String(e), false); }
@@ -415,6 +423,7 @@ export default function ApresentacaoInteriores({ projeto, usuarioAtual }) {
             <b style={{ color: K.mar }}>{rotVersao(rasc.versao)} · {editPub ? "editando a versão publicada" : "rascunho"}</b>
             <span style={{ fontSize: 12, color: K.sub, flex: 1 }}>Pasta: <a href={d.pasta?.link} target="_blank" rel="noreferrer">{d.pasta?.nome}</a>{sujo ? " · alterações não salvas" : ""}</span>
             <button type="button" disabled={!!estado} onClick={() => lerECriar(rasc)} style={btn("sec")}>Reler pasta</button>
+            <button type="button" disabled={!!estado} onClick={() => setTrocaPasta(t => (t == null ? "" : null))} style={btn("sec")} aria-expanded={trocaPasta != null}>Trocar pasta</button>
             <label style={{ ...btn("sec"), opacity: estado ? .5 : 1 }} title="TXT/CSV com AMBIENTE;CATEGORIA;ITEM;MATERIAL;COR_ACABAMENTO;QTD;OBSERVACAO">
               Importar materiais (TXT)<input type="file" accept=".txt,.csv,text/plain,text/csv" hidden onChange={e => { abrirTxt(e.target.files?.[0]); e.target.value = ""; }} />
             </label>
@@ -428,6 +437,15 @@ export default function ApresentacaoInteriores({ projeto, usuarioAtual }) {
               <button type="button" disabled={!!estado || sujo} onClick={publicar} title={sujo ? "Salve antes de publicar" : ""} style={btn("ok", { opacity: sujo ? .5 : 1 })}>{estado || `Publicar ${rotVersao(rasc.versao)}`}</button>
             </>}
           </div>
+          {trocaPasta != null && (
+            <div style={{ background: "#fff", border: `1px solid ${K.borda}`, borderRadius: 12, padding: 10, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              <input value={trocaPasta} onChange={e => setTrocaPasta(e.target.value)} placeholder="Link da nova pasta no Google Drive" autoFocus maxLength={500}
+                style={{ ...inp, flex: 1, minWidth: 240, fontFamily: "ui-monospace, Consolas, monospace", fontSize: 12.5 }} aria-label="Link da nova pasta" />
+              <button type="button" disabled={!!estado || !idDoLinkDrive(trocaPasta)} onClick={() => lerECriar(rasc, trocaPasta)} style={btn("pri", { opacity: idDoLinkDrive(trocaPasta) ? 1 : .5 })}>{estado || "Ler nova pasta"}</button>
+              <button type="button" disabled={!!estado} onClick={() => setTrocaPasta(null)} style={btn("sec")}>Cancelar</button>
+              <div style={{ flexBasis: "100%", fontSize: 11.5, color: K.sub }}>As imagens passam a vir da nova pasta. Textos, materiais e links 360° são mantidos nos ambientes com o mesmo nome de subpasta.{editPub ? " Ao salvar, a nova pasta é liberada por link para o cliente ver as imagens." : " Ao publicar, a nova pasta é liberada por link para o cliente."}</div>
+            </div>
+          )}
           <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,2fr)", gap: 8 }}>
             <input value={d.capa.titulo} maxLength={80} onChange={e => mudar({ ...d, capa: { ...d.capa, titulo: e.target.value } })} placeholder="Título da capa" style={inp} aria-label="Título da capa" />
             <input value={d.capa.texto} maxLength={300} onChange={e => mudar({ ...d, capa: { ...d.capa, texto: e.target.value } })} placeholder="Mensagem de abertura para o cliente (opcional)" style={inp} aria-label="Mensagem de abertura" />
