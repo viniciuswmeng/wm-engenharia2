@@ -16,7 +16,7 @@ export const GRUPOS_PERMISSAO = [
   ] },
   { id: "abas", titulo: "Abas do menu", itens: [
     ["projetos", "Projetos"], ["financeiro", "Financeiro"], ["horas", "Horas"], ["agenda", "Agenda"], ["tarefas", "Tarefas"],
-    ["orcamentos", "Orçamentos"], ["contratos", "Contratos"], ["obras", "Obras"], ["calculadoras", "Calculadoras e materiais de apoio"],
+    ["orcamentos", "Orçamentos"], ["contratos", "Contratos"], ["formularios", "Formulários"], ["obras", "Obras"], ["calculadoras", "Calculadoras e materiais de apoio"],
     ["ifc", "Visualizador IFC"], ["comparativo", "Comparativo"], ["verificacao", "Verificação de projetos"], ["relatorios", "Relatórios"],
   ] },
   { id: "projetos", titulo: "Aba Projetos", itens: [
@@ -26,7 +26,7 @@ export const GRUPOS_PERMISSAO = [
 
 export const PERMISSOES_PADRAO = {
   dashboard: { todosProjetos: false, indicadores: true, receita: false, porTipo: true, abertos: true, alertas: true, entregas: true, drive: false },
-  abas: { projetos: true, financeiro: false, horas: true, agenda: true, tarefas: true, orcamentos: false, contratos: false, obras: true, calculadoras: true, ifc: true, comparativo: true, verificacao: true, relatorios: true },
+  abas: { projetos: true, financeiro: false, horas: true, agenda: true, tarefas: true, orcamentos: false, contratos: false, formularios: false, obras: true, calculadoras: true, ifc: true, comparativo: true, verificacao: true, relatorios: true },
   projetos: { todosProjetos: true },
 };
 const TUDO = Object.fromEntries(Object.entries(PERMISSOES_PADRAO).map(([g, o]) => [g, Object.fromEntries(Object.keys(o).map(k => [k, true]))]));

@@ -19,7 +19,7 @@ import { Abas } from "./ui/ds.jsx";
 // Abas agrupadas em um único item do menu (cada uma continua sendo uma página)
 const GRUPOS_MENU = {
   comercial: { label:"Orçamentos e contratos", linhas:["Orçamentos","e contratos"], icone:"documento", abas:[
-    { id:"orcamentos", label:"Orçamentos", icone:"calculadora" }, { id:"contratos", label:"Contratos", icone:"documento" } ] },
+    { id:"orcamentos", label:"Orçamentos", icone:"calculadora" }, { id:"contratos", label:"Contratos", icone:"documento" }, { id:"formularios", label:"Formulários", icone:"documento" } ] },
   rotina: { label:"Horas, agenda e tarefas", linhas:["Horas, agenda","e tarefas"], icone:"relogio", abas:[
     { id:"horas", label:"Horas", icone:"relogio" }, { id:"agenda", label:"Agenda", icone:"agenda" }, { id:"tarefas", label:"Tarefas", icone:"tarefa" } ] },
 };
@@ -54,6 +54,8 @@ const imp_chat = () => import("./paginas/chat.jsx");
 const ChatFlutuante = carregarPagina(imp_chat, "ChatFlutuante");
 const imp_contratos = () => import("./paginas/contratos.jsx");
 const GeradorContratos = carregarPagina(imp_contratos, "GeradorContratos");
+const PaginaFormularios = carregarPagina(() => import("./formularios/PaginaFormularios.jsx"), "PaginaFormularios");
+const SincronizadorAnexos = lazy(() => import("./formularios/SincronizadorAnexos.jsx"));
 const PaginaAjuda = lazy(() => import("./ajuda/PaginaAjuda.jsx"));
 const PaginaCalculadoras = carregarPagina(() => import("./calculadoras/Calculadoras.jsx"), "AbaCalculadoras");
 const PaginaIFC = carregarPagina(() => import("./ifc/PaginaIFC.jsx"), "PaginaIFC");
@@ -1050,6 +1052,7 @@ export default function App(){
     {id:"tarefas",    label:"Tarefas",       icone:"tarefa",      grupo:"principal", menu:"rotina"},
     {id:"orcamentos", label:"Orçamentos",    icone:"calculadora", grupo:"principal", menu:"comercial"},
     {id:"contratos",  label:"Contratos",     icone:"documento",   grupo:"principal", menu:"comercial"},
+    {id:"formularios", label:"Formulários",  icone:"documento",   grupo:"principal", menu:"comercial"},
     {id:"obras",      label:"Obras",         icone:"capacete",    grupo:"principal"},
     {id:"calculadoras", label:"Calculadoras e materiais de apoio", linhas:["Calculadoras","e materiais de apoio"], icone:"regua", grupo:"principal"},
     {id:"ifc",        label:"Visualizador IFC", icone:"cubo",     grupo:"principal"},
@@ -1173,6 +1176,7 @@ export default function App(){
         {aba==="horas"     &&<AbaHoras registros={registros} setRegistros={setRegistros} usuarios={usuarios} projetos={projetos} usuarioAtual={user} calendario={calendario} onAbrirEncerramento={()=>setModalH("encerramento")}/>}
         {aba==="agenda"    &&<AbaAgenda calendario={calendario} usuarioAtual={user} registros={registros} usuarios={usuarios} projetos={projetos} central={central}/>}
         {aba==="config"    &&<Configuracoes usuarios={usuarios} onSalvarUsuarios={salvarUsuarios} usuarioAtual={user} onFoto={alterarFoto}/>}
+        {aba==="formularios" &&<PaginaFormularios usuarioAtual={user} drive={drive}/>}
         {aba==="contratos"  &&<GeradorContratos projetos={projetos} usuarios={usuarios} usuarioAtual={user} drive={drive}
           onSalvarProjeto={salvarProjetoFluxo} onAbrirProjeto={abrirProjetoPorId}
           orcamentoInicial={orcParaContrato} onOrcamentoUsado={()=>setOrcParaContrato(null)}/>}
@@ -1239,6 +1243,7 @@ export default function App(){
 }}/>}
 
       <RotinaSemanal user={user} usuarios={usuarios} projetos={projetos} registros={registros} pausado={!!modalH||!!modal}/>
+      <Suspense fallback={null}><SincronizadorAnexos drive={drive}/></Suspense>
 
       <ChatFlutuante
         usuario={user} usuarios={usuarios}

@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<script>if(location.hostname==="wm-engenharia2.vercel.app")location.replace("https://sistema.wmengenhariaintegrada.com.br"+location.pathname+location.search+location.hash)</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>WM Engenharia</title>
+<link rel="icon" href="/favicon.svg">
+<style>
+:root{--cor:#1565d8;--mar:#0a2557;--tx:#0f1f3d;--sub:#6b7a90;--borda:#dbe3ee;--fundo:#f5f8fc;--erro:#be123c}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{font-family:Inter,"Segoe UI",system-ui,-apple-system,sans-serif;background:var(--fundo);color:var(--tx);overflow:hidden;-webkit-text-size-adjust:100%}
+.barra{position:fixed;top:0;left:0;right:0;height:4px;background:#e3eaf4;z-index:5}.barra i{display:block;height:100%;width:0;background:var(--cor);transition:width .35s ease}
+.topo{position:fixed;top:14px;left:18px;z-index:4;display:flex;align-items:center;gap:10px}.topo img{height:30px}
+.palco{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:70px 22px 90px}
+.tela{width:100%;max-width:720px;animation:entra .45s cubic-bezier(.2,.7,.2,1)}
+.tela.sai{animation:sai .25s ease forwards}
+.tela.volta{animation:entraB .45s cubic-bezier(.2,.7,.2,1)}
+@keyframes entra{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:none}}
+@keyframes entraB{from{opacity:0;transform:translateY(-40px)}to{opacity:1;transform:none}}
+@keyframes sai{to{opacity:0;transform:translateY(-30px)}}
+@media (prefers-reduced-motion:reduce){.tela,.tela.sai,.tela.volta{animation:none}}
+.num{color:var(--cor);font-weight:700;font-size:15px;display:flex;align-items:center;gap:6px;margin-bottom:8px}
+h1{font-size:clamp(24px,3.6vw,34px);line-height:1.2;color:var(--mar);font-weight:700;letter-spacing:-.01em}
+h1 .ob{color:var(--cor)}
+.desc{color:var(--sub);font-size:clamp(15px,1.8vw,18px);margin-top:10px;white-space:pre-line;line-height:1.5}
+.campo{margin-top:26px}
+input.t,textarea.t{width:100%;border:0;border-bottom:2px solid #b9c8dc;background:transparent;font:inherit;font-size:clamp(20px,2.6vw,28px);color:var(--mar);padding:8px 2px;outline:none;transition:border-color .2s;border-radius:0}
+input.t:focus,textarea.t:focus{border-bottom-color:var(--cor)}
+input.t::placeholder,textarea.t::placeholder{color:#a8b6c9}
+textarea.t{resize:none;min-height:56px;max-height:40vh;line-height:1.4}
+.ops{display:flex;flex-direction:column;gap:9px;max-width:520px}
+.op{display:flex;align-items:center;gap:12px;border:1.5px solid #b9cbe4;background:rgba(21,101,216,.04);border-radius:10px;padding:11px 14px;font:inherit;font-size:17px;color:var(--mar);cursor:pointer;text-align:left;transition:background .15s,border-color .15s,transform .1s}
+.op:hover{background:rgba(21,101,216,.1)}
+.op .l{flex:none;width:26px;height:26px;border:1.5px solid #9fb6d6;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:800;color:var(--cor);background:#fff}
+.op.on{border-color:var(--cor);background:rgba(21,101,216,.14)}.op.on .l{background:var(--cor);color:#fff;border-color:var(--cor)}
+.op .ck{margin-left:auto;opacity:0;color:var(--cor);font-weight:800}.op.on .ck{opacity:1}
+.op.pisca{animation:pisca .35s}@keyframes pisca{50%{background:rgba(21,101,216,.3)}}
+.outro{margin-top:4px;max-width:520px}
+.acoes{margin-top:26px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:8px;border:0;border-radius:10px;background:var(--cor);color:#fff;font:inherit;font-weight:700;font-size:17px;padding:11px 20px;cursor:pointer;box-shadow:0 6px 16px rgba(21,101,216,.25)}
+.btn:disabled{opacity:.6;cursor:default}
+.btn:focus-visible,.op:focus-visible,.nav button:focus-visible{outline:3px solid #9cc2ff;outline-offset:2px}
+.dica{color:var(--sub);font-size:13px}.dica b{font-weight:700}
+.erro{margin-top:14px;display:inline-flex;gap:8px;align-items:center;background:#fff1f2;color:var(--erro);border-radius:8px;padding:7px 12px;font-size:14.5px;font-weight:600}
+.drop{display:block;border:2px dashed #9fb6d6;border-radius:14px;padding:26px 18px;text-align:center;color:var(--sub);background:#fff;cursor:pointer;transition:border-color .2s,background .2s;max-width:560px}
+.drop.sobre{border-color:var(--cor);background:rgba(21,101,216,.06)}
+.drop b{color:var(--cor)}
+.arqs{margin-top:10px;display:flex;flex-direction:column;gap:6px;max-width:560px}
+.arq{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--borda);border-radius:10px;padding:8px 12px;font-size:14px}
+.arq span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.arq small{color:var(--sub)}
+.arq button{border:0;background:none;color:var(--erro);font-size:18px;cursor:pointer}
+.nav{position:fixed;right:18px;bottom:18px;display:flex;gap:2px;z-index:4}
+.nav button{width:40px;height:36px;border:0;background:var(--cor);color:#fff;font-size:16px;cursor:pointer}
+.nav button:first-child{border-radius:8px 0 0 8px}.nav button:last-child{border-radius:0 8px 8px 0}
+.nav button:disabled{opacity:.45;cursor:default}
+.marca{position:fixed;left:18px;bottom:22px;font-size:12px;color:#94a3b8;z-index:4}
+.ini img{height:54px;margin-bottom:22px}
+.prog{margin-top:22px;max-width:480px;height:10px;background:#e3eaf4;border-radius:6px;overflow:hidden}.prog i{display:block;height:100%;background:var(--cor);width:0;transition:width .2s}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+@media (max-width:600px){.palco{align-items:flex-start;padding-top:80px}.nav{bottom:14px;right:12px}.marca{display:none}.op{font-size:16px}}
+</style>
+</head>
+<body>
+<div class="barra" aria-hidden="true"><i id="barra"></i></div>
+<div class="topo"><img src="/Logo_Escuro.png" alt="" onerror="this.remove()"></div>
+<main class="palco" id="palco"><div class="tela"><p class="desc">Carregando…</p></div></main>
+<div class="nav" id="nav" hidden><button type="button" id="voltar" aria-label="Pergunta anterior">▲</button><button type="button" id="avancar" aria-label="Próxima pergunta">▼</button></div>
+<div class="marca">WM Engenharia Integrada</div>
+<script>
+"use strict";
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const slug = (location.pathname.split("/f/")[1] || "").split(/[/?#]/)[0].toLowerCase();
+const previa = new URLSearchParams(location.search).has("previa");
+const EXT_PADRAO = ["pdf","jpg","jpeg","png","webp","heic","dwg","dxf","rvt","ifc","skp","pln","doc","docx","xls","xlsx","zip","rar","txt"];
+const LETRAS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+let F = null, i = -1, dir = 1, erro = "";
+const R = {}, ARQ = {}, OUTRO = {};
+
+function sessao() { try { const v = localStorage.getItem("wm-auth") || sessionStorage.getItem("wm-auth"); return v ? JSON.parse(v).access_token : ""; } catch { return ""; } }
+const visivel = c => { const m = c.mostrarSe; if (!m || !m.campo) return true; const v = R[m.campo]; return Array.isArray(v) ? v.includes(m.valor) : String(v ?? "") === String(m.valor ?? ""); };
+const lista = () => F.campos.filter(visivel);
+const extDe = n => (String(n).toLowerCase().match(/\.([a-z0-9]{1,5})$/) || [])[1] || "";
+const exts = c => (String(c.extensoes || "").toLowerCase().match(/[a-z0-9]{1,5}/g)) || EXT_PADRAO;
+const mb = b => (b / 1048576).toFixed(b < 10485760 ? 1 : 0) + " MB";
+const telMasc = v => { const d = v.replace(/\D/g, "").slice(0, 11); return d.length <= 10 ? d.replace(/^(\d{0,2})(\d{0,4})(\d{0,4}).*/, (m, a, b, c) => (a ? "(" + a + (a.length === 2 ? ") " : "") : "") + b + (c ? "-" + c : "")) : d.replace(/^(\d{2})(\d{5})(\d{0,4}).*/, "($1) $2-$3"); };
+
+function progresso() {
+  const l = lista().filter(c => c.tipo !== "aviso"), feitas = l.filter(c => c.tipo === "arquivo" ? (ARQ[c.id] || []).length : R[c.id] != null && R[c.id] !== "" && !(Array.isArray(R[c.id]) && !R[c.id].length)).length;
+  document.getElementById("barra").style.width = (i < 0 ? 0 : i >= lista().length ? 100 : Math.round((feitas / Math.max(1, l.length)) * 100)) + "%";
+}
+function tela(html, classe) {
+  const p = document.getElementById("palco"), velha = p.firstElementChild;
+  // classe "x": atualização da mesma pergunta (marcar opção, erro, arquivos) — troca na hora, sem animação
+  const nova = () => { p.innerHTML = `<div class="tela ${classe === "x" ? "" : classe || (dir < 0 ? "volta" : "")}" ${classe === "x" ? 'style="animation:none"' : ""}>${html}</div>`; const f = p.querySelector("[data-foco]"); if (f && classe !== "x" && matchMedia("(pointer:fine)").matches) f.focus(); };
+  if (velha && classe !== "x" && !matchMedia("(prefers-reduced-motion: reduce)").matches) { velha.classList.add("sai"); setTimeout(nova, 200); } else nova();
+}
+function inicio() {
+  document.title = F.titulo + " — WM Engenharia";
+  if (F.config.cor) document.documentElement.style.setProperty("--cor", F.config.cor);
+  tela(`<div class="ini"><img src="/Logo_Escuro.png" alt="WM Engenharia" onerror="this.remove()">
+    <h1>${esc(F.titulo)}</h1>${F.descricao ? `<p class="desc">${esc(F.descricao)}</p>` : ""}
+    ${F.previa ? `<p class="erro">Prévia da equipe: este formulário está desativado e não recebe respostas.</p>` : ""}
+    <div class="acoes"><button class="btn" type="button" data-ir="0" data-foco>${esc(F.config.botaoInicio || "Começar")}</button><span class="dica">pressione <b>Enter ↵</b></span></div></div>`);
+  document.getElementById("nav").hidden = true; progresso();
+}
+function htmlCampo(c, n) {
+  const ob = c.obrigatorio ? ` <span class="ob">*</span>` : "";
+  let corpo = "";
+  const v = R[c.id];
+  switch (c.tipo) {
+    case "texto": case "email": case "telefone": case "numero":
+      corpo = `<input class="t" data-foco data-c="${esc(c.id)}" type="${c.tipo === "email" ? "email" : c.tipo === "numero" ? "text" : "text"}" inputmode="${c.tipo === "telefone" ? "tel" : c.tipo === "numero" ? "decimal" : c.tipo === "email" ? "email" : "text"}" autocomplete="${c.tipo === "email" ? "email" : c.tipo === "telefone" ? "tel" : /nome/i.test(c.titulo) ? "name" : "off"}" maxlength="${c.tipo === "texto" ? 300 : 254}" placeholder="${esc(c.placeholder || (c.tipo === "email" ? "nome@email.com" : c.tipo === "telefone" ? "(33) 99999-9999" : "Digite sua resposta aqui…"))}" value="${esc(v ?? "")}">`; break;
+    case "paragrafo": corpo = `<textarea class="t" data-foco data-c="${esc(c.id)}" rows="1" maxlength="5000" placeholder="${esc(c.placeholder || "Digite sua resposta aqui…")}">${esc(v ?? "")}</textarea><p class="dica" style="margin-top:6px"><b>Shift + Enter ↵</b> para nova linha</p>`; break;
+    case "data": corpo = `<input class="t" data-foco data-c="${esc(c.id)}" type="date" value="${esc(v ?? "")}" style="max-width:280px">`; break;
+    case "sim_nao": case "escolha": case "lista": case "multipla": {
+      const ops = c.tipo === "sim_nao" ? ["Sim", "Não"] : (c.opcoes || []);
+      const sel = x => (c.tipo === "multipla" ? (v || []).includes(x) : v === x);
+      const temOutro = c.outro && c.tipo !== "sim_nao";
+      const outroOn = temOutro && (c.tipo === "multipla" ? (v || []).some(x => !ops.includes(x)) : v != null && v !== "" && !ops.includes(v));
+      corpo = `<div class="ops" role="${c.tipo === "multipla" ? "group" : "radiogroup"}">${ops.map((o, k) => `<button type="button" class="op ${sel(o) ? "on" : ""}" data-op="${esc(o)}" ${k === 0 ? "data-foco" : ""}><span class="l">${LETRAS[k]}</span>${esc(o)}<span class="ck">✓</span></button>`).join("")}
+        ${temOutro ? `<button type="button" class="op ${outroOn ? "on" : ""}" data-outro="1"><span class="l">${LETRAS[ops.length]}</span>Outro<span class="ck">✓</span></button>` : ""}</div>
+        ${outroOn || OUTRO[c.id + "_aberto"] ? `<input class="t outro" data-outrotxt="${esc(c.id)}" maxlength="200" placeholder="Qual?" value="${esc(OUTRO[c.id] || "")}">` : ""}
+        ${c.tipo === "multipla" ? `<p class="dica" style="margin-top:8px">Pode escolher mais de uma</p>` : ""}`; break;
+    }
+    case "arquivo": {
+      const fs = ARQ[c.id] || [];
+      corpo = `<label class="drop" data-drop="${esc(c.id)}"><input type="file" data-arq="${esc(c.id)}" multiple hidden accept="${exts(c).map(e => "." + e).join(",")}"><div style="font-size:30px">📎</div><b>Escolher arquivos</b> ou arraste aqui<div class="dica" style="margin-top:6px">Até ${Math.min(20, Number(c.maxArquivos) || 10)} arquivo(s), ${Math.min(50, Number(c.maxMB) || 25)} MB cada · ${exts(c).slice(0, 10).join(", ").toUpperCase()}${exts(c).length > 10 ? "…" : ""}</div></label>
+        <div class="arqs">${fs.map((f, k) => `<div class="arq"><span>${esc(f.name)}</span><small>${mb(f.size)}</small><button type="button" data-tirar="${k}" aria-label="Remover ${esc(f.name)}">×</button></div>`).join("")}</div>`; break;
+    }
+    case "aviso": corpo = ""; break;
+  }
+  const ultimo = n === lista().length - 1;
+  const rot = ultimo ? "Enviar" : c.tipo === "aviso" ? "Continuar" : "OK";
+  return `<div class="num">${c.tipo === "aviso" ? "" : n + 1 + " →"}</div><h1>${esc(c.titulo)}${ob}</h1>${c.descricao ? `<p class="desc">${esc(c.descricao)}</p>` : ""}
+    <div class="campo">${corpo}</div>${erro ? `<div class="erro" role="alert">⚠ ${esc(erro)}</div>` : ""}
+    <div class="acoes"><button class="btn" type="button" data-ok="1" ${c.tipo === "aviso" ? "data-foco" : ""}>${rot} ${ultimo ? "" : "✓"}</button><span class="dica">pressione <b>Enter ↵</b></span></div>
+    <div class="hp" aria-hidden="true"><label>Site <input id="hpSite" tabindex="-1" autocomplete="off"></label></div>`;
+}
+function mostrar(n, d) {
+  dir = d || 1; erro = ""; i = n;
+  const l = lista();
+  if (i >= l.length) return enviar();
+  tela(htmlCampo(l[i], i));
+  document.getElementById("nav").hidden = false;
+  document.getElementById("voltar").disabled = i <= 0; progresso();
+  setTimeout(ajustarTextarea, 260);
+}
+function ajustarTextarea() { const t = document.querySelector("textarea.t"); if (t) { t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, innerHeight * .4) + "px"; } }
+function validarAtual() {
+  const c = lista()[i]; if (!c || c.tipo === "aviso") return "";
+  const v = R[c.id];
+  if (c.tipo === "arquivo") {
+    const fs = ARQ[c.id] || [];
+    if (c.obrigatorio && !fs.length) return "Envie pelo menos um arquivo.";
+    return "";
+  }
+  const vazio = v == null || v === "" || (Array.isArray(v) && !v.length);
+  if (vazio) return c.obrigatorio ? "Preencha este campo para continuar." : "";
+  if (c.tipo === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)) return "Confira o e-mail.";
+  if (c.tipo === "telefone") { const d = String(v).replace(/\D/g, ""); if (d.length < 10 || d.length > 13) return "Confira o telefone com DDD."; }
+  if (c.tipo === "numero" && !isFinite(Number(String(v).replace(",", ".")))) return "Digite só números.";
+  return "";
+}
+function ok() {
+  const e = validarAtual();
+  if (e) { erro = e; const c = lista()[i]; tela(htmlCampo(c, i), "x"); return; }
+  mostrar(i + 1, 1);
+}
+// ── entrada de dados ──
+document.addEventListener("input", e => {
+  const t = e.target;
+  if (t.dataset.c) { const c = F.campos.find(x => x.id === t.dataset.c); if (c.tipo === "telefone") t.value = telMasc(t.value); R[c.id] = t.value; if (t.tagName === "TEXTAREA") ajustarTextarea(); progresso(); }
+  if (t.dataset.outrotxt) {
+    const c = F.campos.find(x => x.id === t.dataset.outrotxt), ops = c.opcoes || [];
+    OUTRO[c.id] = t.value;
+    if (c.tipo === "multipla") R[c.id] = [...(R[c.id] || []).filter(x => ops.includes(x)), ...(t.value.trim() ? [t.value.trim()] : [])];
+    else R[c.id] = t.value.trim();
+  }
+});
+function escolher(c, valor, bt) {
+  if (c.tipo === "multipla") { const l = R[c.id] || []; R[c.id] = l.includes(valor) ? l.filter(x => x !== valor) : [...l, valor]; tela(htmlCampo(c, i), "x"); progresso(); return; }
+  R[c.id] = valor; OUTRO[c.id + "_aberto"] = false; if (bt) bt.classList.add("pisca", "on"); progresso();
+  setTimeout(() => mostrar(i + 1, 1), 380);
+}
+function addArquivos(c, files) {
+  const maxN = Math.min(20, Number(c.maxArquivos) || 10), maxMB = Math.min(50, Number(c.maxMB) || 25), ok = exts(c);
+  const l = ARQ[c.id] || []; erro = "";
+  for (const f of files) {
+    if (!ok.includes(extDe(f.name))) { erro = `Tipo não aceito: ${f.name}`; continue; }
+    if (f.size > maxMB * 1048576) { erro = `${f.name} passa de ${maxMB} MB.`; continue; }
+    if (l.length >= maxN) { erro = `No máximo ${maxN} arquivo(s).`; break; }
+    if (!l.some(x => x.name === f.name && x.size === f.size)) l.push(f);
+  }
+  ARQ[c.id] = l; tela(htmlCampo(c, i), "x"); progresso();
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("button,[data-drop]"); if (!b || !F) return;
+  const c = lista()[i];
+  if (b.dataset.ir != null) return mostrar(+b.dataset.ir, 1);
+  if (b.dataset.ok) return ok();
+  if (b.dataset.op != null && c) return escolher(c, b.dataset.op, b);
+  if (b.dataset.outro && c) { OUTRO[c.id + "_aberto"] = true; if (c.tipo !== "multipla") R[c.id] = OUTRO[c.id] || ""; tela(htmlCampo(c, i), "x"); setTimeout(() => document.querySelector("[data-outrotxt]")?.focus(), 230); return; }
+  if (b.dataset.tirar != null && c) { ARQ[c.id].splice(+b.dataset.tirar, 1); tela(htmlCampo(c, i), "x"); progresso(); return; }
+});
+document.addEventListener("change", e => { const t = e.target; if (t.dataset.arq) { addArquivos(F.campos.find(x => x.id === t.dataset.arq), [...t.files]); t.value = ""; } if (t.dataset.c && t.type === "date") R[t.dataset.c] = t.value; });
+document.addEventListener("dragover", e => { const d = e.target.closest("[data-drop]"); if (d) { e.preventDefault(); d.classList.add("sobre"); } });
+document.addEventListener("dragleave", e => { const d = e.target.closest("[data-drop]"); if (d) d.classList.remove("sobre"); });
+document.addEventListener("drop", e => { const d = e.target.closest("[data-drop]"); if (!d) return; e.preventDefault(); addArquivos(F.campos.find(x => x.id === d.dataset.drop), [...e.dataTransfer.files]); });
+document.addEventListener("keydown", e => {
+  if (!F || document.getElementById("palco").dataset.fim) return;
+  if (i < 0) { if (e.key === "Enter") { e.preventDefault(); mostrar(0, 1); } return; }
+  const c = lista()[i]; if (!c) return;
+  // Enter avança (na múltipla escolha, mesmo com uma opção focada); Shift+Enter quebra linha no texto longo
+  if (e.key === "Enter" && !(e.target.tagName === "TEXTAREA" && e.shiftKey) && !(e.target.tagName === "BUTTON" && e.target.dataset.op != null && c.tipo !== "multipla")) { e.preventDefault(); ok(); return; }
+  if (["escolha", "lista", "multipla", "sim_nao"].includes(c.tipo) && e.target.tagName !== "INPUT" && /^[a-z]$/i.test(e.key) && !e.ctrlKey && !e.metaKey) {
+    const ops = c.tipo === "sim_nao" ? ["Sim", "Não"] : (c.opcoes || []), k = LETRAS.indexOf(e.key.toUpperCase());
+    if (k >= 0 && k < ops.length) { e.preventDefault(); escolher(c, ops[k], document.querySelectorAll(".op")[k]); }
+    else if (k === ops.length && c.outro) document.querySelector("[data-outro]")?.click();
+  }
+});
+document.getElementById("voltar").onclick = () => { if (i > 0) mostrar(i - 1, -1); };
+document.getElementById("avancar").onclick = () => ok();
+
+// ── envio ──
+async function enviar() {
+  document.getElementById("nav").hidden = true;
+  if (F.previa) { fim("Prévia: as respostas não foram enviadas."); return; }
+  const arquivos = [], fila = [];
+  for (const c of lista().filter(c => c.tipo === "arquivo")) for (const f of ARQ[c.id] || []) { arquivos.push({ campo: c.id, nome: f.name, tamanho: f.size, tipo: f.type }); fila.push(f); }
+  const respostas = {}; lista().forEach(c => { if (c.tipo !== "arquivo" && c.tipo !== "aviso" && R[c.id] != null) respostas[c.id] = R[c.id]; });
+  tela(`<h1>Enviando…</h1><p class="desc" id="envTxt">${fila.length ? "Enviando seus arquivos. Não feche esta página." : "Só um instante."}</p>${fila.length ? `<div class="prog"><i id="envProg"></i></div>` : ""}`);
+  await new Promise(ok2 => setTimeout(ok2, 260)); // espera a tela de envio aparecer
+  let r;
+  try {
+    const resp = await fetch("/api/formulario", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ acao: "enviar", slug, respostas, arquivos, site: document.getElementById("hpSite")?.value || "" }) });
+    r = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(r.erro || "Não foi possível enviar.");
+  } catch (e) { return falha(e.message); }
+  if (!fila.length) return fim();
+  const total = fila.reduce((s, f) => s + f.size, 0); let enviado = 0;
+  for (let k = 0; k < fila.length; k++) {
+    const f = fila[k], env = r.envios[k];
+    const txt = document.getElementById("envTxt"); if (txt) txt.textContent = `Enviando ${k + 1} de ${fila.length}: ${f.name}`;
+    try {
+      await new Promise((ok2, err) => {
+        const x = new XMLHttpRequest(); x.open("PUT", env.url); x.setRequestHeader("Content-Type", f.type || "application/octet-stream"); x.setRequestHeader("x-upsert", "false");
+        x.upload.onprogress = ev => { const p = document.getElementById("envProg"); if (p) p.style.width = Math.round(((enviado + ev.loaded) / total) * 100) + "%"; };
+        x.onload = () => (x.status < 300 ? ok2() : err(new Error("falha")));
+        x.onerror = () => err(new Error("falha")); x.send(f);
+      });
+    } catch { /* o servidor confere o que chegou */ }
+    enviado += f.size;
+  }
+  try {
+    const c = await fetch("/api/formulario", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ acao: "concluir", id: r.id, chave: r.chave }) });
+    const j = await c.json().catch(() => ({}));
+    fim("", j.faltando || []);
+  } catch { fim("", fila.map(f => f.name)); }
+}
+function fim(extra, faltando = []) {
+  document.getElementById("palco").dataset.fim = "1"; document.getElementById("barra").style.width = "100%";
+  tela(`<div style="font-size:46px;margin-bottom:10px">✅</div><h1>${esc(F.config.mensagemFinal ? "Obrigado!" : "Recebemos suas respostas!")}</h1>
+    <p class="desc">${esc(F.config.mensagemFinal || "Obrigado pelo contato. A equipe da WM Engenharia vai analisar as informações e retornar em breve.")}</p>
+    ${extra ? `<p class="erro">${esc(extra)}</p>` : ""}
+    ${faltando.length ? `<p class="erro">Não conseguimos receber: ${esc(faltando.join(", "))}. Envie pelo WhatsApp (33) 98416-1081.</p>` : ""}`);
+}
+function falha(msg) {
+  document.getElementById("nav").hidden = false;
+  tela(`<h1>Não foi possível enviar</h1><p class="desc">${esc(msg)}</p><div class="acoes"><button class="btn" type="button" data-ok="1" data-foco>Tentar de novo</button></div>`);
+  i = lista().length - 1;
+}
+
+(async () => {
+  if (!/^[a-z0-9][a-z0-9-]{2,60}$/.test(slug)) { tela(`<h1>Formulário não encontrado</h1><p class="desc">Confira o link.</p>`); return; }
+  try {
+    const h = {}; if (previa) { const t = sessao(); if (t) h.Authorization = "Bearer " + t; }
+    const r = await fetch("/api/formulario?slug=" + encodeURIComponent(slug) + (previa ? "&previa=1" : ""), { headers: h, cache: "no-store" });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.erro || "Formulário indisponível.");
+    F = j; F.campos = F.campos || []; F.config = F.config || {};
+    if (!F.campos.length) throw new Error("Este formulário ainda não tem perguntas.");
+    inicio();
+  } catch (e) { tela(`<h1>Formulário indisponível</h1><p class="desc">${esc(e.message)}</p><p class="desc">Fale com a WM Engenharia: (33) 98416-1081 · projeto@wmengenhariaintegrada.com.br</p>`); }
+})();
+</script>
+</body>
+</html>

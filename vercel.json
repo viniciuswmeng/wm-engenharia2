@@ -29,6 +29,10 @@
     {
       "source": "/assinar/:token",
       "destination": "/assinar.html"
+    },
+    {
+      "source": "/f/:slug",
+      "destination": "/f.html"
     }
   ],
   "headers": [
@@ -54,7 +58,7 @@
       ]
     },
     {
-      "source": "/(cliente|briefing|modelo|apresentacao|assinar)/(.*)",
+      "source": "/(cliente|briefing|modelo|apresentacao|assinar|f)/(.*)",
       "headers": [
         {
           "key": "Referrer-Policy",
