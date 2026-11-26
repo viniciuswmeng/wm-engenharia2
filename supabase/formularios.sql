@@ -55,3 +55,20 @@ create policy "equipe le respostas" on public.formulario_respostas for select to
 create policy "equipe edita respostas" on public.formulario_respostas for update to authenticated using (public.eh_equipe()) with check (public.eh_equipe());
 create policy "equipe apaga respostas" on public.formulario_respostas for delete to authenticated using (public.eh_equipe());
 -- sem política de insert: respostas novas só entram pelo servidor (/api/formulario)
+
+-- ── Etapas do atendimento (contato → orçamento) e responsável ─────────────────────────────────────────────
+-- pendente → contato_feito → em_elaboracao → enviado → aprovado | negado
+-- Os alertas de contatos atrasados aparecem no sino do sistema e na notificação da manhã (prazos em cada formulário).
+alter table public.formulario_respostas add column if not exists etapa          text not null default 'pendente';
+alter table public.formulario_respostas add column if not exists etapa_em       timestamptz;
+alter table public.formulario_respostas add column if not exists historico      jsonb not null default '[]'::jsonb; -- [{etapa, em, por}]
+alter table public.formulario_respostas add column if not exists responsavel_id text;
+alter table public.formulario_respostas add column if not exists anotacoes      text not null default '';
+do $$ begin
+  alter table public.formulario_respostas add constraint formulario_respostas_etapa_ck
+    check (etapa in ('pendente','contato_feito','em_elaboracao','enviado','aprovado','negado'));
+exception when duplicate_object then null; end $$;
+do $$ begin
+  alter table public.formulario_respostas add constraint formulario_respostas_anot_ck check (char_length(anotacoes) <= 5000);
+exception when duplicate_object then null; end $$;
+create index if not exists formulario_respostas_etapa on public.formulario_respostas (etapa, etapa_em);

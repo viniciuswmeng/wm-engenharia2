@@ -17,7 +17,7 @@ const NIVEL = {
   aviso:   { cor: "#d97706", bg: "#fffbeb", rot: "Atenção" },
   info:    { cor: "#2e6da8", bg: "#eff6ff", rot: "Info" },
 };
-const ICONE = { prazo: "📅", contrato: "📄", cobranca: "💰", sessao: "⏱", tarefa: "✅", obra: "🏠", briefing: "📝", ata: "🖊" };
+const ICONE = { prazo: "📅", contrato: "📄", cobranca: "💰", sessao: "⏱", tarefa: "✅", obra: "🏠", briefing: "📝", ata: "🖊", contato: "📨" };
 const PRIOR = { alta: { rot: "Alta", cor: "#dc2626" }, normal: { rot: "Normal", cor: "#2e6da8" }, baixa: { rot: "Baixa", cor: "#8a9ab0" } };
 const uid = () => "t" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 const hojeISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };

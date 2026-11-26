@@ -11,23 +11,27 @@ export function useCentral({ supabase, user, usuarios, projetos, registros }) {
   const [obras, setObras] = useState([]);
   const [briefings, setBriefings] = useState([]);
   const [estado, setEstado] = useState([]);
+  const [contatos, setContatos] = useState({ respostas: [], forms: [] });
   const [semTabela, setSemTabela] = useState(false);
   const [tique, setTique] = useState(0);
   const uidUser = user?.id;
 
   const carregar = useCallback(async () => {
     if (!uidUser) return;
-    const [rt, ro, rb, re] = await Promise.all([
+    const [rt, ro, rb, re, rc, rf] = await Promise.all([
       supabase.from("tarefas").select("*").order("vence_em", { ascending: true, nullsFirst: false }),
       supabase.from("obras").select("id,dados"),
       supabase.from("obras_briefing").select("token,obra_id,resposta").not("resposta", "is", null),
       supabase.from("lembretes_estado").select("chave,ate").eq("usuario_id", uidUser),
+      supabase.from("formulario_respostas").select("id,formulario_id,nome,etapa,etapa_em,created_at,status,responsavel_id").in("etapa", ["pendente", "contato_feito", "em_elaboracao", "enviado"]).not("status", "in", "(enviando,arquivada)").limit(500),
+      supabase.from("formularios").select("id,titulo,config"),
     ].map(p => p.then(r => r, e => ({ error: e }))));
     setSemTabela(!!rt.error);
     if (!rt.error) setTarefas(rt.data || []);
     if (!ro.error) setObras(ro.data || []);
     if (!rb.error) setBriefings(rb.data || []);
     if (!re.error) setEstado(re.data || []);
+    setContatos({ respostas: rc.error ? [] : rc.data || [], forms: rf.error ? [] : rf.data || [] });
   }, [supabase, uidUser]);
 
   useEffect(() => {
@@ -41,8 +45,8 @@ export function useCentral({ supabase, user, usuarios, projetos, registros }) {
     return () => { vivo = false; clearInterval(t); if (canal) supabase.removeChannel(canal); };
   }, [uidUser, carregar, supabase]);
 
-  const todos = useMemo(() => gerarLembretes({ projetos, usuarios, sessoes: registros, tarefas, obras, briefings, agora: new Date() }),
-    [projetos, usuarios, registros, tarefas, obras, briefings, tique]); // eslint-disable-line react-hooks/exhaustive-deps
+  const todos = useMemo(() => gerarLembretes({ projetos, usuarios, sessoes: registros, tarefas, obras, briefings, contatos: contatos.respostas, formularios: contatos.forms, agora: new Date() }),
+    [projetos, usuarios, registros, tarefas, obras, briefings, contatos, tique]); // eslint-disable-line react-hooks/exhaustive-deps
   const meus = useMemo(() => lembretesDoUsuario(todos, uidUser, estado), [todos, uidUser, estado]);
 
   const [semParticipantes, setSemParticipantes] = useState(false);

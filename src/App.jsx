@@ -925,6 +925,7 @@ export default function App(){
     if (lk.projetoId) { const p = projetos.find(x => x.id === lk.projetoId); if (p) setModal({ projeto:p, modo:"editar" }); return; }
     if (lk.obraId) { setObraFoco(lk.obraId); setAba("obras"); return; }
     if (lk.tarefaId) { setTarefaFoco(lk.tarefaId); setAba("tarefas"); return; }
+    if (lk.respostaId) { window.__wmFormFoco = { formularioId: lk.formularioId, respostaId: lk.respostaId }; window.dispatchEvent(new Event("wm-form-foco")); }
     if (lk.aba) setAba(lk.aba);
   };
 
@@ -1176,7 +1177,7 @@ export default function App(){
         {aba==="horas"     &&<AbaHoras registros={registros} setRegistros={setRegistros} usuarios={usuarios} projetos={projetos} usuarioAtual={user} calendario={calendario} onAbrirEncerramento={()=>setModalH("encerramento")}/>}
         {aba==="agenda"    &&<AbaAgenda calendario={calendario} usuarioAtual={user} registros={registros} usuarios={usuarios} projetos={projetos} central={central}/>}
         {aba==="config"    &&<Configuracoes usuarios={usuarios} onSalvarUsuarios={salvarUsuarios} usuarioAtual={user} onFoto={alterarFoto}/>}
-        {aba==="formularios" &&<PaginaFormularios usuarioAtual={user} drive={drive}/>}
+        {aba==="formularios" &&<PaginaFormularios usuarioAtual={user} usuarios={usuarios} drive={drive}/>}
         {aba==="contratos"  &&<GeradorContratos projetos={projetos} usuarios={usuarios} usuarioAtual={user} drive={drive}
           onSalvarProjeto={salvarProjetoFluxo} onAbrirProjeto={abrirProjetoPorId}
           orcamentoInicial={orcParaContrato} onOrcamentoUsado={()=>setOrcParaContrato(null)}/>}

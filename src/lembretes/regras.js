@@ -1,4 +1,5 @@
 import { pessoasDa } from "./pessoasTarefa.js";
+import { alertaContato } from "../formularios/etapas.js";
 // src/lembretes/regras.js
 // Regras dos lembretes automáticos. Função pura: recebe os dados do sistema e
 // devolve a lista de lembretes com os destinatários. Usada no navegador (sino)
@@ -23,6 +24,8 @@ export const NIVEIS = { urgente: 0, aviso: 1, info: 2 };
  *  tarefas   [{id,titulo,responsavel_id,vence_em,hora,status,prioridade,projeto_id,obra_id}]
  *  obras     [{id,dados}]   (dados = obra do módulo Obras)
  *  briefings [{token,obra_id,resposta}]
+ *  contatos  [{id,formulario_id,nome,etapa,etapa_em,created_at,status,responsavel_id}] (respostas de formulários)
+ *  formularios [{id,titulo,config}]
  *  agora     Date
  */
 export function gerarLembretes(d) {
@@ -137,6 +140,18 @@ export function gerarLembretes(d) {
       add({ chave: `ata:${o.id}:${a.id}`, tipo: "ata", nivel: "info", para,
         titulo: `Ata ${a.num} sem assinatura`, corpo: `${p.name} · PDF gerado há ${dias} dias`, link });
     });
+  });
+
+  // 10. Contatos dos formulários (etapas do atendimento atrasadas)
+  const formPorId = Object.fromEntries((d.formularios || []).map(f => [f.id, f]));
+  (d.contatos || []).forEach(r => {
+    const f = formPorId[r.formulario_id];
+    const al = alertaContato(r, f && f.config, agora.getTime());
+    if (!al) return;
+    const resp = r.responsavel_id && usuarios.some(u => u.id === r.responsavel_id) ? r.responsavel_id : null;
+    const para = resp ? (al.nivel === "urgente" ? [resp, ...gestores] : [resp]) : gestores;
+    add({ chave: `contato:${r.id}:${r.etapa || "pendente"}:${al.nivel}`, tipo: "contato", nivel: al.nivel, para,
+      titulo: `${al.titulo}: ${r.nome || "sem nome"}`, corpo: al.texto + (f ? ` · ${f.titulo}` : ""), link: { aba: "formularios", formularioId: r.formulario_id, respostaId: r.id } });
   });
 
   return out.sort((a, b) => NIVEIS[a.nivel] - NIVEIS[b.nivel] || a.titulo.localeCompare(b.titulo, "pt-BR"));

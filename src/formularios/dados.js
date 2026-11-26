@@ -1,4 +1,5 @@
 // Formulários públicos (tipo Respondi) — lado da equipe: formulários, respostas e envio dos anexos para o Drive.
+import { ETAPAS_ABERTAS } from "./etapas.js";
 import { supabase } from "../supabase.js";
 import { criarPasta, enviarArquivo } from "../fluxo/drive.js";
 
@@ -58,7 +59,7 @@ export async function apagarFormulario(id) {
   if (error) throw error;
 }
 export async function listarRespostas(formId) {
-  const { data, error } = await supabase.from("formulario_respostas").select("id,formulario_id,respostas,arquivos,nome,status,drive_pasta,created_at,updated_at").eq("formulario_id", formId).order("created_at", { ascending: false }).limit(500);
+  const { data, error } = await supabase.from("formulario_respostas").select("*").eq("formulario_id", formId).order("created_at", { ascending: false }).limit(500);
   if (error) throw error;
   return data || [];
 }
@@ -70,6 +71,28 @@ export async function contarNovas() {
 export async function mudarStatus(id, status) {
   const { error } = await supabase.from("formulario_respostas").update({ status, updated_at: new Date().toISOString() }).eq("id", id);
   if (error) throw error;
+}
+// Muda a etapa do atendimento (contato → orçamento) e guarda no histórico quem mudou e quando
+export async function mudarEtapa(r, etapa, por) {
+  const em = new Date().toISOString();
+  const historico = [...(Array.isArray(r.historico) ? r.historico : []), { etapa, em, por: String(por || "").slice(0, 80) }].slice(-60);
+  const novo = { etapa, etapa_em: em, historico, updated_at: em, ...(r.status === "nova" ? { status: "vista" } : {}) };
+  const { error } = await supabase.from("formulario_respostas").update(novo).eq("id", r.id);
+  if (error) throw /etapa|historico/.test(error.message || "") ? new Error("Rode de novo o supabase/formularios.sql (faltam as colunas das etapas).") : error;
+  return novo;
+}
+export async function salvarCamposResposta(id, campos) {
+  const ok = {};
+  if ("responsavel_id" in campos) ok.responsavel_id = campos.responsavel_id || null;
+  if ("anotacoes" in campos) ok.anotacoes = String(campos.anotacoes || "").slice(0, 5000);
+  const { error } = await supabase.from("formulario_respostas").update({ ...ok, updated_at: new Date().toISOString() }).eq("id", id);
+  if (error) throw error;
+}
+// Todas as respostas em aberto de todos os formulários (para o painel de alertas)
+export async function listarEmAberto() {
+  const { data, error } = await supabase.from("formulario_respostas").select("id,formulario_id,nome,etapa,etapa_em,created_at,status,responsavel_id").in("etapa", ETAPAS_ABERTAS).not("status", "in", "(enviando,arquivada)").limit(500);
+  if (error) return [];
+  return data || [];
 }
 export async function apagarResposta(r) {
   const caminhos = (r.arquivos || []).filter(a => !a.drive && a.caminho).map(a => a.caminho);

@@ -2,7 +2,8 @@
 // editor de perguntas e respostas recebidas. Os anexos dos clientes vão para a pasta do Drive do formulário.
 import { useEffect, useMemo, useState } from "react";
 import { idDoLinkDrive } from "../google/googleApi.js";
-import { TIPOS_CAMPO, apagarFormulario, apagarResposta, contarNovas, enviarAnexosResposta, faltaTabelaForm, linkTemporario, listarFormularios, listarRespostas, modeloContato, mudarStatus, novoId, salvarFormulario, slugDe, sincronizarAnexos } from "./dados.js";
+import { TIPOS_CAMPO, apagarFormulario, apagarResposta, contarNovas, enviarAnexosResposta, faltaTabelaForm, linkTemporario, listarEmAberto, listarFormularios, listarRespostas, modeloContato, mudarEtapa, mudarStatus, novoId, salvarCamposResposta, salvarFormulario, slugDe, sincronizarAnexos } from "./dados.js";
+import { ETAPA, ETAPAS, ETAPAS_ABERTAS, alertaContato, cfgAlertas } from "./etapas.js";
 
 const K = { mar: "#0a2557", azul: "#1565d8", tx: "#0f1f3d", sub: "#6b7a90", borda: "#e6ecf4", fundo: "#f3f6fb", verde: "#16a34a", ambar: "#b45309", verm: "#be123c" };
 const btn = (tipo = "sec", extra = {}) => ({ display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 9, padding: "7px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap", textDecoration: "none",
@@ -13,20 +14,41 @@ const card = { background: "#fff", border: `1px solid ${K.borda}`, borderRadius:
 const fmt = iso => (iso ? new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" }) : "");
 const COM_OPCOES = ["escolha", "multipla", "lista"];
 
-export function PaginaFormularios({ usuarioAtual, drive }) {
+export function PaginaFormularios({ usuarioAtual, usuarios, drive }) {
   const [forms, setForms] = useState(null);
   const [semTabela, setSemTabela] = useState(false);
   const [sel, setSel] = useState(null);
   const [aba, setAba] = useState("respostas");
   const [novas, setNovas] = useState({});
   const [msg, setMsg] = useState(null);
+  const [abertos, setAbertos] = useState([]);
+  const [foco, setFoco] = useState(null);
+  const recontar = async () => { setNovas(await contarNovas()); setAbertos(await listarEmAberto()); };
   const avisar = (t, ok = true) => { setMsg({ t, ok }); setTimeout(() => setMsg(null), ok ? 6000 : 15000); };
   const carregar = async (manter) => {
-    try { const l = await listarFormularios(); setForms(l); setNovas(await contarNovas()); setSel(s => (manter && l.find(x => x.id === manter)) || (s && l.find(x => x.id === s.id)) || l[0] || null); }
+    try { const l = await listarFormularios(); setForms(l); await recontar(); setSel(s => (manter && l.find(x => x.id === manter)) || (s && l.find(x => x.id === s.id)) || l[0] || null); }
     catch (e) { if (faltaTabelaForm(e)) setSemTabela(true); else avisar(e.message, false); setForms([]); }
   };
   // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps -- carrega ao abrir a página
   useEffect(() => { carregar(); }, []);
+  // Vindo do sino: abre o formulário e a resposta do alerta
+  useEffect(() => {
+    const ir = () => { const f = window.__wmFormFoco; if (!f) return; window.__wmFormFoco = null; setFoco({ ...f, t: Date.now() }); };
+    ir(); window.addEventListener("wm-form-foco", ir);
+    return () => window.removeEventListener("wm-form-foco", ir);
+  }, []);
+  useEffect(() => {
+    if (!foco || !forms) return;
+    const f = forms.find(x => x.id === foco.formularioId);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- abre o formulário do alerta escolhido
+    if (f) { setSel(f); setAba("respostas"); }
+  }, [foco, forms]);
+  const alertas = useMemo(() => {
+    const porId = Object.fromEntries((forms || []).map(f => [f.id, f]));
+    return abertos.map(r => ({ r, f: porId[r.formulario_id], a: alertaContato(r, porId[r.formulario_id]?.config) })).filter(x => x.a && x.f)
+      .sort((x, y) => (x.a.nivel === y.a.nivel ? x.a.desde - y.a.desde : x.a.nivel === "urgente" ? -1 : 1));
+  }, [abertos, forms]);
+  const nomeU = id => (usuarios || []).find(u => u.id === id)?.nome || "";
   const criar = async (modelo) => {
     try {
       const base = modelo ? modeloContato() : { titulo: "Novo formulário", descricao: "", slug: "", ativo: false, config: { botaoInicio: "Começar", mensagemFinal: "", cor: "#1565d8" }, campos: [{ id: novoId(), tipo: "texto", titulo: "Qual é o seu nome?", obrigatorio: true }] };
@@ -47,6 +69,20 @@ export function PaginaFormularios({ usuarioAtual, drive }) {
       </div>
       {semTabela && <div style={{ fontSize: 13, color: "#92400e", background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10, padding: "10px 14px" }}>Para ativar, rode no Supabase o arquivo <b>supabase/formularios.sql</b>.</div>}
       {msg && <div role="status" style={{ fontSize: 13, fontWeight: 600, borderRadius: 10, padding: "9px 14px", color: msg.ok ? "#166534" : "#9f1239", background: msg.ok ? "#f0fdf4" : "#fff1f2", border: `1px solid ${msg.ok ? "#bbf7d0" : "#fecdd3"}` }}>{msg.t}</div>}
+      {alertas.length > 0 && (
+        <div style={{ ...card, borderColor: alertas.some(x => x.a.nivel === "urgente") ? "#fecaca" : "#fde68a", background: alertas.some(x => x.a.nivel === "urgente") ? "#fffafa" : "#fffdf5", padding: 12 }}>
+          <b style={{ color: K.mar, fontSize: 14 }}>⚠ {alertas.length} contato{alertas.length > 1 ? "s" : ""} precisa{alertas.length > 1 ? "m" : ""} de atenção</b>
+          <div style={{ display: "grid", gap: 4, marginTop: 8, maxHeight: 260, overflowY: "auto" }}>
+            {alertas.map(({ r, f, a }) => (
+              <button key={r.id} type="button" onClick={() => setFoco({ formularioId: f.id, respostaId: r.id, t: Date.now() })} style={{ display: "flex", alignItems: "center", gap: 10, textAlign: "left", border: "none", borderLeft: `3px solid ${a.nivel === "urgente" ? "#dc2626" : "#d97706"}`, background: "#fff", borderRadius: 8, padding: "7px 10px", cursor: "pointer", fontFamily: "inherit" }}>
+                <span style={{ fontSize: 11.5, fontWeight: 700, background: ETAPA[r.etapa || "pendente"].bg, color: ETAPA[r.etapa || "pendente"].cor, borderRadius: 20, padding: "2px 9px", whiteSpace: "nowrap" }}>{ETAPA[r.etapa || "pendente"].curto}</span>
+                <b style={{ fontSize: 13.5, color: K.tx, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 220 }}>{r.nome || "Sem nome"}</b>
+                <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: K.sub, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.texto}{r.responsavel_id ? ` · ${nomeU(r.responsavel_id)}` : " · sem responsável"}</span>
+                <span style={{ fontSize: 10.5, fontWeight: 800, color: a.nivel === "urgente" ? "#dc2626" : "#d97706", textTransform: "uppercase" }}>{a.nivel === "urgente" ? "Urgente" : "Atenção"}</span>
+              </button>))}
+          </div>
+        </div>
+      )}
       {forms && forms.length > 0 && (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {forms.map(f => (
@@ -73,7 +109,7 @@ export function PaginaFormularios({ usuarioAtual, drive }) {
           </div>
           {aba === "editar"
             ? <Editor key={sel.id + sel.updated_at} form={sel} todos={forms} onSalvo={async f => { await carregar(f.id); avisar("Formulário salvo."); }} onApagado={async () => { setSel(null); await carregar(); avisar("Formulário excluído."); }} avisar={avisar} />
-            : <Respostas key={sel.id} form={sel} drive={drive} avisar={avisar} onMudou={async () => setNovas(await contarNovas())} />}
+            : <Respostas key={sel.id} form={sel} drive={drive} avisar={avisar} usuarios={usuarios} usuarioAtual={usuarioAtual} foco={foco && foco.formularioId === sel.id ? foco : null} onMudou={recontar} />}
         </div>
       )}
     </div>
@@ -90,6 +126,8 @@ function Editor({ form, todos, onSalvo, onApagado, avisar }) {
   const mudar = x => { setF(x); setSujo(true); };
   const cfg = f.config || {};
   const setCfg = (k, v) => mudar({ ...f, config: { ...cfg, [k]: v } });
+  const al = cfgAlertas(cfg);
+  const setAl = (k, v) => setCfg("alertas", { ...al, [k]: k === "ativo" ? v : Number(v) });
   const setCampo = (i, c) => mudar({ ...f, campos: f.campos.map((x, j) => (j === i ? c : x)) });
   const mover = (i, d) => { const l = [...f.campos]; const j = i + d; if (j < 0 || j >= l.length) return; [l[i], l[j]] = [l[j], l[i]]; mudar({ ...f, campos: l }); };
   const slugDup = todos.some(x => x.id !== f.id && x.slug === f.slug);
@@ -116,6 +154,14 @@ function Editor({ form, todos, onSalvo, onApagado, avisar }) {
         <label style={{ gridColumn: "1/-1" }}><span style={rot}>Pasta do Google Drive para os arquivos dos clientes</span><input value={linkPasta} onChange={e => { setLinkPasta(e.target.value); setSujo(true); }} placeholder="Cole o link da pasta no Drive (ex.: …/FORMULÁRIOS DE CONTATO)" style={{ ...inp, fontFamily: "ui-monospace,Consolas,monospace", fontSize: 12.5 }} />
           <span style={{ fontSize: 11.5, color: K.sub }}>Cada resposta ganha uma subpasta “data - nome”. Os arquivos vão para lá quando alguém da equipe estiver com o sistema aberto e o Drive conectado.</span></label>
         <label style={{ gridColumn: "1/-1" }}><span style={rot}>Avisar também estes e-mails (opcional)</span><input value={cfg.avisar || ""} maxLength={400} placeholder="Gestores já recebem. Separe por vírgula." onChange={e => setCfg("avisar", e.target.value)} style={inp} /></label>
+        <div style={{ gridColumn: "1/-1", border: `1px solid ${K.borda}`, borderRadius: 10, padding: "10px 12px", display: "grid", gap: 8 }}>
+          <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13.5, fontWeight: 700, color: K.mar }}><input type="checkbox" checked={al.ativo} onChange={e => setAl("ativo", e.target.checked)} /> Alertas de contatos atrasados (sino do sistema + notificação da manhã)</label>
+          {al.ativo && <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(170px,1fr))", gap: 8 }}>
+            {[["pendenteHoras", "Pendente há mais de (horas)", 720], ["contatoFeitoDias", "Contato feito sem orçamento (dias)", 90], ["elaboracaoDias", "Orçamento em elaboração (dias)", 90], ["enviadoDias", "Enviado sem resposta (dias)", 180]].map(([k, r, mx]) => (
+              <label key={k}><span style={{ ...rot, textTransform: "none", letterSpacing: 0 }}>{r}</span><input type="number" min={1} max={mx} value={al[k]} onChange={e => setAl(k, e.target.value)} style={inp} /></label>))}
+          </div>}
+          <span style={{ fontSize: 11.5, color: K.sub }}>Vai para o responsável do contato (ou para os gestores, se não tiver responsável). Passou do dobro do prazo, vira urgente e os gestores também recebem.</span>
+        </div>
         <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14, fontWeight: 700, color: f.ativo ? K.verde : K.sub }}><input type="checkbox" checked={!!f.ativo} onChange={e => mudar({ ...f, ativo: e.target.checked })} /> {f.ativo ? "Ativo: recebendo respostas" : "Desativado: o link mostra que não está recebendo respostas"}</label>
       </div>
       <div>
@@ -190,16 +236,44 @@ function EditorCampo({ c, i, total, anteriores, aberto, onAbrir, onChange, onMov
 
 // ── Respostas ──
 const ROT_STATUS = { nova: ["Nova", "#e9f1fd", "#1565d8"], vista: ["Vista", "#f1f5f9", "#475569"], arquivada: ["Arquivada", "#f1f5f9", "#94a3b8"], enviando: ["Envio incompleto", "#fffbeb", "#b45309"] };
-function Respostas({ form, drive, avisar, onMudou }) {
+const FILTROS = [["abertos", "Em aberto"], ["alerta", "Com alerta"], ["aprovado", "Aprovados"], ["negado", "Negados"], ["arquivadas", "Arquivados"], ["todas", "Todos"]];
+function Respostas({ form, drive, avisar, usuarios, usuarioAtual, foco, onMudou }) {
   const [lista, setLista] = useState(null);
   const [aberta, setAberta] = useState(null);
-  const [filtro, setFiltro] = useState("ativas");
+  const [filtro, setFiltro] = useState("abertos");
+  const [nota, setNota] = useState({});
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- foco vindo de um alerta
+  useEffect(() => { if (foco) { setFiltro("todas"); setAberta(foco.respostaId); setTimeout(() => document.getElementById("resp-" + foco.respostaId)?.scrollIntoView({ behavior: "smooth", block: "center" }), 150); } }, [foco]);
+  const equipe = (usuarios || []).filter(u => u.ativo !== false);
+  const etapaDe = r => r.etapa || "pendente";
+  const alertaDe = r => alertaContato(r, form.config);
+  const trocarEtapa = async (r, etapa) => {
+    if (etapaDe(r) === etapa) return;
+    setOcupado("e" + r.id);
+    try { const nv = await mudarEtapa(r, etapa, usuarioAtual?.nome); setLista(l => l.map(x => (x.id === r.id ? { ...x, ...nv } : x))); onMudou(); avisar(`${r.nome || "Contato"}: ${ETAPA[etapa].rot}.`); }
+    catch (e) { avisar(e.message, false); } finally { setOcupado(""); }
+  };
+  const salvarCampo = async (r, campos) => {
+    try { await salvarCamposResposta(r.id, campos); setLista(l => l.map(x => (x.id === r.id ? { ...x, ...campos } : x))); onMudou(); }
+    catch (e) { avisar(/anotacoes|responsavel/.test(e.message || "") ? "Rode de novo o supabase/formularios.sql (faltam colunas novas)." : e.message, false); }
+  };
   const [ocupado, setOcupado] = useState("");
   const carregar = async () => { try { setLista(await listarRespostas(form.id)); } catch (e) { avisar(e.message, false); setLista([]); } };
   // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps -- carrega ao trocar de formulário
   useEffect(() => { carregar(); }, [form.id]);
   const campos = (form.campos || []).filter(c => c.tipo !== "aviso");
-  const visiveis = useMemo(() => (lista || []).filter(r => (filtro === "todas" ? true : filtro === "arquivadas" ? r.status === "arquivada" : r.status !== "arquivada")), [lista, filtro]);
+  const visiveis = useMemo(() => (lista || []).filter(r => {
+    if (filtro === "todas") return true;
+    if (filtro === "arquivadas") return r.status === "arquivada";
+    if (r.status === "arquivada") return false;
+    if (filtro === "abertos") return ETAPAS_ABERTAS.includes(r.etapa || "pendente");
+    if (filtro === "alerta") return !!alertaContato(r, form.config);
+    return (r.etapa || "pendente") === filtro;
+  }), [lista, filtro, form.config]);
+  const contagem = useMemo(() => Object.fromEntries(FILTROS.map(([k]) => [k, (lista || []).filter(r => {
+    if (k === "todas") return true; if (k === "arquivadas") return r.status === "arquivada"; if (r.status === "arquivada") return false;
+    if (k === "abertos") return ETAPAS_ABERTAS.includes(r.etapa || "pendente"); if (k === "alerta") return !!alertaContato(r, form.config); return (r.etapa || "pendente") === k;
+  }).length])), [lista, form.config]);
   const pend = r => (r.arquivos || []).filter(a => !a.drive && !a.falhou).length;
   const driveOk = drive?.podeGravar?.();
   const enviarDrive = async r => {
@@ -225,26 +299,52 @@ function Respostas({ form, drive, avisar, onMudou }) {
   return (
     <div style={{ display: "grid", gap: 10 }}>
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-        {[["ativas", "Ativas"], ["arquivadas", "Arquivadas"], ["todas", "Todas"]].map(([k, l]) => <button key={k} type="button" onClick={() => setFiltro(k)} style={btn(filtro === k ? "pri" : "sec", { padding: "5px 10px" })}>{l}</button>)}
+        {FILTROS.map(([k, l]) => <button key={k} type="button" onClick={() => setFiltro(k)} style={btn(filtro === k ? "pri" : "sec", { padding: "5px 10px", ...(k === "alerta" && contagem.alerta && filtro !== k ? { color: "#b45309", borderColor: "#fde68a" } : {}) })}>{l} <small style={{ opacity: .75 }}>{contagem[k] || 0}</small></button>)}
         <span style={{ flex: 1 }} />
         {!form.config?.pastaDrive?.id && <span style={{ fontSize: 12, color: K.ambar }}>Sem pasta do Drive definida: os anexos ficam guardados no sistema até você definir.</span>}
         {form.config?.pastaDrive?.id && !driveOk && <button type="button" onClick={() => drive?.conectarEscrita?.()} style={btn("sec", { color: K.ambar })}>Conectar o Drive para enviar os anexos</button>}
         <button type="button" onClick={async () => { setOcupado("s"); try { const n = await sincronizarAnexos(); await carregar(); avisar(n ? `Anexos de ${n} resposta(s) enviados ao Drive.` : "Nenhum anexo pendente."); } catch (e) { avisar(e.message, false); } finally { setOcupado(""); } }} disabled={!!ocupado || !driveOk} style={btn("sec")}>{ocupado === "s" ? "Enviando…" : "Enviar anexos pendentes"}</button>
         <button type="button" onClick={carregar} style={btn("sec")}>Atualizar</button>
       </div>
-      {!visiveis.length && <div style={{ fontSize: 13.5, color: K.sub, background: K.fundo, borderRadius: 10, padding: "12px 14px" }}>Nenhuma resposta{filtro === "ativas" ? " ativa" : ""} ainda.</div>}
+      {!visiveis.length && <div style={{ fontSize: 13.5, color: K.sub, background: K.fundo, borderRadius: 10, padding: "12px 14px" }}>Nenhum contato {filtro === "todas" ? "ainda" : "neste filtro"}.</div>}
       {visiveis.map(r => {
-        const [rs, bg, cor] = ROT_STATUS[r.status] || ROT_STATUS.vista, p = pend(r), n = (r.arquivos || []).length;
+        const p = pend(r), n = (r.arquivos || []).length, et = ETAPA[etapaDe(r)], al = alertaDe(r);
+        const [rs, bg, cor] = r.status === "enviando" || r.status === "arquivada" ? ROT_STATUS[r.status] : [et.curto, et.bg, et.cor];
         return (
-          <div key={r.id} style={{ border: `1px solid ${r.status === "nova" ? "#bcd3f5" : K.borda}`, borderRadius: 12, background: "#fff" }}>
+          <div key={r.id} id={"resp-" + r.id} style={{ border: `1px solid ${r.status === "nova" ? "#bcd3f5" : K.borda}`, borderRadius: 12, background: "#fff" }}>
             <button type="button" onClick={() => abrir(r)} aria-expanded={aberta === r.id} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", border: "none", background: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
               <span style={{ fontSize: 11.5, fontWeight: 700, background: bg, color: cor, borderRadius: 20, padding: "2px 9px", whiteSpace: "nowrap" }}>{rs}</span>
-              <b style={{ flex: 1, minWidth: 0, color: K.tx, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.nome || "Sem nome"}</b>
+              <b style={{ flex: 1, minWidth: 0, color: K.tx, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.status === "nova" && <span title="Ainda não aberta" style={{ display: "inline-block", width: 8, height: 8, borderRadius: 4, background: K.azul, marginRight: 6 }} />}{r.nome || "Sem nome"}</b>
+              {al && <span title={al.texto} style={{ fontSize: 11.5, fontWeight: 700, color: al.nivel === "urgente" ? "#dc2626" : "#b45309", whiteSpace: "nowrap" }}>⚠ {al.titulo}</span>}
+              {r.responsavel_id && <span style={{ fontSize: 12, color: K.sub, whiteSpace: "nowrap" }}>👤 {(equipe.find(u => u.id === r.responsavel_id)?.nome || "").split(" ")[0]}</span>}
               {n > 0 && <span style={{ fontSize: 12, color: p ? K.ambar : K.verde }}>📎 {n}{p ? ` (${p} aguardando o Drive)` : " no Drive"}</span>}
               <span style={{ fontSize: 12, color: K.sub, whiteSpace: "nowrap" }}>{fmt(r.created_at)}</span>
             </button>
             {aberta === r.id && (
               <div style={{ padding: "0 14px 14px", display: "grid", gap: 10 }}>
+                <div style={{ background: K.fundo, borderRadius: 10, padding: 10, display: "grid", gap: 8 }}>
+                  <span style={rot}>Andamento do atendimento</span>
+                  <div role="radiogroup" aria-label="Etapa do atendimento" style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                    {ETAPAS.map(e => { const on = etapaDe(r) === e.id; return (
+                      <button key={e.id} type="button" role="radio" aria-checked={on} disabled={!!ocupado} onClick={() => trocarEtapa(r, e.id)}
+                        style={{ border: `1.5px solid ${on ? e.cor : K.borda}`, background: on ? e.bg : "#fff", color: on ? e.cor : K.sub, borderRadius: 20, padding: "5px 11px", fontSize: 12.5, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>{on ? "✓ " : ""}{e.rot}</button>); })}
+                  </div>
+                  {al && <div style={{ fontSize: 12.5, fontWeight: 600, color: al.nivel === "urgente" ? "#dc2626" : "#b45309" }}>⚠ {al.titulo} — {al.texto}</div>}
+                  <div style={{ display: "grid", gridTemplateColumns: "minmax(180px,260px) 1fr", gap: 8, alignItems: "start" }}>
+                    <label><span style={{ ...rot, textTransform: "none" }}>Responsável</span>
+                      <select value={r.responsavel_id || ""} onChange={e => salvarCampo(r, { responsavel_id: e.target.value || null })} style={inp}>
+                        <option value="">— ninguém (alerta vai aos gestores) —</option>
+                        {equipe.map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
+                      </select></label>
+                    <label><span style={{ ...rot, textTransform: "none" }}>Anotações internas (o cliente não vê)</span>
+                      <textarea rows={2} maxLength={5000} value={nota[r.id] ?? r.anotacoes ?? ""} onChange={e => setNota(n => ({ ...n, [r.id]: e.target.value }))}
+                        onBlur={() => { if (nota[r.id] != null && nota[r.id] !== (r.anotacoes || "")) salvarCampo(r, { anotacoes: nota[r.id] }); }} placeholder="Ex.: liguei dia 26, pediu orçamento só do estrutural…" style={{ ...inp, resize: "vertical" }} /></label>
+                  </div>
+                  {Array.isArray(r.historico) && r.historico.length > 0 && (
+                    <div style={{ fontSize: 12, color: K.sub, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                      {r.historico.slice(-6).map((h, k) => <span key={k}>{fmt(h.em)} · <b style={{ color: ETAPA[h.etapa]?.cor }}>{ETAPA[h.etapa]?.curto || h.etapa}</b>{h.por ? ` (${h.por.split(" ")[0]})` : ""}</span>)}
+                    </div>)}
+                </div>
                 <div style={{ display: "grid", gap: 8 }}>
                   {campos.map(c => {
                     if (c.tipo === "arquivo") {

@@ -20,7 +20,7 @@ export default async function handler(req, res) {
   if (!cronAutorizado(req.headers.authorization)) { await registrar(req, "cron_negado", { rota: "cron-lembretes" }); return res.status(401).end("Unauthorized"); }
   if (!pushConfigurado()) return res.status(200).json({ ok: true, aviso: "VAPID não configurado" });
   try {
-    const [projetos, usuarios, sessoes, tarefas, obras, briefings, estado, subs] = await Promise.all([
+    const [projetos, usuarios, sessoes, tarefas, obras, briefings, estado, subs, contatos, formularios] = await Promise.all([
       sbGet("projetos", "select=*"),
       sbGet("usuarios", "select=id,nome,perfil,ativo"),
       opcional(sbGet("sessoes_horas", "select=id,usuario_id,data,hora_inicio,hora_fim,inicio_ts&hora_fim=is.null")),
@@ -29,8 +29,10 @@ export default async function handler(req, res) {
       opcional(sbGet("obras_briefing", "select=token,obra_id,resposta&resposta=not.is.null")),
       opcional(sbGet("lembretes_estado", "select=usuario_id,chave,ate")),
       opcional(sbGet("push_assinaturas", "select=usuario_id")),
+      opcional(sbGet("formulario_respostas", "select=id,formulario_id,nome,etapa,etapa_em,created_at,status,responsavel_id&etapa=in.(pendente,contato_feito,em_elaboracao,enviado)&status=not.in.(enviando,arquivada)&limit=500")),
+      opcional(sbGet("formularios", "select=id,titulo,config")),
     ]);
-    const todos = gerarLembretes({ projetos: projetos.map(projetoFront), usuarios, sessoes: sessoes.map(sessaoFront), tarefas, obras, briefings });
+    const todos = gerarLembretes({ projetos: projetos.map(projetoFront), usuarios, sessoes: sessoes.map(sessaoFront), tarefas, obras, briefings, contatos, formularios });
     const comPush = [...new Set(subs.map(s => s.usuario_id))];
     const resultado = [];
     for (const uid of comPush) {
