@@ -33,7 +33,7 @@ export function modeloContato() {
       q("numero", "Qual é a área construída aproximada (m²)?", { placeholder: "Ex.: 180" }),
       q("escolha", "Quantos pavimentos?", { opcoes: ["Térreo", "2 pavimentos", "3 pavimentos", "4 ou mais"] }),
       temArq,
-      q("arquivo", "Envie o projeto arquitetônico e o que tiver da obra", { descricao: "Plantas, cortes, fachadas, sondagem, fotos do terreno. PDF, DWG, imagens ou ZIP.", mostrarSe: { campo: temArq.id, valor: "Sim" }, maxArquivos: 10, maxMB: 25 }),
+      q("arquivo", "Envie o projeto arquitetônico e o que tiver da obra", { descricao: "Plantas, cortes, fachadas, sondagem, fotos do terreno. PDF, DWG, imagens ou ZIP.", mostrarSe: { campo: temArq.id, valor: "Sim" }, maxArquivos: 10, maxMB: 25, obrigatorio: true }),
       q("escolha", "Para quando você precisa dos projetos?", { opcoes: ["O quanto antes", "Em até 30 dias", "Em até 60 dias", "Ainda estou planejando"] }),
       q("escolha", "Como conheceu a WM?", { outro: true, opcoes: ["Instagram", "Indicação", "Google", "Arquiteto parceiro"] }),
       q("paragrafo", "Quer contar mais alguma coisa sobre a obra?", { placeholder: "Detalhes, dúvidas, prazos, o que for importante…" }),
