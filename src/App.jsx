@@ -13,6 +13,8 @@ import { useVozEscritorio } from "./escritorio/voz.js";
 import VozUI from "./escritorio/VozUI.jsx";
 import { useTelaCompartilhada } from "./escritorio/tela.js";
 import TelaUI from "./escritorio/TelaUI.jsx";
+import { useAlertasEscritorio } from "./escritorio/alertas.js";
+import ExigirNotificacoes from "./lembretes/ExigirNotificacoes.jsx";
 import { BuscaGlobal, MenuUsuario, CarregandoPagina, CabecalhoPagina } from "./ui/Topo.jsx";
 import { Abas } from "./ui/ds.jsx";
 
@@ -937,6 +939,7 @@ export default function App(){
   const presenca=usePresencaEscritorio({ user: authStatus==="dentro" ? user : null, sessaoAtiva, usuarios });
   const voz=useVozEscritorio(presenca, authStatus==="dentro" ? user : null);
   const tela=useTelaCompartilhada(presenca, authStatus==="dentro" ? user : null);
+  useAlertasEscritorio({ presenca, voz, tela, usuarios });
   const [authEmail,  setAuthEmail]  = useState("");
   const [authErro,   setAuthErro]   = useState("");
   useEffect(() => {
@@ -1216,12 +1219,13 @@ export default function App(){
       <Suspense fallback={null}>
       {modal&&<ModalProjeto projeto={modal.projeto} modo={modal.modo} onClose={()=>setModal(null)} onSave={salvarP} onExcluir={excluirP} usuarios={usuarios} usuarioAtual={user}/>}
 
+      <ExigirNotificacoes push={push} onSair={()=>{if(window.confirm("Sair do sistema?"))fazerLogout();}}/>
       <VozUI voz={voz} usuarios={usuarios}/>
       <TelaUI tela={tela} usuarios={usuarios}/>
       {presenca.acenos.length>0&&<div style={{position:"fixed",right:18,bottom:86,zIndex:300,display:"grid",gap:8}} aria-live="polite">
         {presenca.acenos.map(a=>{const u=usuarios.find(x=>x.id===a.de);return(
           <div key={a.id} role="status" style={{background:"#fff",border:"1px solid #bcd3f5",borderRadius:12,boxShadow:"0 10px 30px rgba(15,31,61,.18)",padding:"10px 12px",display:"flex",gap:10,alignItems:"center",minWidth:260}}>
-            <span style={{fontSize:22}}>👋</span><span style={{flex:1,fontSize:13.5}}><b>{u?.nome||"Alguém da equipe"}</b> acenou para você</span>
+            <span style={{fontSize:22}}>{a.tipo==="atencao"?"📳":"👋"}</span><span style={{flex:1,fontSize:13.5}}><b>{u?.nome||"Alguém da equipe"}</b> {a.tipo==="atencao"?"está chamando sua atenção!":"acenou para você"}</span>
             {aba!=="escritorio"&&<button onClick={()=>{setAba("escritorio");presenca.dispensarAceno(a.id);}} style={{border:"1px solid #1565d8",background:"#1565d8",color:"#fff",borderRadius:8,padding:"5px 9px",fontWeight:700,cursor:"pointer"}}>Ver</button>}
             <button onClick={()=>presenca.dispensarAceno(a.id)} aria-label="Fechar" style={{border:0,background:"none",fontSize:17,color:"#6b7a90",cursor:"pointer"}}>×</button>
           </div>);})}

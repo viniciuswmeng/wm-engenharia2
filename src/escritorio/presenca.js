@@ -9,7 +9,7 @@ const CANAL = "escritorio-wm";
 const CHAVE_LOCAL = "wm-escritorio-2";
 const OCIOSO_MS = 10 * 60 * 1000;
 const DEMO = import.meta.env.VITE_ESCRITORIO_DEMO === "1";
-export const TIPOS_SINAL = ["aceno", "voz", "video", "layout", "moodboard", "avatar", "tela", "mb"];
+export const TIPOS_SINAL = ["aceno", "atencao", "voz", "video", "layout", "moodboard", "avatar", "tela", "mb"];
 
 const lerLocal = () => { try { return JSON.parse(localStorage.getItem(CHAVE_LOCAL) || "{}"); } catch { return {}; } };
 const gravarLocal = v => { try { localStorage.setItem(CHAVE_LOCAL, JSON.stringify(v)); } catch { /* sem armazenamento */ } };
@@ -22,6 +22,7 @@ export function usePresencaEscritorio({ user, sessaoAtiva, usuarios }) {
   const [pessoas, setPessoas] = useState({});
   const [acenos, setAcenos] = useState([]);
   const [eu, setEu] = useState(() => { const s = lerLocal(); return { x: inteiro(s.x, 11), y: inteiro(s.y, 15), status: s.status || "disponivel", recado: txt(s.recado, 60), auto: false, avatar: s.avatar || null, zoom: txt(s.zoom, 200) }; });
+  const recebidos = useRef({});
   const canalRef = useRef(null), euRef = useRef(eu), sessRef = useRef(sessaoAtiva), ouvintes = useRef(new Set());
   useEffect(() => { euRef.current = eu; sessRef.current = sessaoAtiva; });
 
@@ -54,7 +55,13 @@ export function usePresencaEscritorio({ user, sessaoAtiva, usuarios }) {
     ch.on("broadcast", { event: "sinal" }, ({ payload: p }) => {
       if (!p || typeof p.de !== "string" || !TIPOS_SINAL.includes(p.tipo)) return;
       if (p.para && p.para !== user.id) return; // sinais com destinatário só valem para ele
-      if (p.tipo === "aceno") setAcenos(a => [...a.slice(-3), { id: Date.now() + Math.random(), de: p.de, em: Date.now() }]);
+      if (p.tipo === "aceno" || p.tipo === "atencao") {
+        // quem recebe também limita: no máximo 1 aviso a cada 8 s da mesma pessoa (evita "metralhar" o colega)
+        const k = p.tipo + ":" + p.de, agora = Date.now();
+        if (agora - (recebidos.current[k] || 0) < 8000) return;
+        recebidos.current[k] = agora;
+        setAcenos(a => [...a.filter(x => !(x.de === p.de && x.tipo === p.tipo)).slice(-3), { id: agora + Math.random(), de: p.de, tipo: p.tipo, em: agora }]);
+      }
       ouvintes.current.forEach(f => { try { f(p); } catch { /* ouvinte com erro */ } });
     });
     ch.subscribe(async status => {
@@ -110,8 +117,18 @@ export function usePresencaEscritorio({ user, sessaoAtiva, usuarios }) {
     return true;
   }, [meuId, enviarSinal]);
 
+  // "Chamar atenção" (como o do MSN): treme a tela do colega, toca um som e manda notificação do computador
+  const ultimaAtencao = useRef({});
+  const chamarAtencao = useCallback(para => {
+    if (!para || para === meuId) return false;
+    if (Date.now() - (ultimaAtencao.current[para] || 0) < 15000) return false; // 1 a cada 15 s por pessoa
+    ultimaAtencao.current[para] = Date.now();
+    enviarSinal({ tipo: "atencao", para });
+    return true;
+  }, [meuId, enviarSinal]);
+
   return {
-    estado, pessoas, acenos, eu, enviarSinal, ouvirSinal, acenar,
+    estado, pessoas, acenos, eu, enviarSinal, ouvirSinal, acenar, chamarAtencao,
     mover: (x, y) => mudar({ x: inteiro(x, eu.x), y: inteiro(y, eu.y) }),
     definirStatus: (status, recado) => mudar({ status, auto: false, antes: undefined, ...(recado != null ? { recado: txt(recado, 60) } : {}) }),
     definirAvatar: avatar => mudar({ avatar }),
@@ -139,7 +156,10 @@ function iniciarDemo(setPessoas, setAcenos, meuId, ouvintes, usuarios) {
   const t = setInterval(() => { k = (k + 1) % rotas.length; m[d1] = { ...m[d1], x: rotas[k][0], y: rotas[k][1] }; setPessoas({ ...m }); }, 3500);
   const a = setTimeout(() => setAcenos([{ id: 1, de: d3, em: Date.now() }]), 1500);
   // o colega fictício aceita conversar
-  const resp = s => { if (s.eco && s.tipo === "voz" && s.acao === "pedido") setTimeout(() => ouvintes.current.forEach(f => f({ tipo: "voz", acao: "aceito", de: s.para, para: meuId, demo: true })), 800); };
+  const resp = s => {
+    if (s.eco && s.tipo === "atencao") setTimeout(() => setAcenos(a => [...a, { id: Date.now(), de: s.para, tipo: "atencao", em: Date.now() }]), 900); // o colega fictício "chama de volta"
+    if (s.eco && s.tipo === "voz" && s.acao === "pedido") setTimeout(() => ouvintes.current.forEach(f => f({ tipo: "voz", acao: "aceito", de: s.para, para: meuId, demo: true })), 800);
+  };
   ouvintes.current.add(resp);
   const canal = demoCanal(), rec = e => ouvintes.current.forEach(f => f(e.data));
   canal?.addEventListener("message", rec);

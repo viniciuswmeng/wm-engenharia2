@@ -172,7 +172,7 @@ function Reunioes({ user }) {
 }
 
 export default function EscritorioVirtual({ presenca, voz, tela, usuarios, projetos, user, onMensagem }) {
-  const { estado, pessoas, eu, mover, definirStatus, acenar, definirAvatar, ouvirSinal, enviarSinal } = presenca;
+  const { estado, pessoas, eu, mover, definirStatus, acenar, chamarAtencao, definirAvatar, ouvirSinal, enviarSinal } = presenca;
   const ehGestor = String(user?.perfil || "").toLowerCase() === "gestor";
   const [modo, setModo] = useState(() => localStorage.getItem("wm-ev-modo") || "mundo");
   const [visual, setVisual] = useState(() => localStorage.getItem("wm-ev-visual") || "cartao");
@@ -561,6 +561,7 @@ export default function EscritorioVirtual({ presenca, voz, tela, usuarios, proje
                     <button type="button" disabled={!!ch} onClick={() => ligar(sel)} style={bt(true, { flex: 1, justifyContent: "center" })}><SV d={IC.fone} t={15} />{distancia(pSel, eu) <= DIST_FALAR ? "Falar" : "Ir e falar"}</button>
                     <button type="button" onClick={() => chamarVideo(sel)} style={bt(false)} title="Chamada de vídeo no sistema"><SV d={IC.video} t={15} />Vídeo</button>
                     <button type="button" onClick={() => { const ok = acenar(sel); avisar(ok ? `Você acenou para ${primeiroNome(uSel.nome)}.` : "Espere alguns segundos para acenar de novo."); }} style={bt(false)} title="Acenar">👋</button>
+                    <button type="button" onClick={() => { const ok = chamarAtencao(sel); avisar(ok ? `Você chamou a atenção de ${primeiroNome(uSel.nome)} (a tela dele tremeu).` : "Espere alguns segundos para chamar de novo."); }} style={bt(false)} title="Chamar atenção: treme a tela do colega e toca um som">📳 Chamar atenção</button>
                     {onMensagem && <button type="button" onClick={() => onMensagem(uSel)} style={bt(false)} title="Mensagem"><SV d={IC.balao} t={15} /></button>}
                   </div>}
                 </div>
